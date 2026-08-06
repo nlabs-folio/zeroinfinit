@@ -10,6 +10,8 @@ El nucli proporciona un espai comú on les entitats poden existir, manifestar-se
 
 El nucli és l'estructura estable de Zero Infinit.
 
+El nucli és inalterable.
+
 La seva responsabilitat és:
 
 - descobrir entitats;
@@ -51,3 +53,7 @@ El canvi forma part de la seva existència. Tota evolució ha de preservar la in
 La permanència no resideix en la immobilitat; perviu en la capacitat de continuar sent reconeixible al llarg del temps.
 
 Un cop establert el nucli, la seva continuïtat no depèn d'una intervenció constant, sinó de la coherència dels principis que el sostenen.
+
+## Principi d'alliberament
+
+Zero Infinit pot ser compartit i continuat sempre que es preservin els principis de convivència, lleugeresa i autonomia de les entitats.
