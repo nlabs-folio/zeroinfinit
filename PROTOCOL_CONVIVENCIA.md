@@ -34,26 +34,16 @@ Cada entitat gestiona:
 
 ## Principi de lleugeresa
 
-Principi de gravetat mínima.
-Qualsevol nova responsabilitat ha de romandre al nivell més baix possible. Només ascendeix al nucli quan és indispensable per a totes les entitats.
-
 La simplicitat del nucli és una forma d'eficiència, però també una forma de respecte cap a les obres.
 
-## Principi de permanència
-
-La simplicitat del nucli és una forma de preservació.
-
-Principi de gravetat mínima.
-Qualsevol nova responsabilitat ha de romandre al nivell més baix possible. Només ascendeix al nucli quan és indispensable per a totes les entitats.
+Qualsevol nova responsabilitat ha de romandre al nivell més baix possible. 
 
 ## Principi de permanència
+
+La permanència resideix en la capacitat de continuar sent reconeixible al llarg del temps. 
 
 El canvi forma part de la seva existència. Tota evolució ha de preservar la independència de les entitats i la simplicitat del nucli.
+La continuïtat del nucli depèn de la coherència entre els principis que el sostenen.
 
-La permanència no resideix en la immobilitat; perviu en la capacitat de continuar sent reconeixible al llarg del temps.
 
-Un cop establert el nucli, la seva continuïtat no depèn d'una intervenció constant, sinó de la coherència dels principis que el sostenen.
 
-## Principi d'alliberament
-
-Zero Infinit pot ser compartit i continuat sempre que es preservin els principis de convivència, lleugeresa i autonomia de les entitats.
