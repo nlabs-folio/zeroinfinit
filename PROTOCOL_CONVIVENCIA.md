@@ -14,10 +14,10 @@ El nucli és inalterable.
 
 La seva responsabilitat és:
 
-- descobrir entitats;
-- carregar-les;
-- facilitar-ne l'execució;
-- gestionar la convivència entre elles.
+descobrir entitats;
+carregar-les;
+facilitar-ne l'execució;
+gestionar la convivència entre elles.
 
 El nucli no defineix la naturalesa de cap entitat.
 
@@ -27,10 +27,10 @@ Cada node és una entitat independent.
 
 Cada entitat gestiona:
 
-- la seva lògica;
-- els seus recursos;
-- la seva experiència;
-- la seva evolució.
+la seva lògica;
+els seus recursos;
+la seva experiència;
+la seva evolució.
 
 ## Principi de lleugeresa
 
@@ -42,7 +42,10 @@ Qualsevol nova responsabilitat ha de romandre al nivell més baix possible.
 
 La permanència resideix en la capacitat de continuar sent reconeixible al llarg del temps. 
 
-El canvi forma part de la seva existència. Tota evolució ha de preservar la independència de les entitats i la simplicitat del nucli.
+El canvi forma part de la seva existència.
+
+Tota evolució ha de preservar la independència de les entitats i la simplicitat del nucli.
+
 La continuïtat del nucli depèn de la coherència entre els principis que el sostenen.
 
 
