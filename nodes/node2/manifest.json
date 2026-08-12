@@ -1,6 +1,6 @@
 {
-    "id": "nodeN",
-    "nom": "Primera Entitat",
+    "id": "node2",
+    "nom": "Segona Entitat",
     "versió": "0.1.0",
     "entry": "main.js"
 }
