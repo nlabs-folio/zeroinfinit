@@ -1,0 +1,89 @@
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+.entrance {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+
+    pointer-events: none;
+
+    font-family:
+        "Helvetica Neue",
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    color: rgba(255, 255, 255, 0.88);
+}
+
+
+.title {
+    font-size: clamp(2rem, 5vw, 4.5rem);
+
+    font-weight: 300;
+
+    letter-spacing: 0.45em;
+
+    margin-left: 0.45em;
+
+    text-transform: uppercase;
+
+    text-shadow:
+        0 0 20px rgba(120, 80, 255, 0.35),
+        0 0 60px rgba(120, 40, 255, 0.15);
+}
+
+
+.subtitle {
+    margin-top: 1.2rem;
+
+    font-size: 0.72rem;
+
+    letter-spacing: 0.35em;
+
+    text-transform: uppercase;
+
+    opacity: 0.45;
+
+    margin-left: 0.35em;
+}
+
+
+.enter {
+    pointer-events: auto;
+
+    margin-top: 3rem;
+
+    color: rgba(255, 255, 255, 0.65);
+
+    text-decoration: none;
+
+    font-size: 0.7rem;
+
+    letter-spacing: 0.35em;
+
+    text-transform: uppercase;
+
+    margin-left: 0.35em;
+
+    transition:
+        opacity 0.4s ease,
+        letter-spacing 0.4s ease;
+}
+
+
+.enter:hover {
+    opacity: 1;
+
+    letter-spacing: 0.5em;
+}
