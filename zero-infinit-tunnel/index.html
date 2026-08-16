@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Zero Infinit - Espai</title>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: black;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const gl = canvas.getContext("webgl");
+
+if (!gl) {
+    throw new Error("WebGL no està disponible.");
+}
+
+
+// --------------------------------------------------
+// VERTEX SHADER
+// --------------------------------------------------
+
+const vertexShaderSource = `
+
+attribute vec2 position;
+
+void main() {
+
+    gl_Position = vec4(position, 0.0, 1.0);
+
+}
+
+`;
+
+
+// --------------------------------------------------
+// FRAGMENT SHADER
+// --------------------------------------------------
+
+const fragmentShaderSource = `
+
+precision highp float;
+
+uniform vec2 resolution;
+uniform float time;
+
+
+// --------------------------------------------------
+// RANDOM
+// --------------------------------------------------
+
+float random(vec2 p) {
+
+    return fract(
+        sin(dot(p, vec2(127.1, 311.7)))
+        * 43758.5453123
+    );
+
+}
+
+
+// --------------------------------------------------
+// NOISE
+// --------------------------------------------------
+
+float noise(vec2 p) {
+
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+
+    f = f * f * (3.0 - 2.0 * f);
+
+    float a = random(i);
+    float b = random(i + vec2(1.0, 0.0));
+    float c = random(i + vec2(0.0, 1.0));
+    float d = random(i + vec2(1.0, 1.0));
+
+    return mix(
+        mix(a, b, f.x),
+        mix(c, d, f.x),
+        f.y
+    );
+
+}
+
+
+// --------------------------------------------------
+// FBM
+// --------------------------------------------------
+
+float fbm(vec2 p) {
+
+    float value = 0.0;
+    float amplitude = 0.5;
+
+    for (int i = 0; i < 5; i++) {
+
+        value += amplitude * noise(p);
+
+        p *= 2.0;
+        amplitude *= 0.5;
+
+    }
+
+    return value;
+
+}
+
+
+// --------------------------------------------------
+// MAIN
+// --------------------------------------------------
+
+void main() {
+
+
+    // ----------------------------------------------
+    // COORDENADES
+    // ----------------------------------------------
+
+    vec2 uv =
+        gl_FragCoord.xy / resolution.xy;
+
+    uv -= 0.5;
+
+    uv.x *=
+        resolution.x / resolution.y;
+
+
+    // ----------------------------------------------
+    // ESPAI RADIAL
+    // ----------------------------------------------
+
+    float radius =
+        length(uv);
+
+    float angle =
+        atan(uv.y, uv.x);
+
+
+    // ----------------------------------------------
+    // PROFUNDITAT
+    // ----------------------------------------------
+
+    float tunnel =
+        1.0 / (radius + 0.001);
+
+    tunnel +=
+        time * 0.5;
+
+
+    // ----------------------------------------------
+    // DISTORSIÓ GRAVITACIONAL
+    // ----------------------------------------------
+
+    float gravity =
+        0.12 / (radius + 0.08);
+
+    angle +=
+        gravity;
+
+
+    // ----------------------------------------------
+    // CENTRE PROTEGIT
+    // ----------------------------------------------
+
+    float protectedZone =
+        smoothstep(
+            0.05,
+            0.15,
+            radius
+        );
+
+
+    // ----------------------------------------------
+    // MOVIMENT DEL NUCLI
+    // ----------------------------------------------
+
+    float coreMotion =
+        sin(time * 0.45) * 0.5
+        +
+        sin(time * 0.17) * 0.5;
+
+
+    // ----------------------------------------------
+    // MOVIMENT DEL GAS
+    // ----------------------------------------------
+
+    float flow =
+        time * 0.1020;
+
+    float gasAngle =
+        angle + flow;
+
+
+    // ----------------------------------------------
+    // DENSITAT BASE
+    // ----------------------------------------------
+
+    vec2 gasUV =
+        vec2(
+            cos(gasAngle),
+            sin(gasAngle)
+        );
+
+    gasUV *=
+        radius * 4.0;
+
+
+    // ----------------------------------------------
+    // TURBULÈNCIA
+    // ----------------------------------------------
+
+    float turbulence =
+        fbm(gasUV * 0.7);
+
+
+    gasUV +=
+        vec2(
+            turbulence * 0.75,
+            turbulence * 0.55
+        );
+
+
+    // ----------------------------------------------
+    // INFLUÈNCIA DEL NUCLI
+    // ----------------------------------------------
+
+    float coreInfluence =
+        exp(-radius * 8.0)
+        * coreMotion;
+
+
+    gasUV +=
+        vec2(
+            coreInfluence * 0.04,
+            coreInfluence * 0.04
+        );
+
+
+    // moviment lent global
+
+    gasUV +=
+        vec2(
+            time * 0.015,
+            time * 0.008
+        );
+
+
+    // ----------------------------------------------
+    // NEBULOSA
+    // ----------------------------------------------
+
+    float nebula =
+        fbm(gasUV);
+
+
+    // ----------------------------------------------
+    // MASSA DEL GAS
+    // ----------------------------------------------
+
+    float gasMass =
+        1.5;
+
+    nebula *=
+        gasMass;
+
+
+    // ----------------------------------------------
+    // CENTRE PROTEGIT
+    // ----------------------------------------------
+
+    nebula *=
+        protectedZone;
+
+
+    // ----------------------------------------------
+    // FORMACIÓ DE NÚVOLS
+    // ----------------------------------------------
+
+    nebula =
+        smoothstep(
+            0.35,
+            0.75,
+            nebula
+        );
+
+
+    // ----------------------------------------------
+    // COMPORTAMENT SEGONS DENSITAT
+    // ----------------------------------------------
+
+    float turbulenceStrength =
+        smoothstep(
+            0.45,
+            1.0,
+            nebula
+        );
+
+
+    float movementSpeed =
+        mix(
+            0.05,
+            0.20,
+            turbulenceStrength
+        );
+
+
+    // ----------------------------------------------
+    // INTERACCIÓ
+    // ----------------------------------------------
+
+    float interaction =
+        fbm(
+            gasUV
+            + vec2(
+                turbulence,
+                nebula
+            )
+        );
+
+
+    // ----------------------------------------------
+    // PATRÓ DEL TÚNEL
+    // ----------------------------------------------
+
+    float pattern =
+        sin(
+            tunnel * 2.0
+            +
+            interaction * 4.0
+        );
+
+
+    // ----------------------------------------------
+    // RESPIRACIÓ DEL NUCLI
+    // ----------------------------------------------
+
+    float coreBreath =
+        coreMotion * 0.90;
+
+
+    // radi aparent del nucli
+
+    float coreRadius =
+        radius - coreBreath;
+
+
+    coreRadius =
+        max(
+            coreRadius,
+            0.7
+        );
+
+
+    // glow
+
+    float glow =
+        1.0 /
+        (coreRadius * 1.0 + 0.6);
+
+
+    // ----------------------------------------------
+    // PALETA
+    // ----------------------------------------------
+
+    vec3 deep =
+        vec3(
+            0.002,
+            0.001,
+            0.008
+        );
+
+
+    vec3 blueGas =
+        vec3(
+            0.025,
+            0.07,
+            0.28
+        );
+
+
+    vec3 violetGas =
+        vec3(
+            0.30,
+            0.03,
+            0.45
+        );
+
+
+    vec3 hotGas =
+        vec3(
+            0.62,
+            0.42,
+            0.22
+        );
+
+// ----------------------------------------------
+// DIRECCIÓ DE LA HOT MASS
+// ----------------------------------------------
+
+float hotDirection =
+    sin(time * 0.11)
+    +
+    sin(time * 0.047) * 0.5;
+
+float hotInfluence =
+    smoothstep(
+        0.60,
+        1.0,
+        nebula
+    );
+
+float hotFlow =
+    sin(
+        angle
+        + hotDirection * 2.0
+        + nebula * 3.0
+    );
+
+hotInfluence *=
+    hotFlow * 0.5
+    + 0.5;
+
+
+
+    // ----------------------------------------------
+    // COLOR SEGONS DENSITAT
+    // ----------------------------------------------
+
+    vec3 color =
+        mix(
+            deep,
+            blueGas,
+            nebula
+        );
+
+
+    color =
+        mix(
+            color,
+            violetGas,
+            smoothstep(
+                0.45,
+                0.75,
+                nebula
+            )
+        );
+
+
+float hotDensity =
+    smoothstep(
+        0.75,
+        1.0,
+        nebula
+    );
+
+hotDensity *=
+    hotInfluence;
+
+color =
+    mix(
+        color,
+        hotGas,
+        hotDensity
+    );
+
+
+    // ----------------------------------------------
+    // ESTRUCTURA
+    // ----------------------------------------------
+
+    color +=
+        pattern * 0.04;
+
+
+    // ----------------------------------------------
+    // LLUM SEGONS DENSITAT
+    // ----------------------------------------------
+
+    float emission =
+        smoothstep(
+            0.80,
+            1.0,
+            nebula
+        );
+
+
+    color +=
+        hotGas
+        * emission
+        * 0.10;
+
+// ----------------------------------------------
+// LLUM CENTRAL
+// ----------------------------------------------
+
+vec3 coreColor =
+    vec3(
+        0.12,
+        0.02,
+        0.18
+    );
+
+float coreLight =
+    glow * 0.15;
+
+
+// soft saturation
+
+coreLight =
+    coreLight /
+    (1.0 + coreLight);
+
+
+color +=
+    coreColor * coreLight;
+
+
+    // ----------------------------------------------
+    // OUTPUT
+    // ----------------------------------------------
+
+    gl_FragColor =
+        vec4(
+            color,
+            1.0
+        );
+
+}
+
+`;
+
+
+// --------------------------------------------------
+// COMPILAR SHADER
+// --------------------------------------------------
+
+function createShader(type, source) {
+
+    const shader = gl.createShader(type);
+
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+
+        console.error(
+            gl.getShaderInfoLog(shader)
+        );
+
+        gl.deleteShader(shader);
+
+        return null;
+    }
+
+    return shader;
+}
+
+
+const vertexShader =
+    createShader(
+        gl.VERTEX_SHADER,
+        vertexShaderSource
+    );
+
+
+const fragmentShader =
+    createShader(
+        gl.FRAGMENT_SHADER,
+        fragmentShaderSource
+    );
+
+
+// --------------------------------------------------
+// PROGRAM
+// --------------------------------------------------
+
+const program = gl.createProgram();
+
+gl.attachShader(program, vertexShader);
+gl.attachShader(program, fragmentShader);
+
+gl.linkProgram(program);
+
+gl.useProgram(program);
+
+
+// --------------------------------------------------
+// GEOMETRIA
+// --------------------------------------------------
+
+const buffer = gl.createBuffer();
+
+gl.bindBuffer(
+    gl.ARRAY_BUFFER,
+    buffer
+);
+
+const vertices = new Float32Array([
+
+    -1, -1,
+     1, -1,
+    -1,  1,
+
+    -1,  1,
+     1, -1,
+     1,  1
+
+]);
+
+gl.bufferData(
+    gl.ARRAY_BUFFER,
+    vertices,
+    gl.STATIC_DRAW
+);
+
+
+const position =
+    gl.getAttribLocation(
+        program,
+        "position"
+    );
+
+gl.enableVertexAttribArray(position);
+
+gl.vertexAttribPointer(
+    position,
+    2,
+    gl.FLOAT,
+    false,
+    0,
+    0
+);
+
+
+// --------------------------------------------------
+// UNIFORMS
+// --------------------------------------------------
+
+const resolution =
+    gl.getUniformLocation(
+        program,
+        "resolution"
+    );
+
+const time =
+    gl.getUniformLocation(
+        program,
+        "time"
+    );
+
+
+// --------------------------------------------------
+// RESIZE
+// --------------------------------------------------
+
+function resize() {
+
+    canvas.width =
+        window.innerWidth *
+        devicePixelRatio;
+
+    canvas.height =
+        window.innerHeight *
+        devicePixelRatio;
+
+    gl.viewport(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+}
+
+window.addEventListener(
+    "resize",
+    resize
+);
+
+resize();
+
+
+// --------------------------------------------------
+// ANIMACIÓ
+// --------------------------------------------------
+
+function render(milliseconds) {
+
+    const seconds =
+        milliseconds * 0.001;
+
+    gl.useProgram(program);
+
+    gl.uniform2f(
+        resolution,
+        canvas.width,
+        canvas.height
+    );
+
+    gl.uniform1f(
+        time,
+        seconds
+    );
+
+    gl.drawArrays(
+        gl.TRIANGLES,
+        0,
+        6
+    );
+
+    requestAnimationFrame(render);
+
+}
+
+requestAnimationFrame(render);
+
+</script>
+
+</body>
+</html>

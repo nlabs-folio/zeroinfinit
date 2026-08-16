@@ -1,23 +1,22 @@
-import { getGallery } from "./core/gallery.js";
-import { loadEntity } from "./core/loader.js";
-import { startEntity } from "./core/runtime.js";
+export async function loadNode(id) {
 
+    const response = await fetch("./nodes/index.json");
 
-async function boot() {
+    if (!response.ok) {
+        throw new Error("No s'ha pogut carregar l'índex de nodes");
+    }
 
-    const gallery = await getGallery();
+    const registry = await response.json();
 
-    console.log("ZERO INFINIT");
-    console.log("Entitats disponibles:", gallery);
+    const node = registry.nodes.find(
+        node => node.id === id
+    );
 
+    if (!node) {
+        throw new Error(`Node no trobat: ${id}`);
+    }
 
-    const firstNode = gallery.nodes[0];
+    const module = await import(`../${node.entry}`);
 
-    const entity = await loadEntity(firstNode.entry);
-
-    startEntity(entity);
-
+    return module;
 }
-
-
-boot();
