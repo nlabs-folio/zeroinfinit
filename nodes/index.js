@@ -1,4 +1,3 @@
-
 // ============================================================
 // ZERO INFINIT — HARMONIC FIELD
 //
@@ -23,7 +22,7 @@
 // F# menor
 //
 // F#  = tònica
-// A   = tercera menor / relativa major
+// A   = tercera menor
 // B   = subdominant
 // C#  = dominant
 // D   = color
@@ -152,7 +151,6 @@ const field = {
 // Tot està expressat respecte de F# menor.
 //
 // El ratolí NO determina directament cap pitch.
-//
 // ============================================================
 
 const HARMONY = {
@@ -185,14 +183,7 @@ const HARMONY = {
 // ============================================================
 // CHORDS
 //
-// Progressió orgànica:
-//
 // F#m → D → A → E
-//
-// No és un loop rígid.
-// L'estat del camp determina quan
-// es produeix la convergència.
-//
 // ============================================================
 
 const CHORDS = [
@@ -206,8 +197,10 @@ const CHORDS = [
         bass: HARMONY.F2,
 
         voice: [
+
             HARMONY.A3,
             HARMONY.Csharp4
+
         ]
 
     },
@@ -221,8 +214,10 @@ const CHORDS = [
         bass: HARMONY.D3 / 2,
 
         voice: [
+
             HARMONY.F3,
             HARMONY.A3
+
         ]
 
     },
@@ -236,8 +231,10 @@ const CHORDS = [
         bass: HARMONY.A2,
 
         voice: [
+
             HARMONY.Csharp4,
             HARMONY.E4
+
         ]
 
     },
@@ -251,23 +248,13 @@ const CHORDS = [
         bass: HARMONY.E3 / 2,
 
         voice: [
-            HARMONY.FsharpSafe ||
-            HARMONY.F2 * 2,
+
+            HARMONY.F2 * 4,
             HARMONY.B2 * 2
+
         ]
 
     }
-
-];
-
-
-// Evitem dependències estranyes
-// dins la definició d'E.
-
-CHORDS[3].voice = [
-
-    HARMONY.F2 * 4,
-    HARMONY.B2 * 2
 
 ];
 
@@ -354,7 +341,16 @@ let subBus = null;
 
 let kickBus = null;
 
+let breakBus = null;
+
 let fxBus = null;
+
+
+// ============================================================
+// BREAKBEAT BUS
+// ============================================================
+
+let breakGain = null;
 
 
 // ============================================================
@@ -454,6 +450,34 @@ let lastKick = 0;
 // ============================================================
 
 let lastBassCrisp = 0;
+
+
+// ============================================================
+// BREAKBEAT
+// ============================================================
+
+let lastBreak = 0;
+
+let breakPhase = -1;
+
+
+// ============================================================
+// TENDER VOICE
+// ============================================================
+
+let lastVoiceGesture = 0;
+
+let voiceGestureLevel = 0;
+
+let tenderVoice = null;
+
+let tenderVoiceGain = null;
+
+let tenderVoiceFilter = null;
+
+let tenderVoiceBreath = null;
+
+let tenderVoiceBreathGain = null;
 
 
 // ============================================================
@@ -750,6 +774,7 @@ function createParticles() {
                 0.65,
 
             vx: 0,
+
             vy: 0,
 
             size:
@@ -986,12 +1011,6 @@ function updateField() {
 
 // ============================================================
 // HARMONIC FIELD
-//
-// El moviment del ratolí només influeix
-// en QUAN canvia l'harmonia.
-//
-// No determina mai una freqüència arbitrària.
-//
 // ============================================================
 
 function updateHarmony() {
@@ -1010,10 +1029,6 @@ function updateHarmony() {
         field.flow * 0.30 +
         field.memory * 0.15;
 
-    /*
-     * Temps mínim entre moviments harmònics.
-     */
-
     const interval =
         4.5 -
         pressure * 1.8;
@@ -1024,12 +1039,6 @@ function updateHarmony() {
         harmonicState.lastChange >
         interval
     ) {
-
-        /*
-         * F#m apareix amb més freqüència.
-         *
-         * D / A / E donen moviment.
-         */
 
         const choices = [
 
@@ -1061,10 +1070,6 @@ function updateHarmony() {
 
     }
 
-    /*
-     * Transició lenta.
-     */
-
     harmonicState.current +=
         (
             harmonicState.target -
@@ -1072,13 +1077,6 @@ function updateHarmony() {
         )
         *
         0.008;
-
-    /*
-     * Convergència:
-     *
-     * només apareix quan l'estat
-     * s'acosta prou a l'acord objectiu.
-     */
 
     const distance =
         Math.abs(
@@ -1489,6 +1487,11 @@ function createAudio() {
             audioContext.destination
         );
 
+
+    // ========================================================
+    // BUSSES
+    // ========================================================
+
     voiceBus =
         audioContext.createGain();
 
@@ -1507,8 +1510,19 @@ function createAudio() {
     kickBus =
         audioContext.createGain();
 
+    breakBus =
+        audioContext.createGain();
+
+    breakGain =
+        audioContext.createGain();
+
     fxBus =
         audioContext.createGain();
+
+
+    // ========================================================
+    // BUS LEVELS
+    // ========================================================
 
     voiceBus.gain.value =
         1;
@@ -1528,8 +1542,19 @@ function createAudio() {
     kickBus.gain.value =
         0.85;
 
+    breakBus.gain.value =
+        1;
+
+    breakGain.gain.value =
+        0.72;
+
     fxBus.gain.value =
         0.65;
+
+
+    // ========================================================
+    // ROUTING
+    // ========================================================
 
     voiceBus.connect(
         dryBus
@@ -1559,13 +1584,24 @@ function createAudio() {
         master
     );
 
+    breakBus
+        .connect(breakGain)
+        .connect(master);
+
     fxBus.connect(
         spaceBus
     );
 
+
+    // ========================================================
+    // MODULES
+    // ========================================================
+
     createSpace();
 
     createVoice();
+
+    createTenderVoice();
 
     createBass();
 
@@ -1680,12 +1716,6 @@ function createSpace() {
 
 // ============================================================
 // VOICE
-//
-// De moment és una veu espectral molt discreta.
-//
-// La seva harmonia serà governada
-// pel sistema F# menor.
-//
 // ============================================================
 
 function createVoice() {
@@ -2010,7 +2040,9 @@ function createDrone() {
             droneVoices.push({
 
                 osc,
+
                 filter,
+
                 gain,
 
                 phase:
@@ -2028,10 +2060,6 @@ function createDrone() {
 
 // ============================================================
 // GAS
-//
-// Molt més discret.
-// No volem white noise dominant.
-//
 // ============================================================
 
 function createGas() {
@@ -2295,10 +2323,6 @@ function triggerKick() {
 
 // ============================================================
 // BASS CRISP
-//
-// Petit accent harmònic.
-// No white noise.
-//
 // ============================================================
 
 function triggerBassCrisp() {
@@ -2364,6 +2388,538 @@ function triggerBassCrisp() {
 
 
 // ============================================================
+// TENDER VOICE
+// ============================================================
+
+function createTenderVoice() {
+
+    tenderVoice =
+        audioContext.createOscillator();
+
+    tenderVoice.type =
+        "triangle";
+
+    tenderVoice.frequency.value =
+        HARMONY.A3;
+
+    tenderVoiceFilter =
+        audioContext.createBiquadFilter();
+
+    tenderVoiceFilter.type =
+        "bandpass";
+
+    tenderVoiceFilter.frequency.value =
+        520;
+
+    tenderVoiceFilter.Q.value =
+        1.7;
+
+    tenderVoiceGain =
+        audioContext.createGain();
+
+    tenderVoiceGain.gain.value =
+        0;
+
+    tenderVoice
+        .connect(tenderVoiceFilter)
+        .connect(tenderVoiceGain)
+        .connect(voiceBus);
+
+    tenderVoiceBreath =
+        audioContext.createOscillator();
+
+    tenderVoiceBreath.type =
+        "sine";
+
+    tenderVoiceBreath.frequency.value =
+        0.17;
+
+    tenderVoiceBreathGain =
+        audioContext.createGain();
+
+    tenderVoiceBreathGain.gain.value =
+        0.035;
+
+    tenderVoiceBreath
+        .connect(tenderVoiceBreathGain)
+        .connect(tenderVoice.detune);
+
+    tenderVoice.start();
+
+    tenderVoiceBreath.start();
+
+}
+
+
+// ============================================================
+// TENDER VOICE GESTURE
+// ============================================================
+
+function triggerTenderVoice() {
+
+    if (
+        !audioStarted ||
+        !tenderVoice
+    ) {
+
+        return;
+
+    }
+
+    const now =
+        audioContext.currentTime;
+
+    const chord =
+        getCurrentChord();
+
+    const notes = [
+
+        chord.root * 2,
+
+        chord.voice[0],
+
+        chord.voice[1],
+
+        chord.root * 4
+
+    ];
+
+    const note =
+        notes[
+            Math.floor(
+                Math.random() *
+                notes.length
+            )
+        ];
+
+    tenderVoice.frequency
+        .cancelScheduledValues(now);
+
+    tenderVoice.frequency
+        .setTargetAtTime(
+            note,
+            now,
+            0.08
+        );
+
+    tenderVoice.detune
+        .setTargetAtTime(
+            -2 +
+            Math.random() * 4,
+            now,
+            0.18
+        );
+
+    tenderVoiceFilter.frequency
+        .setTargetAtTime(
+            420 +
+            field.energy * 300 +
+            field.flow * 180,
+            now,
+            0.20
+        );
+
+    tenderVoiceGain.gain.cancelScheduledValues(
+        now
+    );
+
+    tenderVoiceGain.gain
+        .setValueAtTime(
+            0.0001,
+            now
+        );
+
+    tenderVoiceGain.gain
+        .linearRampToValueAtTime(
+            0.012 +
+            field.velocity * 0.010,
+            now + 0.12
+        );
+
+    tenderVoiceGain.gain
+        .exponentialRampToValueAtTime(
+            0.0001,
+            now + 0.85 +
+            field.energy * 0.8
+        );
+
+    lastVoiceGesture =
+        now;
+
+}
+
+
+// ============================================================
+// BREAKBEAT
+//
+// No és una bateria convencional.
+//
+// És una capa rítmica fantasma:
+//
+// kick / ghost / hat
+//
+// El moviment la fa emergir.
+// ============================================================
+
+function triggerBreakHit(
+    type
+) {
+
+    if (
+        !audioStarted ||
+        !breakBus
+    ) {
+
+        return;
+
+    }
+
+    const now =
+        audioContext.currentTime;
+
+    const osc =
+        audioContext.createOscillator();
+
+    const gain =
+        audioContext.createGain();
+
+    const filter =
+        audioContext.createBiquadFilter();
+
+
+    // ========================================================
+    // KICK
+    // ========================================================
+
+    if (
+        type === "kick"
+    ) {
+
+        osc.type =
+            "sine";
+
+        osc.frequency
+            .setValueAtTime(
+                74,
+                now
+            );
+
+        osc.frequency
+            .exponentialRampToValueAtTime(
+                42,
+                now + 0.12
+            );
+
+        filter.type =
+            "lowpass";
+
+        filter.frequency.value =
+            180;
+
+        gain.gain
+            .setValueAtTime(
+                0.0001,
+                now
+            );
+
+        gain.gain
+            .linearRampToValueAtTime(
+                0.045 +
+                field.energy * 0.025,
+                now + 0.007
+            );
+
+        gain.gain
+            .exponentialRampToValueAtTime(
+                0.0001,
+                now + 0.19
+            );
+
+    }
+
+
+    // ========================================================
+    // GHOST
+    // ========================================================
+
+    else if (
+        type === "ghost"
+    ) {
+
+        osc.type =
+            "triangle";
+
+        osc.frequency.value =
+            145 +
+            Math.random() * 35;
+
+        filter.type =
+            "bandpass";
+
+        filter.frequency.value =
+            480;
+
+        filter.Q.value =
+            1.4;
+
+        gain.gain
+            .setValueAtTime(
+                0.0001,
+                now
+            );
+
+        gain.gain
+            .linearRampToValueAtTime(
+                0.012 +
+                field.velocity * 0.006,
+                now + 0.005
+            );
+
+        gain.gain
+            .exponentialRampToValueAtTime(
+                0.0001,
+                now + 0.09
+            );
+
+    }
+
+
+    // ========================================================
+    // HAT
+    // ========================================================
+
+    else {
+
+        osc.type =
+            "square";
+
+        osc.frequency.value =
+            2200 +
+            Math.random() * 900;
+
+        filter.type =
+            "highpass";
+
+        filter.frequency.value =
+            1700;
+
+        gain.gain
+            .setValueAtTime(
+                0.0001,
+                now
+            );
+
+        gain.gain
+            .linearRampToValueAtTime(
+                0.008 +
+                field.velocity * 0.006,
+                now + 0.002
+            );
+
+        gain.gain
+            .exponentialRampToValueAtTime(
+                0.0001,
+                now + 0.045
+            );
+
+    }
+
+
+    osc
+        .connect(filter)
+        .connect(gain)
+        .connect(breakBus);
+
+    osc.start(now);
+
+    osc.stop(
+        now + 0.22
+    );
+
+}
+
+
+// ============================================================
+// MICRO BREAK
+//
+// 170 BPM
+//
+// 8 passos:
+//
+// K . H .
+// G . K H
+//
+// Amb omissions dependents del camp.
+// ============================================================
+
+function updateBreakbeat() {
+
+    if (!audioStarted) {
+
+        return;
+
+    }
+
+    const now =
+        audioContext.currentTime;
+
+    const beatLength =
+        60 / 170;
+
+    const step =
+        Math.floor(
+            now /
+            (beatLength / 2)
+        );
+
+    if (
+        step === breakPhase
+    ) {
+
+        return;
+
+    }
+
+    breakPhase =
+        step;
+
+
+    // ========================================================
+    // ACTIVACIÓ
+    // ========================================================
+
+    if (
+        field.energy < 0.30 ||
+        field.velocity < 0.08
+    ) {
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // POSICIÓ
+    // ========================================================
+
+    const position =
+        step % 8;
+
+
+    // ========================================================
+    // DENSITAT DEL BREAK
+    // ========================================================
+
+    const chance =
+        0.42 +
+        field.velocity * 0.30 +
+        field.energy * 0.16;
+
+
+    if (
+        Math.random() >
+        chance
+    ) {
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // PATTERN
+    // ========================================================
+
+    if (
+        position === 0 ||
+        position === 5
+    ) {
+
+        triggerBreakHit(
+            "kick"
+        );
+
+    }
+
+    else if (
+        position === 3 ||
+        position === 7
+    ) {
+
+        triggerBreakHit(
+            "ghost"
+        );
+
+    }
+
+    else if (
+        position === 2 ||
+        position === 6
+    ) {
+
+        triggerBreakHit(
+            "hat"
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// GESTURE VOICE
+// ============================================================
+
+function updateGestureVoice() {
+
+    if (!audioStarted) {
+
+        return;
+
+    }
+
+    const now =
+        audioContext.currentTime;
+
+    const gesture =
+        field.velocity *
+        0.58 +
+        field.energy *
+        0.20 +
+        field.flow *
+        0.22;
+
+    voiceGestureLevel +=
+        (
+            gesture -
+            voiceGestureLevel
+        )
+        *
+        0.08;
+
+    if (
+        voiceGestureLevel > 0.46 &&
+        now -
+        lastVoiceGesture >
+        2.2
+    ) {
+
+        if (
+            Math.random() <
+            0.42 +
+            field.energy * 0.25
+        ) {
+
+            triggerTenderVoice();
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
 // AUDIO UPDATE
 // ============================================================
 
@@ -2405,7 +2961,8 @@ function updateAudio() {
         0.82 +
         Math.sin(
             time * 0.29
-        ) *
+        )
+        *
         0.18;
 
     voiceGain.gain
@@ -2439,11 +2996,6 @@ function updateAudio() {
             now,
             0.65
         );
-
-    /*
-     * La veu superior segueix
-     * la tercera/cinquena de l'acord.
-     */
 
     const voiceTarget =
         chord.voice[
@@ -2480,93 +3032,148 @@ function updateAudio() {
             0.45
         );
 
+        // ========================================================
+// BASS
+//
+// Baix principal molt tendre.
+//
+// Té cos i moviment,
+// però no domina l'espai.
+//
+// El wobble apareix només quan
+// el camp té prou energia.
+//
+// No volem:
+//
+//     WOOOOOAAAW
+//
+// sinó:
+//
+//     woom... woom...
+//
+// ========================================================
 
-    // ========================================================
-    // BASS
-    // ========================================================
+const bassBase =
+    chord.bass;
 
-    const bassBase =
-        chord.bass;
+const bassMovement =
+    Math.sin(
+        time * 0.27
+    ) *
+    1.4;
 
-    const bassMovement =
-        Math.sin(
-            time * 0.27
-        ) *
-        1.4;
 
-    bassOsc.frequency
-        .setTargetAtTime(
-            bassBase +
-            bassMovement,
-            now,
-            0.22
-        );
+// --------------------------------------------------------
+// FREQÜÈNCIA
+// --------------------------------------------------------
 
-    /*
-     * Wobble:
-     *
-     * normalment discret,
-     * ocasionalment obre el filtre.
-     */
+bassOsc.frequency
+    .setTargetAtTime(
+        bassBase +
+        bassMovement,
+        now,
+        0.22
+    );
 
-    const wobblePressure =
-        Math.max(
-            0,
-            field.energy -
-            0.46
-        );
 
-    const wobbleAmount =
-        wobblePressure *
-        360;
+// --------------------------------------------------------
+// WOBBLE
+//
+// Molt contingut.
+//
+// El camp no obre brutalment el filtre.
+// Només el fa respirar.
+// --------------------------------------------------------
 
-    bassLFOGain.gain
-        .setTargetAtTime(
-            30 +
-            wobbleAmount,
-            now,
-            0.20
-        );
+const wobblePressure =
+    Math.max(
+        0,
+        field.energy - 0.48
+    );
 
-    bassLFO.frequency
-        .setTargetAtTime(
-            0.11 +
-            field.velocity * 0.34,
-            now,
-            0.25
-        );
+const broadWobble =
+    wobblePressure *
+    (
+        90 +
+        field.flow * 180
+    );
 
-    bassFilter.frequency
-        .setTargetAtTime(
-            150 +
-            field.energy * 250 +
-            field.velocity * 170 +
-            harmonicState.convergence * 160,
-            now,
-            0.18
-        );
+const wobbleRate =
+    0.085 +
+    field.velocity * 0.16 +
+    field.energy * 0.05;
 
-    bassGain.gain
-        .setTargetAtTime(
-            0.016 +
-            audioEnergy * 0.030,
-            now,
-            0.18
-        );
+bassLFOGain.gain
+    .setTargetAtTime(
+        22 +
+        broadWobble,
+        now,
+        0.45
+    );
+
+bassLFO.frequency
+    .setTargetAtTime(
+        wobbleRate,
+        now,
+        0.45
+    );
+
+
+// --------------------------------------------------------
+// FILTRE
+//
+// Obertura molt suau.
+//
+// La freqüència base continua sent fosca.
+// El wobble només afegeix una respiració.
+// --------------------------------------------------------
+
+const bassFilterTarget =
+    125 +
+    field.energy * 150 +
+    field.velocity * 100 +
+    harmonicState.convergence * 110 +
+    Math.sin(time * 0.7) *
+    broadWobble *
+    0.07;
+
+bassFilter.frequency
+    .setTargetAtTime(
+        bassFilterTarget,
+        now,
+        0.38
+    );
+
+
+
+// --------------------------------------------------------
+// VOLUM
+//
+// Baix principal discret.
+// El sub continua portant el pes inferior.
+// --------------------------------------------------------
+
+      bassGain.gain
+      .setTargetAtTime(
+        0.008 +
+        audioEnergy * 0.015,
+        now,
+        0.28
+    );
 
 
     // ========================================================
     // SUB
     // ========================================================
 
-    subOsc.frequency
+        subOsc.frequency
         .setTargetAtTime(
             bassBase / 2,
             now,
             0.28
         );
 
-    subGain.gain
+        subGain.gain
         .setTargetAtTime(
             0.008 +
             audioEnergy * 0.013,
@@ -2600,9 +3207,7 @@ function updateAudio() {
 
                 chord.voice[0],
 
-                chord.voice[
-                    1
-                ]
+                chord.voice[1]
 
             ];
 
@@ -2650,10 +3255,6 @@ function updateAudio() {
     // GAS
     // ========================================================
 
-    /*
-     * Reduït dràsticament.
-     */
-
     noiseFilter.frequency
         .setTargetAtTime(
             320 +
@@ -2665,10 +3266,10 @@ function updateAudio() {
 
     noiseGain.gain
         .setTargetAtTime(
-            field.velocity * 0.0035 +
-            field.turbulence * 0.0018,
+            field.velocity * 0.0018 +
+            field.turbulence * 0.0008,
             now,
-            0.20
+            0.28
         );
 
 
@@ -2683,8 +3284,7 @@ function updateAudio() {
     if (
         now -
         lastKick >
-        kickInterval
-        &&
+        kickInterval &&
         field.energy >
         0.28
     ) {
@@ -2703,11 +3303,9 @@ function updateAudio() {
 
     if (
         field.energy >
-        0.58
-        &&
+        0.58 &&
         field.velocity >
-        0.38
-        &&
+        0.38 &&
         now -
         lastBassCrisp >
         0.85
@@ -2731,8 +3329,7 @@ function updateAudio() {
 
     if (
         field.turbulence >
-        0.34
-        &&
+        0.34 &&
         now -
         lastGrain >
         grainInterval
@@ -2744,6 +3341,15 @@ function updateAudio() {
             now;
 
     }
+
+
+    // ========================================================
+    // BREAKBEAT
+    // ========================================================
+
+    updateBreakbeat();
+
+    updateGestureVoice();
 
 
     // ========================================================
@@ -3001,7 +3607,8 @@ function drawNebula() {
             Math.sin(
                 time * 0.025 +
                 i
-            ) *
+            )
+            *
             0.20;
 
         const distance =
@@ -3232,6 +3839,7 @@ function drawStreams() {
                 );
 
             }
+
             else {
 
                 ctx.lineTo(
@@ -3424,6 +4032,7 @@ function drawFractalMass() {
                 );
 
             }
+
             else {
 
                 ctx.lineTo(
@@ -3965,4 +4574,3 @@ resize();
 requestAnimationFrame(
     render
 );
-
