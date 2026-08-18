@@ -1,41 +1,65 @@
+
 // ============================================================
-// ZERO INFINIT
-// ENTRY FIELD
+// ZERO INFINIT — HARMONIC FIELD
 //
 // EXPERIÈNCIA AUDIOVISUAL INTERACTIVA
 //
 // GEST
 //   ↓
-// MOVIMENT
+// FIELD
 //   ↓
 // MATÈRIA
 //   ↓
-// SO
+// HARMONIA
 //   ↓
-// MEMÒRIA
+// BASS / DRONE / VOICE FIELD
 //   ↓
-// PORTES / NODES
+// ESPAI
 //
 // ------------------------------------------------------------
 //
-// PROTOCOL
+// CENTRE TONAL
 //
-// Aquest fitxer és l'artefacte d'entrada.
+// F# menor
 //
-// NO és un node.
-// NO conté la lògica interna dels nodes.
-// NO modifica l'estat dels nodes.
-// NO utilitza els nodes com a instruments.
+// F#  = tònica
+// A   = tercera menor / relativa major
+// B   = subdominant
+// C#  = dominant
+// D   = color
+// E   = extensió / tensió
 //
-// Els nodes són portes independents.
+// ------------------------------------------------------------
 //
-// index.json
-//      ↓
-// descobriment
-//      ↓
-// node
-//      ↓
-// navegació explícita
+// PRINCIPI:
+//
+// El ratolí pot modificar l'expressió,
+// però NO pot desafinar l'organisme.
+//
+// El moviment controla:
+//
+//   energia
+//   densitat
+//   filtre
+//   wobble
+//   textura
+//   espai
+//   articulació
+//
+// Però totes les freqüències musicals
+// provenen de la gramàtica harmònica.
+//
+// ------------------------------------------------------------
+//
+// NODES:
+//
+// Els nodes són portes.
+//
+// No alimenten l'àudio.
+// No modifiquen l'harmonia.
+// No formen part del motor musical.
+//
+// Són accessibles des del camp.
 //
 // ============================================================
 
@@ -46,12 +70,6 @@
 
 const canvas =
     document.getElementById("canvas");
-
-if (!canvas) {
-    throw new Error(
-        "Zero Infinit: #canvas no disponible"
-    );
-}
 
 const ctx =
     canvas.getContext("2d");
@@ -94,20 +112,14 @@ const pointer = {
 
 // ============================================================
 // FIELD
-//
-// Estat físic de l'artefacte.
-//
-// No representa cap node.
 // ============================================================
 
 const field = {
 
     energy: 0.08,
-
     targetEnergy: 0.08,
 
     velocity: 0,
-
     radial: 0,
 
     angle: 0,
@@ -115,22 +127,168 @@ const field = {
     rotation: 0,
 
     turbulence: 0.12,
-
     density: 0.22,
 
     pulse: 0,
 
     feedback: 0,
-
     distortion: 0,
 
     artifact: 0,
-
     sonic: 0,
 
-    flow: 0,
+    bass: 0,
+    kick: 0,
 
+    flow: 0,
     memory: 0
+
+};
+
+
+// ============================================================
+// HARMONIC SYSTEM
+//
+// Tot està expressat respecte de F# menor.
+//
+// El ratolí NO determina directament cap pitch.
+//
+// ============================================================
+
+const HARMONY = {
+
+    F2: 92.4986,
+
+    A2: 110.0000,
+
+    B2: 123.4708,
+
+    C3: 130.8128,
+
+    Csharp3: 138.5913,
+
+    D3: 146.8324,
+
+    E3: 164.8138,
+
+    F3: 174.6141,
+
+    A3: 220.0000,
+
+    Csharp4: 277.1826,
+
+    E4: 329.6276
+
+};
+
+
+// ============================================================
+// CHORDS
+//
+// Progressió orgànica:
+//
+// F#m → D → A → E
+//
+// No és un loop rígid.
+// L'estat del camp determina quan
+// es produeix la convergència.
+//
+// ============================================================
+
+const CHORDS = [
+
+    {
+
+        name: "F#m",
+
+        root: HARMONY.F2,
+
+        bass: HARMONY.F2,
+
+        voice: [
+            HARMONY.A3,
+            HARMONY.Csharp4
+        ]
+
+    },
+
+    {
+
+        name: "D",
+
+        root: HARMONY.D3,
+
+        bass: HARMONY.D3 / 2,
+
+        voice: [
+            HARMONY.F3,
+            HARMONY.A3
+        ]
+
+    },
+
+    {
+
+        name: "A",
+
+        root: HARMONY.A2,
+
+        bass: HARMONY.A2,
+
+        voice: [
+            HARMONY.Csharp4,
+            HARMONY.E4
+        ]
+
+    },
+
+    {
+
+        name: "E",
+
+        root: HARMONY.E3,
+
+        bass: HARMONY.E3 / 2,
+
+        voice: [
+            HARMONY.FsharpSafe ||
+            HARMONY.F2 * 2,
+            HARMONY.B2 * 2
+        ]
+
+    }
+
+];
+
+
+// Evitem dependències estranyes
+// dins la definició d'E.
+
+CHORDS[3].voice = [
+
+    HARMONY.F2 * 4,
+    HARMONY.B2 * 2
+
+];
+
+
+// ============================================================
+// HARMONIC STATE
+// ============================================================
+
+const harmonicState = {
+
+    current: 0,
+
+    target: 0,
+
+    lastChange: 0,
+
+    transition: 0,
+
+    convergence: 0,
+
+    hold: 0
 
 };
 
@@ -155,8 +313,6 @@ const ARTIFACT_COUNT = 220;
 
 // ============================================================
 // NODES
-//
-// Només registre d'accés.
 // ============================================================
 
 let nodes = [];
@@ -172,16 +328,23 @@ let audioStarted = false;
 
 let audioContext = null;
 
+
+// ============================================================
+// MASTER
+// ============================================================
+
 let master = null;
 
 let limiter = null;
 
 
 // ============================================================
-// AUDIO BUSSES
+// BUSSES
 // ============================================================
 
 let voiceBus = null;
+
+let dryBus = null;
 
 let spaceBus = null;
 
@@ -214,6 +377,8 @@ let delayGain = null;
 let voiceA3 = null;
 
 let voiceA2 = null;
+
+let voiceBody = null;
 
 let voiceFormant = null;
 
@@ -254,7 +419,7 @@ let subGain = null;
 // DRONE
 // ============================================================
 
-const droneVoices = [];
+let droneVoices = [];
 
 
 // ============================================================
@@ -282,6 +447,13 @@ let lastGrain = 0;
 // ============================================================
 
 let lastKick = 0;
+
+
+// ============================================================
+// CRISP
+// ============================================================
+
+let lastBassCrisp = 0;
 
 
 // ============================================================
@@ -316,10 +488,10 @@ function resize() {
         height * dpr;
 
     canvas.style.width =
-        `${width}px`;
+        width + "px";
 
     canvas.style.height =
-        `${height}px`;
+        height + "px";
 
     ctx.setTransform(
         dpr,
@@ -333,7 +505,9 @@ function resize() {
     createParticles();
 
     createArtifacts();
+
 }
+
 
 window.addEventListener(
     "resize",
@@ -362,6 +536,7 @@ window.addEventListener(
 
             pointer.py =
                 pointer.y;
+
         }
 
         pointer.px =
@@ -395,6 +570,7 @@ window.addEventListener(
         pointer.active = true;
 
         pointer.age = 0;
+
     }
 );
 
@@ -409,30 +585,17 @@ window.addEventListener(
 );
 
 
-// ============================================================
-// POINTER DOWN
-// ============================================================
-
 window.addEventListener(
     "pointerdown",
     event => {
 
         startAudio();
 
-        /*
-         * Gest inicial.
-         */
-
         field.energy =
             Math.max(
                 field.energy,
                 0.42
             );
-
-        /*
-         * Cerca explícita
-         * d'una porta.
-         */
 
         const node =
             findNodeAt(
@@ -451,7 +614,7 @@ window.addEventListener(
 
 
 // ============================================================
-// LOAD NODE REGISTRY
+// LOAD NODES
 // ============================================================
 
 async function loadNodes() {
@@ -460,16 +623,13 @@ async function loadNodes() {
 
         const response =
             await fetch(
-                "./index.json",
-                {
-                    cache: "no-store"
-                }
+                "./index.json"
             );
 
         if (!response.ok) {
 
             throw new Error(
-                `index.json: HTTP ${response.status}`
+                "index.json no disponible"
             );
 
         }
@@ -478,55 +638,56 @@ async function loadNodes() {
             await response.json();
 
         const entries =
-            Array.isArray(registry)
+            Array.isArray(
+                registry
+            )
                 ? registry
                 : registry.nodes || [];
 
         nodes =
             entries.map(
-                (node, index) => ({
+                (node, index) => {
 
-                    ...node,
+                    return {
 
-                    angle:
-                        (
-                            index /
-                            Math.max(
-                                entries.length,
-                                1
+                        ...node,
+
+                        angle:
+                            (
+                                index /
+                                Math.max(
+                                    entries.length,
+                                    1
+                                )
                             )
-                        )
-                        *
-                        Math.PI *
-                        2,
+                            *
+                            Math.PI *
+                            2,
 
-                    distance:
-                        150 +
-                        index * 48,
+                        distance:
+                            150 +
+                            index * 48,
 
-                    phase:
-                        Math.random() *
-                        Math.PI *
-                        2,
+                        phase:
+                            Math.random() *
+                            Math.PI *
+                            2,
 
-                    influence: 0,
+                        influence: 0,
 
-                    protected: true
+                        protected: true
 
-                })
+                    };
+
+                }
             );
 
-        console.log(
-            "Zero Infinit:",
-            nodes.length,
-            "nodes descoberts"
-        );
-
     }
+
     catch (error) {
 
         console.warn(
-            "Zero Infinit: registre de nodes no disponible",
+            "Nodes no disponibles:",
             error
         );
 
@@ -535,6 +696,7 @@ async function loadNodes() {
     }
 
 }
+
 
 loadNodes();
 
@@ -588,7 +750,6 @@ function createParticles() {
                 0.65,
 
             vx: 0,
-
             vy: 0,
 
             size:
@@ -697,10 +858,7 @@ function updateField() {
     field.radial =
         Math.min(
             distance /
-            Math.max(
-                maxRadius,
-                1
-            ),
+            maxRadius,
             1
         );
 
@@ -761,17 +919,18 @@ function updateField() {
         *
         0.06;
 
+    const turbulenceWave =
+        Math.sin(
+            time * 0.17 +
+            field.angle * 3
+        );
+
     field.turbulence =
         Math.max(
             0.05,
             0.12 +
             field.energy * 0.68 +
-            Math.sin(
-                time * 0.17 +
-                field.angle * 3
-            )
-            *
-            0.08
+            turbulenceWave * 0.08
         );
 
     field.density +=
@@ -826,23 +985,168 @@ function updateField() {
 
 
 // ============================================================
-// NODE FIELD
+// HARMONIC FIELD
 //
-// Els nodes observen.
-// No alimenten el so.
+// El moviment del ratolí només influeix
+// en QUAN canvia l'harmonia.
+//
+// No determina mai una freqüència arbitrària.
+//
+// ============================================================
+
+function updateHarmony() {
+
+    if (!audioStarted) {
+
+        return;
+
+    }
+
+    const now =
+        audioContext.currentTime;
+
+    const pressure =
+        field.energy * 0.55 +
+        field.flow * 0.30 +
+        field.memory * 0.15;
+
+    /*
+     * Temps mínim entre moviments harmònics.
+     */
+
+    const interval =
+        4.5 -
+        pressure * 1.8;
+
+    if (
+        pressure > 0.40 &&
+        now -
+        harmonicState.lastChange >
+        interval
+    ) {
+
+        /*
+         * F#m apareix amb més freqüència.
+         *
+         * D / A / E donen moviment.
+         */
+
+        const choices = [
+
+            0,
+            0,
+            0,
+
+            1,
+
+            2,
+
+            3
+
+        ];
+
+        harmonicState.target =
+            choices[
+                Math.floor(
+                    Math.random() *
+                    choices.length
+                )
+            ];
+
+        harmonicState.lastChange =
+            now;
+
+        harmonicState.hold =
+            1;
+
+    }
+
+    /*
+     * Transició lenta.
+     */
+
+    harmonicState.current +=
+        (
+            harmonicState.target -
+            harmonicState.current
+        )
+        *
+        0.008;
+
+    /*
+     * Convergència:
+     *
+     * només apareix quan l'estat
+     * s'acosta prou a l'acord objectiu.
+     */
+
+    const distance =
+        Math.abs(
+            harmonicState.target -
+            harmonicState.current
+        );
+
+    const convergence =
+        Math.max(
+            0,
+            1 -
+            distance * 2.4
+        );
+
+    harmonicState.convergence +=
+        (
+            convergence -
+            harmonicState.convergence
+        )
+        *
+        0.025;
+
+}
+
+
+// ============================================================
+// CURRENT CHORD
+// ============================================================
+
+function getCurrentChord() {
+
+    const index =
+        Math.round(
+            harmonicState.current
+        );
+
+    return CHORDS[
+        Math.max(
+            0,
+            Math.min(
+                CHORDS.length - 1,
+                index
+            )
+        )
+    ];
+
+}
+
+
+// ============================================================
+// NODES FIELD
 // ============================================================
 
 function updateNodes() {
 
     if (!nodes.length) {
+
         return;
+
     }
 
     nodes.forEach(
         node => {
 
             const pos =
-                getNodePosition(node);
+                getNodePosition(
+                    node
+                );
 
             const dx =
                 pointer.x -
@@ -897,7 +1201,7 @@ function updateNodes() {
 
 
 // ============================================================
-// PARTICLE UPDATE
+// PARTICLE FIELD
 // ============================================================
 
 function updateParticles() {
@@ -987,7 +1291,9 @@ function updateParticles() {
                 0.000007 *
                 field.energy;
 
-            if (pointer.active) {
+            if (
+                pointer.active
+            ) {
 
                 const px =
                     particle.x -
@@ -1017,19 +1323,29 @@ function updateParticles() {
 
                 particle.vx +=
                     -py /
-                    Math.max(pd, 1) *
+                    Math.max(
+                        pd,
+                        1
+                    )
+                    *
                     force;
 
                 particle.vy +=
                     px /
-                    Math.max(pd, 1) *
+                    Math.max(
+                        pd,
+                        1
+                    )
+                    *
                     force;
 
             }
 
-            particle.vx *= 0.982;
+            particle.vx *=
+                0.982;
 
-            particle.vy *= 0.982;
+            particle.vy *=
+                0.982;
 
             particle.x +=
                 particle.vx *
@@ -1039,16 +1355,21 @@ function updateParticles() {
                 particle.vy *
                 particle.speed;
 
-            const margin = 180;
+            const margin =
+                180;
 
             if (
                 particle.x < -margin ||
-                particle.x > width + margin ||
+                particle.x >
+                    width + margin ||
                 particle.y < -margin ||
-                particle.y > height + margin
+                particle.y >
+                    height + margin
             ) {
 
-                resetParticle(particle);
+                resetParticle(
+                    particle
+                );
 
             }
 
@@ -1062,7 +1383,9 @@ function updateParticles() {
 // RESET PARTICLE
 // ============================================================
 
-function resetParticle(particle) {
+function resetParticle(
+    particle
+) {
 
     const angle =
         Math.random() *
@@ -1107,8 +1430,8 @@ function startAudio() {
     if (audioStarted) {
 
         if (
-            audioContext &&
-            audioContext.state === "suspended"
+            audioContext.state ===
+            "suspended"
         ) {
 
             audioContext.resume();
@@ -1139,32 +1462,37 @@ function createAudio() {
         audioContext.createGain();
 
     master.gain.value =
-        0.72;
+        0.65;
 
     limiter =
         audioContext
             .createDynamicsCompressor();
 
     limiter.threshold.value =
-        -2;
+        -3;
 
     limiter.knee.value =
-        0;
+        2;
 
     limiter.ratio.value =
-        20;
+        12;
 
     limiter.attack.value =
         0.003;
 
     limiter.release.value =
-        0.15;
+        0.18;
 
     master
         .connect(limiter)
-        .connect(audioContext.destination);
+        .connect(
+            audioContext.destination
+        );
 
     voiceBus =
+        audioContext.createGain();
+
+    dryBus =
         audioContext.createGain();
 
     spaceBus =
@@ -1182,29 +1510,58 @@ function createAudio() {
     fxBus =
         audioContext.createGain();
 
-    voiceBus.gain.value = 1;
+    voiceBus.gain.value =
+        1;
 
-    spaceBus.gain.value = 0.72;
+    dryBus.gain.value =
+        1;
 
-    bassBus.gain.value = 1;
+    spaceBus.gain.value =
+        0.68;
 
-    subBus.gain.value = 1;
+    bassBus.gain.value =
+        1;
 
-    kickBus.gain.value = 1;
+    subBus.gain.value =
+        0.95;
 
-    fxBus.gain.value = 0.8;
+    kickBus.gain.value =
+        0.85;
 
-    voiceBus.connect(master);
+    fxBus.gain.value =
+        0.65;
 
-    spaceBus.connect(master);
+    voiceBus.connect(
+        dryBus
+    );
 
-    bassBus.connect(master);
+    dryBus.connect(
+        master
+    );
 
-    subBus.connect(master);
+    voiceBus.connect(
+        spaceBus
+    );
 
-    kickBus.connect(master);
+    spaceBus.connect(
+        master
+    );
 
-    fxBus.connect(spaceBus);
+    bassBus.connect(
+        master
+    );
+
+    subBus.connect(
+        master
+    );
+
+    kickBus.connect(
+        master
+    );
+
+    fxBus.connect(
+        spaceBus
+    );
 
     createSpace();
 
@@ -1232,7 +1589,8 @@ function createSpace() {
     reverb =
         audioContext.createConvolver();
 
-    const seconds = 3.8;
+    const seconds =
+        3.8;
 
     const length =
         audioContext.sampleRate *
@@ -1252,7 +1610,9 @@ function createSpace() {
     ) {
 
         const data =
-            impulse.getChannelData(channel);
+            impulse.getChannelData(
+                channel
+            );
 
         for (
             let i = 0;
@@ -1267,7 +1627,8 @@ function createSpace() {
                 )
                 *
                 Math.pow(
-                    1 - i / length,
+                    1 -
+                    i / length,
                     3.1
                 );
 
@@ -1282,10 +1643,12 @@ function createSpace() {
         audioContext.createGain();
 
     reverbGain.gain.value =
-        0.12;
+        0.10;
 
     delay =
-        audioContext.createDelay(1);
+        audioContext.createDelay(
+            1
+        );
 
     delay.delayTime.value =
         0.31;
@@ -1294,17 +1657,21 @@ function createSpace() {
         audioContext.createGain();
 
     delayGain.gain.value =
-        0.065;
+        0.045;
 
-    voiceBus.connect(spaceBus);
+    spaceBus.connect(
+        reverb
+    );
 
-    spaceBus
-        .connect(reverb)
+    reverb
         .connect(reverbGain)
         .connect(master);
 
-    spaceBus
-        .connect(delay)
+    spaceBus.connect(
+        delay
+    );
+
+    delay
         .connect(delayGain)
         .connect(master);
 
@@ -1313,6 +1680,12 @@ function createSpace() {
 
 // ============================================================
 // VOICE
+//
+// De moment és una veu espectral molt discreta.
+//
+// La seva harmonia serà governada
+// pel sistema F# menor.
+//
 // ============================================================
 
 function createVoice() {
@@ -1324,7 +1697,7 @@ function createVoice() {
         "triangle";
 
     voiceA3.frequency.value =
-        220;
+        HARMONY.A3;
 
     voiceA2 =
         audioContext.createOscillator();
@@ -1333,7 +1706,7 @@ function createVoice() {
         "sine";
 
     voiceA2.frequency.value =
-        110;
+        HARMONY.F2;
 
     voiceFormant =
         audioContext.createBiquadFilter();
@@ -1359,11 +1732,20 @@ function createVoice() {
     voiceFormantHigh.Q.value =
         2.5;
 
+    voiceBody =
+        audioContext.createBiquadFilter();
+
+    voiceBody.type =
+        "lowpass";
+
+    voiceBody.frequency.value =
+        600;
+
     voiceGain =
         audioContext.createGain();
 
     voiceGain.gain.value =
-        0.035;
+        0.028;
 
     const a3Gain =
         audioContext.createGain();
@@ -1371,15 +1753,15 @@ function createVoice() {
     a3Gain.gain.value =
         0.65;
 
+    voiceA3
+        .connect(a3Gain)
+        .connect(voiceFormant);
+
     const a2Gain =
         audioContext.createGain();
 
     a2Gain.gain.value =
         0.55;
-
-    voiceA3
-        .connect(a3Gain)
-        .connect(voiceFormant);
 
     voiceA2
         .connect(a2Gain)
@@ -1387,17 +1769,7 @@ function createVoice() {
 
     voiceFormant
         .connect(voiceFormantHigh)
-        .connect(voiceGain)
-        .connect(voiceBus);
-
-    const body =
-        audioContext.createBiquadFilter();
-
-    body.type =
-        "lowpass";
-
-    body.frequency.value =
-        600;
+        .connect(voiceGain);
 
     const bodyGain =
         audioContext.createGain();
@@ -1406,9 +1778,13 @@ function createVoice() {
         0.42;
 
     voiceA2
-        .connect(body)
+        .connect(voiceBody)
         .connect(bodyGain)
         .connect(voiceGain);
+
+    voiceGain.connect(
+        voiceBus
+    );
 
     voiceVibrato =
         audioContext.createOscillator();
@@ -1423,11 +1799,50 @@ function createVoice() {
         audioContext.createGain();
 
     voiceVibratoGain.gain.value =
-        0.25;
+        0.18;
 
     voiceVibrato
         .connect(voiceVibratoGain)
         .connect(voiceA3.detune);
+
+    const partials = [
+
+        [HARMONY.F3, 0.004],
+
+        [HARMONY.Csharp4, 0.003],
+
+        [HARMONY.E4, 0.0015]
+
+    ];
+
+    partials.forEach(
+        partial => {
+
+            const osc =
+                audioContext
+                    .createOscillator();
+
+            osc.type =
+                "sine";
+
+            osc.frequency.value =
+                partial[0];
+
+            const gain =
+                audioContext
+                    .createGain();
+
+            gain.gain.value =
+                partial[1];
+
+            osc
+                .connect(gain)
+                .connect(voiceBus);
+
+            osc.start();
+
+        }
+    );
 
     voiceA3.start();
 
@@ -1451,7 +1866,7 @@ function createBass() {
         "sawtooth";
 
     bassOsc.frequency.value =
-        55;
+        HARMONY.F2;
 
     bassFilter =
         audioContext.createBiquadFilter();
@@ -1460,10 +1875,10 @@ function createBass() {
         "lowpass";
 
     bassFilter.frequency.value =
-        240;
+        220;
 
     bassFilter.Q.value =
-        2.5;
+        2.8;
 
     bassGain =
         audioContext.createGain();
@@ -1474,18 +1889,23 @@ function createBass() {
     bassLFO =
         audioContext.createOscillator();
 
+    bassLFO.type =
+        "sine";
+
     bassLFO.frequency.value =
-        0.14;
+        0.13;
 
     bassLFOGain =
         audioContext.createGain();
 
     bassLFOGain.gain.value =
-        90;
+        40;
 
     bassLFO
         .connect(bassLFOGain)
-        .connect(bassFilter.frequency);
+        .connect(
+            bassFilter.frequency
+        );
 
     bassOsc
         .connect(bassFilter)
@@ -1512,7 +1932,7 @@ function createSub() {
         "sine";
 
     subOsc.frequency.value =
-        27.5;
+        HARMONY.F2 / 2;
 
     subGain =
         audioContext.createGain();
@@ -1535,15 +1955,25 @@ function createSub() {
 
 function createDrone() {
 
-    [
-        110,
-        165,
-        220
-    ].forEach(
-        (frequency, index) => {
+    const frequencies = [
+
+        HARMONY.F3,
+
+        HARMONY.A3,
+
+        HARMONY.Csharp4
+
+    ];
+
+    frequencies.forEach(
+        (
+            frequency,
+            index
+        ) => {
 
             const osc =
-                audioContext.createOscillator();
+                audioContext
+                    .createOscillator();
 
             osc.type =
                 index === 0
@@ -1554,7 +1984,8 @@ function createDrone() {
                 frequency;
 
             const filter =
-                audioContext.createBiquadFilter();
+                audioContext
+                    .createBiquadFilter();
 
             filter.type =
                 "lowpass";
@@ -1563,7 +1994,8 @@ function createDrone() {
                 500;
 
             const gain =
-                audioContext.createGain();
+                audioContext
+                    .createGain();
 
             gain.gain.value =
                 0;
@@ -1578,9 +2010,7 @@ function createDrone() {
             droneVoices.push({
 
                 osc,
-
                 filter,
-
                 gain,
 
                 phase:
@@ -1598,6 +2028,10 @@ function createDrone() {
 
 // ============================================================
 // GAS
+//
+// Molt més discret.
+// No volem white noise dominant.
+//
 // ============================================================
 
 function createGas() {
@@ -1640,10 +2074,10 @@ function createGas() {
         "bandpass";
 
     noiseFilter.frequency.value =
-        800;
+        520;
 
     noiseFilter.Q.value =
-        0.55;
+        0.45;
 
     noiseGain =
         audioContext.createGain();
@@ -1667,7 +2101,8 @@ function createGas() {
 
 function createGranular() {
 
-    const duration = 2;
+    const duration =
+        2;
 
     const length =
         audioContext.sampleRate *
@@ -1681,7 +2116,9 @@ function createGranular() {
         );
 
     const data =
-        granularBuffer.getChannelData(0);
+        granularBuffer.getChannelData(
+            0
+        );
 
     for (
         let i = 0;
@@ -1704,7 +2141,7 @@ function createGranular() {
             *
             envelope
             *
-            0.25;
+            0.18;
 
     }
 
@@ -1718,35 +2155,44 @@ function createGranular() {
 function spawnGrain() {
 
     if (!granularBuffer) {
+
         return;
+
     }
 
     const source =
-        audioContext.createBufferSource();
+        audioContext
+            .createBufferSource();
 
     source.buffer =
         granularBuffer;
 
     source.playbackRate.value =
-        0.45 +
-        Math.random() * 1.35;
+        0.55 +
+        Math.random() *
+        0.95;
 
     const filter =
-        audioContext.createBiquadFilter();
+        audioContext
+            .createBiquadFilter();
 
     filter.type =
         "bandpass";
 
     filter.frequency.value =
-        650 +
-        Math.random() * 2800;
+        500 +
+        Math.random() *
+        1800;
 
     filter.Q.value =
-        2 +
-        Math.random() * 5;
+        2.5 +
+        Math.random() * 4;
 
     const gain =
         audioContext.createGain();
+
+    gain.gain.value =
+        0;
 
     source
         .connect(filter)
@@ -1757,24 +2203,28 @@ function spawnGrain() {
         audioContext.currentTime;
 
     const amount =
-        0.018 +
-        field.turbulence * 0.045;
+        0.008 +
+        field.turbulence *
+        0.022;
 
-    gain.gain.setValueAtTime(
-        0,
-        now
-    );
+    gain.gain
+        .setValueAtTime(
+            0,
+            now
+        );
 
-    gain.gain.linearRampToValueAtTime(
-        amount,
-        now + 0.018
-    );
+    gain.gain
+        .linearRampToValueAtTime(
+            amount,
+            now + 0.018
+        );
 
-    gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + 0.16 +
-        Math.random() * 0.30
-    );
+    gain.gain
+        .exponentialRampToValueAtTime(
+            0.0001,
+            now + 0.16 +
+            Math.random() * 0.24
+        );
 
     source.start(
         now,
@@ -1782,7 +2232,7 @@ function spawnGrain() {
     );
 
     source.stop(
-        now + 0.55
+        now + 0.45
     );
 
 }
@@ -1806,25 +2256,29 @@ function triggerKick() {
     osc.type =
         "sine";
 
-    osc.frequency.setValueAtTime(
-        72,
-        now
-    );
+    osc.frequency
+        .setValueAtTime(
+            68,
+            now
+        );
 
-    osc.frequency.exponentialRampToValueAtTime(
-        39,
-        now + 0.16
-    );
+    osc.frequency
+        .exponentialRampToValueAtTime(
+            38,
+            now + 0.17
+        );
 
-    gain.gain.setValueAtTime(
-        0.035,
-        now
-    );
+    gain.gain
+        .setValueAtTime(
+            0.030,
+            now
+        );
 
-    gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + 0.24
-    );
+    gain.gain
+        .exponentialRampToValueAtTime(
+            0.0001,
+            now + 0.24
+        );
 
     osc
         .connect(gain)
@@ -1840,17 +2294,92 @@ function triggerKick() {
 
 
 // ============================================================
+// BASS CRISP
+//
+// Petit accent harmònic.
+// No white noise.
+//
+// ============================================================
+
+function triggerBassCrisp() {
+
+    const now =
+        audioContext.currentTime;
+
+    const osc =
+        audioContext.createOscillator();
+
+    const filter =
+        audioContext
+            .createBiquadFilter();
+
+    const gain =
+        audioContext.createGain();
+
+    osc.type =
+        "sawtooth";
+
+    osc.frequency.value =
+        HARMONY.Csharp4;
+
+    filter.type =
+        "bandpass";
+
+    filter.frequency.value =
+        1700 +
+        field.flow * 700;
+
+    filter.Q.value =
+        3.5;
+
+    gain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    gain.gain.linearRampToValueAtTime(
+        0.014 +
+        field.velocity * 0.016,
+        now + 0.012
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.085 +
+        field.energy * 0.06
+    );
+
+    osc
+        .connect(filter)
+        .connect(gain)
+        .connect(fxBus);
+
+    osc.start(now);
+
+    osc.stop(
+        now + 0.14
+    );
+
+}
+
+
+// ============================================================
 // AUDIO UPDATE
 // ============================================================
 
 function updateAudio() {
 
     if (!audioStarted) {
+
         return;
+
     }
 
     const now =
         audioContext.currentTime;
+
+    const chord =
+        getCurrentChord();
 
     const target =
         Math.min(
@@ -1868,94 +2397,193 @@ function updateAudio() {
         0.025;
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // VOICE
-    // --------------------------------------------------------
+    // ========================================================
 
-    voiceGain.gain.setTargetAtTime(
-        0.025 +
-        audioEnergy * 0.018,
-        now,
-        0.22
-    );
+    const voiceBreath =
+        0.82 +
+        Math.sin(
+            time * 0.29
+        ) *
+        0.18;
 
-    voiceFormant.frequency.setTargetAtTime(
-        250 +
-        field.density * 75,
-        now,
-        0.20
-    );
+    voiceGain.gain
+        .setTargetAtTime(
+            0.020 +
+            audioEnergy * 0.015 +
+            harmonicState.convergence * 0.018,
+            now,
+            0.30
+        );
 
-    voiceFormantHigh.frequency.setTargetAtTime(
-        670 +
-        field.flow * 180,
-        now,
-        0.25
-    );
+    voiceFormant.frequency
+        .setTargetAtTime(
+            245 +
+            field.density * 85,
+            now,
+            0.25
+        );
 
-    voiceA3.detune.setTargetAtTime(
-        Math.sin(time * 0.21) * 4,
-        now,
-        0.3
-    );
+    voiceFormantHigh.frequency
+        .setTargetAtTime(
+            660 +
+            field.flow * 170,
+            now,
+            0.30
+        );
+
+    voiceA2.frequency
+        .setTargetAtTime(
+            chord.root,
+            now,
+            0.65
+        );
+
+    /*
+     * La veu superior segueix
+     * la tercera/cinquena de l'acord.
+     */
+
+    const voiceTarget =
+        chord.voice[
+            Math.floor(
+                time * 0.08
+            ) %
+            chord.voice.length
+        ];
+
+    voiceA3.frequency
+        .setTargetAtTime(
+            voiceTarget,
+            now,
+            0.75
+        );
+
+    voiceA3.detune
+        .setTargetAtTime(
+            Math.sin(
+                time * 0.21
+            )
+            *
+            3.5 *
+            voiceBreath,
+            now,
+            0.35
+        );
+
+    voiceVibrato.frequency
+        .setTargetAtTime(
+            4.6 +
+            field.flow,
+            now,
+            0.45
+        );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // BASS
-    // --------------------------------------------------------
+    // ========================================================
 
-    const bassFrequency =
-        55 +
-        field.radial * 14 +
-        field.velocity * 10 +
-        Math.sin(time * 0.27) * 2.5;
+    const bassBase =
+        chord.bass;
 
-    bassOsc.frequency.setTargetAtTime(
-        bassFrequency,
-        now,
-        0.10
-    );
+    const bassMovement =
+        Math.sin(
+            time * 0.27
+        ) *
+        1.4;
 
-    bassFilter.frequency.setTargetAtTime(
-        170 +
-        field.energy * 420 +
-        field.velocity * 260,
-        now,
-        0.14
-    );
+    bassOsc.frequency
+        .setTargetAtTime(
+            bassBase +
+            bassMovement,
+            now,
+            0.22
+        );
 
-    bassGain.gain.setTargetAtTime(
-        0.018 +
-        audioEnergy * 0.032,
-        now,
-        0.16
-    );
+    /*
+     * Wobble:
+     *
+     * normalment discret,
+     * ocasionalment obre el filtre.
+     */
+
+    const wobblePressure =
+        Math.max(
+            0,
+            field.energy -
+            0.46
+        );
+
+    const wobbleAmount =
+        wobblePressure *
+        360;
+
+    bassLFOGain.gain
+        .setTargetAtTime(
+            30 +
+            wobbleAmount,
+            now,
+            0.20
+        );
+
+    bassLFO.frequency
+        .setTargetAtTime(
+            0.11 +
+            field.velocity * 0.34,
+            now,
+            0.25
+        );
+
+    bassFilter.frequency
+        .setTargetAtTime(
+            150 +
+            field.energy * 250 +
+            field.velocity * 170 +
+            harmonicState.convergence * 160,
+            now,
+            0.18
+        );
+
+    bassGain.gain
+        .setTargetAtTime(
+            0.016 +
+            audioEnergy * 0.030,
+            now,
+            0.18
+        );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // SUB
-    // --------------------------------------------------------
+    // ========================================================
 
-    subOsc.frequency.setTargetAtTime(
-        bassFrequency * 0.5,
-        now,
-        0.18
-    );
+    subOsc.frequency
+        .setTargetAtTime(
+            bassBase / 2,
+            now,
+            0.28
+        );
 
-    subGain.gain.setTargetAtTime(
-        0.010 +
-        audioEnergy * 0.014,
-        now,
-        0.22
-    );
+    subGain.gain
+        .setTargetAtTime(
+            0.008 +
+            audioEnergy * 0.013,
+            now,
+            0.28
+        );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // DRONE
-    // --------------------------------------------------------
+    // ========================================================
 
     droneVoices.forEach(
-        drone => {
+        (
+            drone,
+            index
+        ) => {
 
             const breath =
                 0.5 +
@@ -1963,63 +2591,102 @@ function updateAudio() {
                     time * 0.12 +
                     drone.phase
                 )
-                * 0.5;
+                *
+                0.5;
 
-            drone.gain.gain.setTargetAtTime(
-                0.006 +
-                audioEnergy *
-                (
-                    0.010 +
-                    breath * 0.006
-                ),
-                now,
-                0.30
-            );
+            const chordNotes = [
 
-            drone.filter.frequency.setTargetAtTime(
-                380 +
-                field.energy * 1000 +
-                field.flow * 420,
-                now,
-                0.25
-            );
+                chord.root * 2,
+
+                chord.voice[0],
+
+                chord.voice[
+                    1
+                ]
+
+            ];
+
+            const targetFrequency =
+                chordNotes[
+                    index %
+                    chordNotes.length
+                ];
+
+            drone.osc.frequency
+                .setTargetAtTime(
+                    targetFrequency,
+                    now,
+                    0.8
+                );
+
+            drone.gain.gain
+                .setTargetAtTime(
+                    0.004 +
+                    audioEnergy *
+                    (
+                        0.007 +
+                        breath * 0.005
+                    ) +
+                    harmonicState.convergence *
+                    0.009,
+                    now,
+                    0.40
+                );
+
+            drone.filter.frequency
+                .setTargetAtTime(
+                    330 +
+                    field.energy * 900 +
+                    field.flow * 380,
+                    now,
+                    0.35
+                );
 
         }
     );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // GAS
-    // --------------------------------------------------------
+    // ========================================================
 
-    noiseFilter.frequency.setTargetAtTime(
-        400 +
-        field.velocity * 2600 +
-        field.energy * 900,
-        now,
-        0.10
-    );
+    /*
+     * Reduït dràsticament.
+     */
 
-    noiseGain.gain.setTargetAtTime(
-        field.velocity * 0.010 +
-        field.turbulence * 0.006,
-        now,
-        0.12
-    );
+    noiseFilter.frequency
+        .setTargetAtTime(
+            320 +
+            field.velocity * 1500 +
+            field.energy * 650,
+            now,
+            0.18
+        );
+
+    noiseGain.gain
+        .setTargetAtTime(
+            field.velocity * 0.0035 +
+            field.turbulence * 0.0018,
+            now,
+            0.20
+        );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // KICK
-    // --------------------------------------------------------
+    // ========================================================
 
     const kickInterval =
-        1.25 -
-        field.energy * 0.42;
+        1.30 -
+        field.energy * 0.44;
 
     if (
-        now - lastKick >
-        kickInterval &&
-        field.energy > 0.28
+        now -
+        lastKick >
+        kickInterval
+        &&
+        field.energy >
+        0.28
     ) {
 
         triggerKick();
@@ -2030,17 +2697,44 @@ function updateAudio() {
     }
 
 
-    // --------------------------------------------------------
-    // GRANULAR
-    // --------------------------------------------------------
-
-    const grainInterval =
-        0.62 -
-        field.turbulence * 0.30;
+    // ========================================================
+    // CRISP
+    // ========================================================
 
     if (
-        field.turbulence > 0.32 &&
-        now - lastGrain >
+        field.energy >
+        0.58
+        &&
+        field.velocity >
+        0.38
+        &&
+        now -
+        lastBassCrisp >
+        0.85
+    ) {
+
+        triggerBassCrisp();
+
+        lastBassCrisp =
+            now;
+
+    }
+
+
+    // ========================================================
+    // GRANULAR
+    // ========================================================
+
+    const grainInterval =
+        0.75 -
+        field.turbulence * 0.25;
+
+    if (
+        field.turbulence >
+        0.34
+        &&
+        now -
+        lastGrain >
         grainInterval
     ) {
 
@@ -2052,47 +2746,53 @@ function updateAudio() {
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // SPACE
-    // --------------------------------------------------------
+    // ========================================================
 
-    reverbGain.gain.setTargetAtTime(
-        0.10 +
-        field.energy * 0.17,
-        now,
-        0.35
-    );
+    reverbGain.gain
+        .setTargetAtTime(
+            0.08 +
+            field.energy * 0.15 +
+            harmonicState.convergence * 0.08,
+            now,
+            0.40
+        );
 
-    delayGain.gain.setTargetAtTime(
-        0.035 +
-        field.flow * 0.055,
-        now,
-        0.30
-    );
+    delayGain.gain
+        .setTargetAtTime(
+            0.025 +
+            field.flow * 0.045,
+            now,
+            0.35
+        );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // MASTER
-    // --------------------------------------------------------
+    // ========================================================
 
-    master.gain.setTargetAtTime(
-        0.58 +
-        audioEnergy * 0.08,
-        now,
-        0.25
-    );
+    master.gain
+        .setTargetAtTime(
+            0.54 +
+            audioEnergy * 0.07,
+            now,
+            0.30
+        );
 
 }
 
 
 // ============================================================
-// AUDIO → VISUAL FEEDBACK
+// AUDIO → VISUAL
 // ============================================================
 
 function updateAudioVisualFeedback() {
 
     if (!audioStarted) {
+
         return;
+
     }
 
     const difference =
@@ -2138,7 +2838,9 @@ function updateAudioVisualFeedback() {
 // NODE POSITION
 // ============================================================
 
-function getNodePosition(node) {
+function getNodePosition(
+    node
+) {
 
     const cx =
         width * 0.5;
@@ -2187,7 +2889,10 @@ function getNodePosition(node) {
 // FIND NODE
 // ============================================================
 
-function findNodeAt(x, y) {
+function findNodeAt(
+    x,
+    y
+) {
 
     if (
         nodeVisibility <
@@ -2203,7 +2908,9 @@ function findNodeAt(x, y) {
     ) {
 
         const pos =
-            getNodePosition(node);
+            getNodePosition(
+                node
+            );
 
         const dx =
             x - pos.x;
@@ -2231,15 +2938,11 @@ function findNodeAt(x, y) {
 
 // ============================================================
 // OPEN NODE
-//
-// Navegació explícita.
 // ============================================================
 
-function openNode(node) {
-
-    if (!node) {
-        return;
-    }
+function openNode(
+    node
+) {
 
     const target =
         node.path ||
@@ -2298,8 +3001,7 @@ function drawNebula() {
             Math.sin(
                 time * 0.025 +
                 i
-            )
-            *
+            ) *
             0.20;
 
         const distance =
@@ -2354,7 +3056,8 @@ function drawNebula() {
             )
             *
             22 +
-            field.energy * 100;
+            field.energy *
+            100;
 
         const gradient =
             ctx.createRadialGradient(
@@ -2368,26 +3071,35 @@ function drawNebula() {
 
         gradient.addColorStop(
             0,
-            `rgba(150,86,48,${
-                0.014 +
-                field.energy * 0.030
-            })`
+            `rgba(
+                150,
+                86,
+                48,
+                ${0.014 +
+                field.energy * 0.030}
+            )`
         );
 
         gradient.addColorStop(
             0.28,
-            `rgba(105,64,76,${
-                0.012 +
-                field.energy * 0.022
-            })`
+            `rgba(
+                105,
+                64,
+                76,
+                ${0.012 +
+                field.energy * 0.022}
+            )`
         );
 
         gradient.addColorStop(
             0.58,
-            `rgba(62,47,94,${
-                0.010 +
-                field.energy * 0.018
-            })`
+            `rgba(
+                62,
+                47,
+                94,
+                ${0.010 +
+                field.energy * 0.018}
+            )`
         );
 
         gradient.addColorStop(
@@ -2416,7 +3128,7 @@ function drawNebula() {
 
 
 // ============================================================
-// STREAMS
+// ORGANIC STREAMS
 // ============================================================
 
 function drawStreams() {
@@ -2510,20 +3222,35 @@ function drawStreams() {
                 *
                 0.68;
 
-            if (j === 0) {
-                ctx.moveTo(x, y);
+            if (
+                j === 0
+            ) {
+
+                ctx.moveTo(
+                    x,
+                    y
+                );
+
             }
             else {
-                ctx.lineTo(x, y);
+
+                ctx.lineTo(
+                    x,
+                    y
+                );
+
             }
 
         }
 
         ctx.strokeStyle =
-            `rgba(170,128,165,${
-                0.006 +
-                field.energy * 0.014
-            })`;
+            `rgba(
+                170,
+                128,
+                165,
+                ${0.006 +
+                field.energy * 0.014}
+            )`;
 
         ctx.lineWidth =
             0.4 +
@@ -2579,7 +3306,12 @@ function drawParticles() {
             );
 
             ctx.fillStyle =
-                `rgba(185,154,190,${alpha})`;
+                `rgba(
+                    185,
+                    154,
+                    190,
+                    ${alpha}
+                )`;
 
             ctx.fill();
 
@@ -2682,20 +3414,35 @@ function drawFractalMass() {
                 *
                 0.63;
 
-            if (step === 0) {
-                ctx.moveTo(x, y);
+            if (
+                step === 0
+            ) {
+
+                ctx.moveTo(
+                    x,
+                    y
+                );
+
             }
             else {
-                ctx.lineTo(x, y);
+
+                ctx.lineTo(
+                    x,
+                    y
+                );
+
             }
 
         }
 
         ctx.strokeStyle =
-            `rgba(165,125,155,${
-                0.006 +
-                field.turbulence * 0.018
-            })`;
+            `rgba(
+                165,
+                125,
+                155,
+                ${0.006 +
+                field.turbulence * 0.018}
+            )`;
 
         ctx.lineWidth =
             0.45 +
@@ -2711,7 +3458,7 @@ function drawFractalMass() {
 
 
 // ============================================================
-// AUDIO ARTIFACTS
+// FEEDBACK ARTIFACTS
 // ============================================================
 
 function drawArtifacts() {
@@ -2777,13 +3524,18 @@ function drawArtifacts() {
                 field.energy
             );
 
-        ctx.fillStyle =
-            `rgba(210,178,150,${
-                0.012 +
-                field.artifact * 0.06
-            })`;
+        if (
+            artifact.type === 0
+        ) {
 
-        if (artifact.type === 0) {
+            ctx.fillStyle =
+                `rgba(
+                    210,
+                    178,
+                    150,
+                    ${0.012 +
+                    field.artifact * 0.06}
+                )`;
 
             ctx.fillRect(
                 x,
@@ -2793,13 +3545,19 @@ function drawArtifacts() {
             );
 
         }
-        else if (artifact.type === 1) {
+
+        else if (
+            artifact.type === 1
+        ) {
 
             ctx.strokeStyle =
-                `rgba(150,135,190,${
-                    0.012 +
-                    field.artifact * 0.055
-                })`;
+                `rgba(
+                    150,
+                    135,
+                    190,
+                    ${0.012 +
+                    field.artifact * 0.055}
+                )`;
 
             ctx.beginPath();
 
@@ -2816,13 +3574,19 @@ function drawArtifacts() {
             ctx.stroke();
 
         }
-        else if (artifact.type === 2) {
+
+        else if (
+            artifact.type === 2
+        ) {
 
             ctx.strokeStyle =
-                `rgba(210,170,125,${
-                    0.010 +
-                    field.artifact * 0.05
-                })`;
+                `rgba(
+                    210,
+                    170,
+                    125,
+                    ${0.010 +
+                    field.artifact * 0.05}
+                )`;
 
             ctx.beginPath();
 
@@ -2837,13 +3601,17 @@ function drawArtifacts() {
             ctx.stroke();
 
         }
+
         else {
 
             ctx.fillStyle =
-                `rgba(230,210,190,${
-                    0.008 +
-                    field.artifact * 0.045
-                })`;
+                `rgba(
+                    230,
+                    210,
+                    190,
+                    ${0.008 +
+                    field.artifact * 0.045}
+                )`;
 
             ctx.fillRect(
                 x,
@@ -2889,10 +3657,13 @@ function drawVoid() {
 
     gradient.addColorStop(
         0,
-        `rgba(150,105,80,${
-            0.035 +
-            field.energy * 0.045
-        })`
+        `rgba(
+            150,
+            105,
+            80,
+            ${0.035 +
+            field.energy * 0.045}
+        )`
     );
 
     gradient.addColorStop(
@@ -2933,14 +3704,18 @@ function drawNodes() {
         nodeVisibility <
         0.20
     ) {
+
         return;
+
     }
 
     nodes.forEach(
         node => {
 
             const pos =
-                getNodePosition(node);
+                getNodePosition(
+                    node
+                );
 
             const influence =
                 node.influence;
@@ -2961,13 +3736,16 @@ function drawNodes() {
 
             gradient.addColorStop(
                 0,
-                `rgba(220,200,240,${
-                    nodeVisibility *
+                `rgba(
+                    220,
+                    200,
+                    240,
+                    ${nodeVisibility *
                     (
                         0.035 +
                         influence * 0.10
-                    )
-                })`
+                    )}
+                )`
             );
 
             gradient.addColorStop(
@@ -2990,10 +3768,6 @@ function drawNodes() {
 
             ctx.fill();
 
-            /*
-             * Porta.
-             */
-
             ctx.beginPath();
 
             ctx.arc(
@@ -3006,19 +3780,18 @@ function drawNodes() {
             );
 
             ctx.fillStyle =
-                `rgba(230,220,250,${
-                    nodeVisibility *
+                `rgba(
+                    230,
+                    220,
+                    250,
+                    ${nodeVisibility *
                     (
                         0.42 +
                         influence * 0.40
-                    )
-                })`;
+                    )}
+                )`;
 
             ctx.fill();
-
-            /*
-             * Identificador.
-             */
 
             if (
                 influence > 0.08 ||
@@ -3032,13 +3805,16 @@ function drawNodes() {
                     "center";
 
                 ctx.fillStyle =
-                    `rgba(225,215,240,${
-                        nodeVisibility *
+                    `rgba(
+                        225,
+                        215,
+                        240,
+                        ${nodeVisibility *
                         (
                             0.18 +
                             influence * 0.58
-                        )
-                    })`;
+                        )}
+                    )`;
 
                 ctx.fillText(
                     node.id,
@@ -3064,7 +3840,9 @@ function drawFormula() {
         field.energy <
         0.58
     ) {
+
         return;
+
     }
 
     const alpha =
@@ -3085,17 +3863,22 @@ function drawFormula() {
         "left";
 
     ctx.fillStyle =
-        `rgba(215,190,205,${alpha})`;
+        `rgba(
+            215,
+            190,
+            205,
+            ${alpha}
+        )`;
 
     const formulas = [
 
-        "A₃ = 220 Hz",
+        "F# minor",
 
-        "A₂ = 110 Hz",
+        "F# · A · C#",
 
-        "M(t) = E · D · F",
+        "D · A · E",
 
-        "gesture → matter → sound"
+        "FIELD → HARMONY"
 
     ];
 
@@ -3119,18 +3902,26 @@ function drawFormula() {
 // RENDER
 // ============================================================
 
-function render(milliseconds) {
+function render(
+    milliseconds
+) {
 
     time =
-        milliseconds * 0.001;
+        milliseconds *
+        0.001;
 
-    pointer.vx *= 0.88;
+    pointer.vx *=
+        0.88;
 
-    pointer.vy *= 0.88;
+    pointer.vy *=
+        0.88;
 
-    pointer.speed *= 0.91;
+    pointer.speed *=
+        0.91;
 
     updateField();
+
+    updateHarmony();
 
     updateNodes();
 
@@ -3139,7 +3930,6 @@ function render(milliseconds) {
     updateAudio();
 
     updateAudioVisualFeedback();
-
 
     drawBackground();
 
@@ -3159,7 +3949,6 @@ function render(milliseconds) {
 
     drawFormula();
 
-
     requestAnimationFrame(
         render
     );
@@ -3176,3 +3965,4 @@ resize();
 requestAnimationFrame(
     render
 );
+
