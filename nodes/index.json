@@ -11,10 +11,6 @@
         {
             "id": "nodeN",
             "entry": "nodes/nodeN/main.js"
-        },
-        {
-            "id": "node-Threshold",
-            "entry": "nodes/threshold/main.js"
         }
     ]
 }
