@@ -3550,13 +3550,14 @@ function openNode(
     node
 ) {
 
-    const target =
-        node.path ||
-        node.url ||
-        `./${node.id}/`;
+   const nodePath =
+    `./${node.entry
+        .replace(/^nodes\//, "")
+        .replace(/\/main\.js$/, "")
+    }/`;
 
-    window.location.href =
-        target;
+window.location.href =
+    nodePath; 
 
 }
 
