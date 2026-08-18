@@ -1,46 +1,100 @@
-const canvas =
-    document.getElementById("canvas");
+// ============================================================
+// ZERO INFINIT
+// NODES / CONSTELLATION
+//
+// Entrada audiovisual a l'univers Zero Infinit.
+//
+// PRINCIPI:
+//
+//              CONSTEL·LACIÓ
+//                    │
+//          ┌─────────┴─────────┐
+//          │                   │
+//       MATÈRIA             NODES
+//          │                   │
+//   partícules / gasos    experiències
+//   fórmules / energia          │
+//          │                   │
+//          └──── composició ────┘
+//
+// Els nodes no són una llista.
+// Són cossos dins d'un espai exploratori.
+//
+// El cursor excita el camp.
+// Els nodes responen.
+// L'espai genera comportament.
+// El clic obre el node.
+//
+// Aquest fitxer NO modifica index.json.
+// ============================================================
 
-const ctx =
-    canvas.getContext("2d");
 
+// ============================================================
+// CONFIGURACIÓ
+// ============================================================
 
+const CONFIG = {
 
-let width = 0;
-let height = 0;
-let dpr = 1;
+    registry: "./index.json",
 
-let time = 0;
+    nodeBase: "./",
 
+    minNodes: 1,
 
+    orbitScale: 0.34,
 
-// ==================================================
-// NODES
-// ==================================================
+    interactionRadius: 280,
 
-let nodes = [];
+    attraction: 0.0007,
 
+    damping: 0.985,
 
+    ambientSpeed: 0.00035,
 
-// ==================================================
-// POINTER
-// ==================================================
+    particleCount: 900,
 
-const pointer = {
+    formulaProbability: 0.003,
 
-    x: -1000,
-
-    y: -1000,
-
-    active: false
+    audioEnabled: true
 
 };
 
 
+// ============================================================
+// DOM
+// ============================================================
 
-// ==================================================
-// RESIZE
-// ==================================================
+const canvas =
+    document.querySelector("#canvas") ||
+    createCanvas();
+
+const ctx =
+    canvas.getContext("2d", {
+        alpha: false
+    });
+
+
+function createCanvas() {
+
+    const element =
+        document.createElement("canvas");
+
+    element.id = "canvas";
+
+    document.body.appendChild(element);
+
+    return element;
+
+}
+
+
+// ============================================================
+// VIEWPORT
+// ============================================================
+
+let width = 0;
+let height = 0;
+let dpr = 1;
 
 function resize() {
 
@@ -50,13 +104,11 @@ function resize() {
             2
         );
 
-
     width =
         window.innerWidth;
 
     height =
         window.innerHeight;
-
 
     canvas.width =
         width * dpr;
@@ -64,13 +116,11 @@ function resize() {
     canvas.height =
         height * dpr;
 
-
     canvas.style.width =
-        width + "px";
+        `${width}px`;
 
     canvas.style.height =
-        height + "px";
-
+        `${height}px`;
 
     ctx.setTransform(
         dpr,
@@ -81,6 +131,14 @@ function resize() {
         0
     );
 
+    buildParticles();
+
+    if (nodes.length) {
+
+        arrangeNodes();
+
+    }
+
 }
 
 
@@ -90,125 +148,39 @@ window.addEventListener(
 );
 
 
-resize();
-
-
-
-// ==================================================
-// LOAD JSON
-// ==================================================
-
-async function loadNodes() {
-
-    try {
-
-        const response =
-            await fetch("./index.json");
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                "index.json no disponible"
-            );
-
-        }
-
-
-        const registry =
-            await response.json();
-
-
-        nodes =
-            registry.nodes.map(
-                (node, index) => {
-
-                    return {
-
-                        ...node,
-
-                        angle:
-                            index * 2.1,
-
-                        distance:
-                            110 +
-                            index * 65,
-
-                        size:
-                            2.5,
-
-                        phase:
-                            index * 1.7,
-
-                        hover: 0
-
-                    };
-
-                }
-            );
-
-
-        console.log(
-            "Índex carregat:",
-            nodes
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "No s'ha pogut carregar index.json:",
-            error
-        );
-
-
-        nodes = [
-
-            {
-                id: "node2",
-                angle: 0,
-                distance: 120,
-                size: 2.5,
-                phase: 0,
-                hover: 0
-            },
-
-            {
-                id: "node3",
-                angle: 2.1,
-                distance: 160,
-                size: 2.5,
-                phase: 1.7,
-                hover: 0
-            },
-
-            {
-                id: "nodeN",
-                angle: 4.2,
-                distance: 200,
-                size: 2.5,
-                phase: 3.4,
-                hover: 0
-            }
-
-        ];
-
-    }
-
-}
-
-
-await loadNodes();
-
-
-
-// ==================================================
+// ============================================================
 // POINTER
-// ==================================================
+// ============================================================
+
+const pointer = {
+
+    x: 0,
+    y: 0,
+
+    px: 0,
+    py: 0,
+
+    vx: 0,
+    vy: 0,
+
+    speed: 0,
+
+    active: false,
+
+    down: false
+
+};
+
 
 window.addEventListener(
     "pointermove",
     event => {
+
+        pointer.px =
+            pointer.x;
+
+        pointer.py =
+            pointer.y;
 
         pointer.x =
             event.clientX;
@@ -216,10 +188,22 @@ window.addEventListener(
         pointer.y =
             event.clientY;
 
+        pointer.vx =
+            pointer.x -
+            pointer.px;
+
+        pointer.vy =
+            pointer.y -
+            pointer.py;
+
+        pointer.speed =
+            Math.hypot(
+                pointer.vx,
+                pointer.vy
+            );
+
         pointer.active =
             true;
-
-        updateAudioFromPointer();
 
     }
 );
@@ -238,535 +222,550 @@ window.addEventListener(
 
 window.addEventListener(
     "pointerdown",
-    startAudio,
-    {
-        once: true
+    () => {
+
+        pointer.down =
+            true;
+
+        startAudio();
+
+        field.pulse =
+            1;
+
     }
 );
 
 
+window.addEventListener(
+    "pointerup",
+    () => {
 
-// ==================================================
-// AUDIO
-//
-// Centre tonal:
-// 432 Hz
-//
-// Estructures temporals:
-//
-// DELTA  = 2 Hz
-// THETA  = 6 Hz
-// ALPHA  = 10 Hz
-// BETA   = 20 Hz
-//
-// Les freqüències temporals no són
-// les freqüències audibles.
-//
-// Actuen com a moduladors.
-// ==================================================
+        pointer.down =
+            false;
 
-const AUDIO = {
+    }
+);
 
-    fundamental: 432,
 
-    delta: 2,
+// ============================================================
+// FIELD
+// ============================================================
 
-    theta: 6,
+const field = {
 
-    alpha: 10,
+    energy: 0,
 
-    beta: 20
+    targetEnergy: 0,
+
+    rotation: 0,
+
+    turbulence: 0,
+
+    density: 0.35,
+
+    pulse: 0,
+
+    sonic: 0,
+
+    attraction: 0,
+
+    distortion: 0
 
 };
 
 
-let audioStarted = false;
+// ============================================================
+// TIME
+// ============================================================
 
-let audioContext = null;
-
-let masterGain = null;
-
-let spatialGain = null;
-
-let stereoPanner = null;
-
-let compressor = null;
-
-let voices = [];
-
-let audioTime = 0;
+let time = 0;
 
 
+// ============================================================
+// NODES
+// ============================================================
 
-// ==================================================
-// AUDIO — START
-// ==================================================
-
-function startAudio() {
-
-    if (audioStarted) {
-        return;
-    }
+const nodes = [];
 
 
-    audioStarted = true;
+// ============================================================
+// PARTICLES
+// ============================================================
 
+const particles = [];
 
-    audioContext =
-        new AudioContext();
+function buildParticles() {
 
+    particles.length = 0;
 
-    createAudioSystem();
+    const scale =
+        Math.max(
+            width,
+            height
+        );
 
-
-    if (
-        audioContext.state ===
-        "suspended"
+    for (
+        let i = 0;
+        i < CONFIG.particleCount;
+        i++
     ) {
 
-        audioContext.resume();
+        const angle =
+            Math.random() *
+            Math.PI *
+            2;
+
+        const radius =
+            Math.pow(
+                Math.random(),
+                0.65
+            ) *
+            scale *
+            0.85;
+
+        particles.push({
+
+            x:
+                width * 0.5 +
+                Math.cos(angle) *
+                radius,
+
+            y:
+                height * 0.5 +
+                Math.sin(angle) *
+                radius *
+                0.62,
+
+            vx: 0,
+            vy: 0,
+
+            size:
+                0.3 +
+                Math.random() * 1.8,
+
+            alpha:
+                0.025 +
+                Math.random() * 0.11,
+
+            phase:
+                Math.random() *
+                Math.PI *
+                2,
+
+            seed:
+                Math.random()
+
+        });
 
     }
 
+}
 
-    console.log(
-        "Zero Infinit audio iniciat"
-    );
+
+// ============================================================
+// FORMULAE
+// ============================================================
+
+const formulae = [
+
+    "E = mc²",
+
+    "A = 440 Hz",
+
+    "Δt → ∞",
+
+    "d = vt",
+
+    "f = 1 / T",
+
+    "∂E / ∂t",
+
+    "∇ · F",
+
+    "A + A → ∞",
+
+    "x(t) = sin(t)",
+
+    "φ = 1.618…",
+
+    "lim t→∞",
+
+    "R = Δx / Δt",
+
+    "A₀ → A₁",
+
+    "Σ n → ∞",
+
+    "space / time",
+
+    "matter / motion"
+
+];
+
+
+const activeFormulae = [];
+
+
+// ============================================================
+// SPAWN FORMULA
+// ============================================================
+
+function spawnFormula() {
+
+    if (
+        Math.random() >
+        CONFIG.formulaProbability
+    ) {
+
+        return;
+
+    }
+
+    activeFormulae.push({
+
+        text:
+            formulae[
+                Math.floor(
+                    Math.random() *
+                    formulae.length
+                )
+            ],
+
+        x:
+            Math.random() *
+            width,
+
+        y:
+            Math.random() *
+            height,
+
+        life: 0,
+
+        maxLife:
+            2 +
+            Math.random() * 4,
+
+        scale:
+            0.7 +
+            Math.random() * 0.7
+
+    });
 
 }
 
 
+// ============================================================
+// LOAD REGISTRY
+// ============================================================
 
-// ==================================================
-// AUDIO SYSTEM
-// ==================================================
+async function loadRegistry() {
 
-function createAudioSystem() {
-
-    /*
-     * Master
-     */
-
-    masterGain =
-        audioContext.createGain();
-
-    masterGain.gain.value =
-        0.12;
-
-
-    /*
-     * Espai
-     */
-
-    spatialGain =
-        audioContext.createGain();
-
-    spatialGain.gain.value =
-        0.8;
-
-
-    /*
-     * Panning lent
-     */
-
-    stereoPanner =
-        audioContext.createStereoPanner();
-
-    stereoPanner.pan.value =
-        0;
-
-
-    /*
-     * Compressió molt lleugera.
-     *
-     * Només evita pics.
-     */
-
-    compressor =
-        audioContext.createDynamicsCompressor();
-
-    compressor.threshold.value =
-        -30;
-
-    compressor.knee.value =
-        20;
-
-    compressor.ratio.value =
-        2;
-
-    compressor.attack.value =
-        0.03;
-
-    compressor.release.value =
-        0.3;
-
-
-    spatialGain
-        .connect(
-            stereoPanner
+    const response =
+        await fetch(
+            CONFIG.registry,
+            {
+                cache: "no-store"
+            }
         );
 
+    if (!response.ok) {
 
-    stereoPanner
-        .connect(
-            masterGain
+        throw new Error(
+            `No s'ha pogut carregar ${CONFIG.registry}`
         );
 
+    }
 
-    masterGain
-        .connect(
-            compressor
-        );
+    const data =
+        await response.json();
 
-
-    compressor
-        .connect(
-            audioContext.destination
-        );
-
-
-    /*
-     * Crear les quatre capes.
-     */
-
-    createBinauralLayer(
-        "delta",
-        AUDIO.delta,
-        0.32
-    );
-
-
-    createBinauralLayer(
-        "theta",
-        AUDIO.theta,
-        0.24
-    );
-
-
-    createBinauralLayer(
-        "alpha",
-        AUDIO.alpha,
-        0.18
-    );
-
-
-    createBinauralLayer(
-        "beta",
-        AUDIO.beta,
-        0.10
-    );
+    return extractNodes(data);
 
 }
 
 
+// ============================================================
+// EXTRACT NODES
+//
+// Accepta diverses formes de registre
+// sense obligar-nos a modificar index.json.
+// ============================================================
 
-// ==================================================
-// BINAURAL LAYER
-// ==================================================
+function extractNodes(data) {
 
-function createBinauralLayer(
-    name,
-    modulationHz,
-    amplitude
+    if (Array.isArray(data)) {
+
+        return data;
+
+    }
+
+    if (
+        Array.isArray(
+            data.nodes
+        )
+    ) {
+
+        return data.nodes;
+
+    }
+
+    if (
+        Array.isArray(
+            data.entities
+        )
+    ) {
+
+        return data.entities;
+
+    }
+
+    if (
+        Array.isArray(
+            data.items
+        )
+    ) {
+
+        return data.items;
+
+    }
+
+    return [];
+
+}
+
+
+// ============================================================
+// NORMALITZE NODE
+// ============================================================
+
+function normalizeNode(
+    entry,
+    index
 ) {
 
-    /*
-     * Esquerra:
-     *
-     * 432 Hz
-     *
-     * Dreta:
-     *
-     * 432 + freqüència temporal
-     *
-     * Això produeix una diferència
-     * exacta entre els dos canals.
-     */
-
-    const left =
-        audioContext.createOscillator();
-
-    const right =
-        audioContext.createOscillator();
-
-
-    left.type =
-        "sine";
-
-    right.type =
-        "sine";
-
-
-    left.frequency.value =
-        AUDIO.fundamental;
-
-    right.frequency.value =
-        AUDIO.fundamental +
-        modulationHz;
-
+    const id =
+        entry.id ||
+        entry.name ||
+        `node-${index + 1}`;
 
     /*
-     * Amplitud independent.
-     */
-
-    const leftGain =
-        audioContext.createGain();
-
-    const rightGain =
-        audioContext.createGain();
-
-
-    leftGain.gain.value =
-        amplitude;
-
-    rightGain.gain.value =
-        amplitude;
-
-
-    /*
-     * Filtres molt oberts.
+     * IMPORTANT:
      *
-     * No volem destruir
-     * l'harmònic pur.
+     * No afegim "nodes/" davant.
+     *
+     * Aquest index.js ja viu dins /nodes/.
+     *
+     * Si el registre diu:
+     *
+     * node2/main.js
+     *
+     * el resultat és:
+     *
+     * /nodes/node2/main.js
+     *
+     * i mai:
+     *
+     * /nodes/nodes/node2/main.js
      */
 
-    const leftFilter =
-        audioContext.createBiquadFilter();
+    const rawPath =
+        entry.path ||
+        entry.entry ||
+        entry.url ||
+        entry.main ||
+        `${id}/main.js`;
 
-    const rightFilter =
-        audioContext.createBiquadFilter();
+    const path =
+        normalizePath(
+            rawPath
+        );
 
+    return {
 
-    leftFilter.type =
-        "lowpass";
+        id,
 
-    rightFilter.type =
-        "lowpass";
+        title:
+            entry.title ||
+            entry.name ||
+            id,
 
+        path,
 
-    leftFilter.frequency.value =
-        1800;
+        source:
+            entry,
 
-    rightFilter.frequency.value =
-        1800;
-
-
-    leftFilter.Q.value =
-        0.25;
-
-    rightFilter.Q.value =
-        0.25;
-
-
-    /*
-     * Cada oscil·lador va al seu
-     * canal del merger.
-     */
-
-    const merger =
-        audioContext.createChannelMerger(2);
-
-
-    left
-        .connect(leftFilter)
-        .connect(leftGain)
-        .connect(
-            merger,
+        angle:
             0,
-            0
-        );
 
-
-    right
-        .connect(rightFilter)
-        .connect(rightGain)
-        .connect(
-            merger,
+        radius:
             0,
-            1
-        );
 
+        baseRadius:
+            0,
 
-    /*
-     * La capa entra a l'espai global.
-     */
+        x: 0,
+        y: 0,
 
-    merger
-        .connect(
-            spatialGain
-        );
+        vx:
+            0,
 
-
-    /*
-     * Guardem tota la informació
-     * per poder modular-la.
-     */
-
-    const voice = {
-
-        name,
-
-        modulationHz,
-
-        amplitude,
-
-        left,
-
-        right,
-
-        leftGain,
-
-        rightGain,
-
-        leftFilter,
-
-        rightFilter,
+        vy:
+            0,
 
         phase:
-            Math.random()
-            *
-            Math.PI
-            *
-            2
+            Math.random() *
+            Math.PI *
+            2,
+
+        size:
+            22 +
+            Math.random() * 13,
+
+        energy: 0,
+
+        hovered: false,
+
+        active: false
 
     };
 
-
-    voices.push(
-        voice
-    );
+}
 
 
-    left.start();
+// ============================================================
+// PATH NORMALIZATION
+// ============================================================
 
-    right.start();
+function normalizePath(
+    path
+) {
+
+    let value =
+        String(path)
+            .trim();
+
+    /*
+     * Elimina qualsevol prefix accidental.
+     */
+
+    value =
+        value.replace(
+            /^\.?\//,
+            ""
+        );
+
+    value =
+        value.replace(
+            /^nodes\//,
+            ""
+        );
+
+    return value;
 
 }
 
 
+// ============================================================
+// BUILD NODES
+// ============================================================
 
-// ==================================================
-// AUDIO — POINTER
-// ==================================================
+function buildNodes(
+    entries
+) {
 
-function updateAudioFromPointer() {
+    nodes.length = 0;
 
-    if (!audioStarted) {
+    entries.forEach(
+        (entry, index) => {
+
+            nodes.push(
+                normalizeNode(
+                    entry,
+                    index
+                )
+            );
+
+        }
+    );
+
+    arrangeNodes();
+
+}
+
+
+// ============================================================
+// CONSTELLATION
+// ============================================================
+
+function arrangeNodes() {
+
+    if (!nodes.length) {
+
         return;
+
     }
 
+    const cx =
+        width * 0.5;
 
-    const x =
-        pointer.x /
-        Math.max(width, 1);
+    const cy =
+        height * 0.5;
 
+    const scale =
+        Math.min(
+            width,
+            height
+        );
 
-    const y =
-        pointer.y /
-        Math.max(height, 1);
+    const count =
+        nodes.length;
 
+    nodes.forEach(
+        (node, index) => {
 
-    const now =
-        audioContext.currentTime;
-
-
-    /*
-     * X:
-     *
-     * desplaçament espacial
-     *
-     * -1 ← centre → +1
-     */
-
-    const pan =
-        (
-            x - 0.5
-        )
-        *
-        1.4;
-
-
-    stereoPanner.pan
-        .setTargetAtTime(
-            Math.max(
-                -1,
-                Math.min(
-                    1,
-                    pan
+            const angle =
+                (
+                    index /
+                    count
                 )
-            ),
-            now,
-            0.08
-        );
+                *
+                Math.PI *
+                2
+                -
+                Math.PI / 2;
 
-
-    /*
-     * Y:
-     *
-     * profunditat / amplitud.
-     *
-     * No és lineal perquè volem
-     * una resposta subtil.
-     */
-
-    const depth =
-        1 -
-        Math.abs(
-            y - 0.5
-        )
-        *
-        1.6;
-
-
-    const volume =
-        0.55 +
-        Math.max(
-            0,
-            depth
-        )
-        *
-        0.55;
-
-
-    masterGain.gain
-        .setTargetAtTime(
-            0.12 * volume,
-            now,
-            0.12
-        );
-
-
-    /*
-     * El cursor també modifica
-     * lleugerament la brillantor.
-     */
-
-    const filterValue =
-        1000 +
-        (
-            1 - y
-        )
-        *
-        2600;
-
-
-    voices.forEach(
-        voice => {
-
-            voice.leftFilter.frequency
-                .setTargetAtTime(
-                    filterValue,
-                    now,
-                    0.15
+            const radius =
+                scale *
+                CONFIG.orbitScale
+                *
+                (
+                    0.72 +
+                    (
+                        index %
+                        3
+                    ) *
+                    0.17
                 );
 
+            node.angle =
+                angle;
 
-            voice.rightFilter.frequency
-                .setTargetAtTime(
-                    filterValue,
-                    now,
-                    0.15
-                );
+            node.radius =
+                radius;
+
+            node.baseRadius =
+                radius;
+
+            node.x =
+                cx +
+                Math.cos(angle) *
+                radius;
+
+            node.y =
+                cy +
+                Math.sin(angle) *
+                radius *
+                0.62;
 
         }
     );
@@ -774,138 +773,603 @@ function updateAudioFromPointer() {
 }
 
 
+// ============================================================
+// FIELD UPDATE
+// ============================================================
 
-// ==================================================
-// TEMPORAL MODULATION
-// ==================================================
+function updateField() {
 
-function updateTemporalAudio() {
+    const cx =
+        width * 0.5;
 
-    if (!audioStarted) {
-        return;
-    }
+    const cy =
+        height * 0.5;
+
+    const distance =
+        Math.hypot(
+            pointer.x - cx,
+            pointer.y - cy
+        );
+
+    const maxDistance =
+        Math.hypot(
+            cx,
+            cy
+        );
+
+    const radial =
+        Math.min(
+            distance /
+            maxDistance,
+            1
+        );
+
+    const movement =
+        Math.min(
+            pointer.speed / 25,
+            1
+        );
+
+    field.targetEnergy =
+        Math.min(
+            1,
+            0.08 +
+            radial * 0.22 +
+            movement * 0.7 +
+            field.pulse * 0.5
+        );
+
+    field.energy +=
+        (
+            field.targetEnergy -
+            field.energy
+        )
+        *
+        0.035;
+
+    field.turbulence =
+        0.15 +
+        field.energy *
+        1.3;
+
+    field.density +=
+        (
+            (
+                0.25 +
+                field.energy *
+                0.8
+            )
+            -
+            field.density
+        )
+        *
+        0.025;
+
+    field.rotation +=
+        CONFIG.ambientSpeed +
+        field.energy *
+        0.002;
+
+    field.distortion =
+        field.energy *
+        (
+            0.4 +
+            movement
+        );
+
+    field.pulse *=
+        0.94;
+
+}
 
 
-    /*
-     * Temps real del context.
-     *
-     * Això és important:
-     *
-     * no fem servir frames visuals
-     * per definir els cicles sonors.
-     *
-     * Web Audio treballa en segons.
-     */
+// ============================================================
+// UPDATE NODES
+// ============================================================
 
-    audioTime =
-        audioContext.currentTime;
+function updateNodes() {
 
+    const cx =
+        width * 0.5;
 
-    voices.forEach(
-        voice => {
+    const cy =
+        height * 0.5;
 
-            const f =
-                voice.modulationHz;
+    nodes.forEach(
+        (node, index) => {
 
+            /*
+             * Òrbita autònoma.
+             */
 
-            const phase =
-                (
-                    audioTime * f
-                    +
-                    voice.phase
+            node.angle +=
+                0.0005 +
+                field.energy *
+                0.0012 +
+                index *
+                0.00001;
+
+            /*
+             * Respiració.
+             */
+
+            const breathing =
+                Math.sin(
+                    time * 0.55 +
+                    node.phase
                 )
                 *
-                Math.PI
-                *
-                2;
-
-
-            /*
-             * Amplitud temporal.
-             *
-             * La profunditat és petita
-             * per evitar un tremolo agressiu.
-             */
-
-            let modulation =
-                0.78
-                +
-                Math.sin(phase)
-                *
-                0.22;
-
-
-            /*
-             * Petita assimetria entre canals.
-             *
-             * Manté la sensació espacial
-             * sense destruir la relació
-             * binaural principal.
-             */
-
-            const leftLevel =
-                voice.amplitude
-                *
-                modulation;
-
-
-            const rightLevel =
-                voice.amplitude
-                *
                 (
-                    0.78
-                    +
-                    Math.sin(
-                        phase
-                        +
-                        0.35
+                    8 +
+                    field.energy * 22
+                );
+
+            const targetRadius =
+                node.baseRadius +
+                breathing;
+
+            const targetX =
+                cx +
+                Math.cos(
+                    node.angle +
+                    field.rotation
+                )
+                *
+                targetRadius;
+
+            const targetY =
+                cy +
+                Math.sin(
+                    node.angle +
+                    field.rotation
+                )
+                *
+                targetRadius *
+                0.62;
+
+            /*
+             * El node no segueix
+             * directament el cursor.
+             *
+             * El camp el modifica.
+             */
+
+            node.vx +=
+                (
+                    targetX -
+                    node.x
+                )
+                *
+                0.0009;
+
+            node.vy +=
+                (
+                    targetY -
+                    node.y
+                )
+                *
+                0.0009;
+
+            /*
+             * Interacció amb el cursor.
+             */
+
+            if (
+                pointer.active
+            ) {
+
+                const dx =
+                    pointer.x -
+                    node.x;
+
+                const dy =
+                    pointer.y -
+                    node.y;
+
+                const distance =
+                    Math.hypot(
+                        dx,
+                        dy
+                    );
+
+                const influence =
+                    Math.max(
+                        0,
+                        1 -
+                        distance /
+                        CONFIG.interactionRadius
+                    );
+
+                node.energy +=
+                    (
+                        influence *
+                        (
+                            0.15 +
+                            pointer.speed *
+                            0.03
+                        )
+                        -
+                        node.energy
                     )
                     *
-                    0.22
-                );
+                    0.12;
 
+                /*
+                 * Força orbital,
+                 * no moviment lineal.
+                 */
 
-            voice.leftGain.gain
-                .setTargetAtTime(
-                    leftLevel,
-                    audioTime,
-                    0.015
-                );
+                const force =
+                    influence *
+                    field.energy *
+                    0.06;
 
+                node.vx +=
+                    -dy /
+                    Math.max(
+                        distance,
+                        1
+                    )
+                    *
+                    force;
 
-            voice.rightGain.gain
-                .setTargetAtTime(
-                    rightLevel,
-                    audioTime,
-                    0.015
-                );
+                node.vy +=
+                    dx /
+                    Math.max(
+                        distance,
+                        1
+                    )
+                    *
+                    force;
+
+            }
+
+            node.energy *=
+                0.97;
+
+            node.vx *=
+                CONFIG.damping;
+
+            node.vy *=
+                CONFIG.damping;
+
+            node.x +=
+                node.vx;
+
+            node.y +=
+                node.vy;
+
+            node.hovered =
+                Math.hypot(
+                    pointer.x -
+                    node.x,
+                    pointer.y -
+                    node.y
+                )
+                <
+                node.size *
+                1.8;
 
         }
-    );
-
-
-    /*
-     * Tornem a actualitzar
-     * aproximadament cada frame.
-     */
-
-    requestAnimationFrame(
-        updateTemporalAudio
     );
 
 }
 
 
+// ============================================================
+// NODE RELATIONS
+//
+// Crea línies molt subtils entre nodes
+// propers o energitzats.
+// ============================================================
 
-// ==================================================
+function drawNodeRelations() {
+
+    ctx.save();
+
+    ctx.globalCompositeOperation =
+        "screen";
+
+    for (
+        let i = 0;
+        i < nodes.length;
+        i++
+    ) {
+
+        for (
+            let j = i + 1;
+            j < nodes.length;
+            j++
+        ) {
+
+            const a =
+                nodes[i];
+
+            const b =
+                nodes[j];
+
+            const distance =
+                Math.hypot(
+                    a.x - b.x,
+                    a.y - b.y
+                );
+
+            if (
+                distance >
+                330
+            ) {
+
+                continue;
+
+            }
+
+            const energy =
+                Math.max(
+                    a.energy,
+                    b.energy
+                );
+
+            const alpha =
+                0.008 +
+                energy *
+                0.06;
+
+            ctx.strokeStyle =
+                `rgba(
+                    165,
+                    135,
+                    190,
+                    ${alpha}
+                )`;
+
+            ctx.lineWidth =
+                0.5;
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                a.x,
+                a.y
+            );
+
+            ctx.lineTo(
+                b.x,
+                b.y
+            );
+
+            ctx.stroke();
+
+        }
+
+    }
+
+    ctx.restore();
+
+}
+
+
+// ============================================================
+// PARTICLE FIELD
+// ============================================================
+
+function updateParticles() {
+
+    const cx =
+        width * 0.5;
+
+    const cy =
+        height * 0.5;
+
+    particles.forEach(
+        particle => {
+
+            const dx =
+                particle.x -
+                cx;
+
+            const dy =
+                particle.y -
+                cy;
+
+            const radius =
+                Math.hypot(
+                    dx,
+                    dy
+                );
+
+            const angle =
+                Math.atan2(
+                    dy,
+                    dx
+                );
+
+            const noise =
+                Math.sin(
+                    radius * 0.007 +
+                    angle * 4 +
+                    time * 0.32 +
+                    particle.phase
+                );
+
+            const noise2 =
+                Math.cos(
+                    radius * 0.012 -
+                    angle * 3 -
+                    time * 0.2
+                );
+
+            const swirl =
+                (
+                    0.00025 +
+                    field.energy *
+                    0.0012
+                )
+                *
+                (
+                    1 +
+                    noise *
+                    0.7
+                );
+
+            particle.vx +=
+                -Math.sin(angle) *
+                swirl *
+                radius;
+
+            particle.vy +=
+                Math.cos(angle) *
+                swirl *
+                radius;
+
+            particle.vx +=
+                noise *
+                field.turbulence *
+                0.009;
+
+            particle.vy +=
+                noise2 *
+                field.turbulence *
+                0.009;
+
+            /*
+             * Cursor com a perturbació
+             * d'un fluid.
+             */
+
+            if (
+                pointer.active
+            ) {
+
+                const dxp =
+                    particle.x -
+                    pointer.x;
+
+                const dyp =
+                    particle.y -
+                    pointer.y;
+
+                const distance =
+                    Math.hypot(
+                        dxp,
+                        dyp
+                    );
+
+                const influence =
+                    Math.max(
+                        0,
+                        1 -
+                        distance / 400
+                    );
+
+                const force =
+                    influence *
+                    field.energy *
+                    0.055;
+
+                particle.vx +=
+                    -dyp /
+                    Math.max(
+                        distance,
+                        1
+                    )
+                    *
+                    force;
+
+                particle.vy +=
+                    dxp /
+                    Math.max(
+                        distance,
+                        1
+                    )
+                    *
+                    force;
+
+            }
+
+            particle.vx *=
+                0.985;
+
+            particle.vy *=
+                0.985;
+
+            particle.x +=
+                particle.vx;
+
+            particle.y +=
+                particle.vy;
+
+            const margin =
+                150;
+
+            if (
+                particle.x <
+                -margin ||
+                particle.x >
+                width + margin ||
+                particle.y <
+                -margin ||
+                particle.y >
+                height + margin
+            ) {
+
+                resetParticle(
+                    particle
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+function resetParticle(
+    particle
+) {
+
+    const angle =
+        Math.random() *
+        Math.PI *
+        2;
+
+    const radius =
+        Math.min(
+            width,
+            height
+        )
+        *
+        (
+            0.3 +
+            Math.random() *
+            0.6
+        );
+
+    particle.x =
+        width * 0.5 +
+        Math.cos(angle) *
+        radius;
+
+    particle.y =
+        height * 0.5 +
+        Math.sin(angle) *
+        radius *
+        0.62;
+
+    particle.vx = 0;
+    particle.vy = 0;
+
+}
+
+
+// ============================================================
 // BACKGROUND
-// ==================================================
+// ============================================================
 
 function drawBackground() {
 
     ctx.fillStyle =
-        "#010108";
-
+        "#020207";
 
     ctx.fillRect(
         0,
@@ -917,10 +1381,9 @@ function drawBackground() {
 }
 
 
-
-// ==================================================
+// ============================================================
 // NEBULA
-// ==================================================
+// ============================================================
 
 function drawNebula() {
 
@@ -930,114 +1393,95 @@ function drawNebula() {
     const cy =
         height * 0.5;
 
-
     for (
         let i = 0;
-        i < 70;
+        i < 90;
         i++
     ) {
 
+        const seed =
+            i * 2.731;
+
         const angle =
-            i * 2.399
-            +
-            time * 0.012;
+            seed +
+            time * 0.008;
 
-
-        const distance =
-            40
-            +
+        const radius =
+            40 +
             (
-                i * 31
+                i *
+                137
             )
             %
             Math.max(
                 width,
                 height
-            );
-
-
-        const breathing =
-            Math.sin(
-                time * 0.15
-                +
-                i
             )
             *
-            20;
-
+            0.72;
 
         const x =
-            cx
-            +
-            Math.cos(angle)
-            *
-            (
-                distance +
-                breathing
-            );
-
+            cx +
+            Math.cos(angle) *
+            radius;
 
         const y =
-            cy
-            +
-            Math.sin(angle)
-            *
-            (
-                distance +
-                breathing
-            )
-            *
-            0.55;
+            cy +
+            Math.sin(angle) *
+            radius *
+            0.68;
 
-
-        const radius =
-            30
-            +
-            Math.sin(
-                time * 0.1
-                +
-                i
-            )
-            *
-            10;
-
+        const size =
+            80 +
+            field.energy *
+            100;
 
         const gradient =
             ctx.createRadialGradient(
-
                 x,
                 y,
                 0,
-
                 x,
                 y,
-                radius
-
+                size
             );
-
 
         gradient.addColorStop(
             0,
-            "rgba(80,50,160,0.045)"
+            `rgba(
+                150,
+                90,
+                110,
+                ${0.012 +
+                field.energy * 0.025}
+            )`
         );
 
+        gradient.addColorStop(
+            0.45,
+            `rgba(
+                80,
+                65,
+                115,
+                ${0.009 +
+                field.energy * 0.018}
+            )`
+        );
 
         gradient.addColorStop(
             1,
-            "rgba(10,5,40,0)"
+            "rgba(0,0,0,0)"
         );
-
 
         ctx.fillStyle =
             gradient;
-
 
         ctx.beginPath();
 
         ctx.arc(
             x,
             y,
-            radius,
+            size,
             0,
             Math.PI * 2
         );
@@ -1049,12 +1493,224 @@ function drawNebula() {
 }
 
 
+// ============================================================
+// PARTICLES DRAW
+// ============================================================
 
-// ==================================================
-// CENTRAL VOID
-// ==================================================
+function drawParticles() {
 
-function drawVoid() {
+    particles.forEach(
+        particle => {
+
+            const alpha =
+                particle.alpha *
+                (
+                    0.65 +
+                    field.density
+                );
+
+            ctx.fillStyle =
+                `rgba(
+                    190,
+                    165,
+                    195,
+                    ${alpha}
+                )`;
+
+            ctx.beginPath();
+
+            ctx.arc(
+                particle.x,
+                particle.y,
+                particle.size *
+                (
+                    0.8 +
+                    field.energy *
+                    0.8
+                ),
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+
+        }
+    );
+
+}
+
+
+// ============================================================
+// NODE RENDER
+// ============================================================
+
+function drawNodes() {
+
+    nodes.forEach(
+        node => {
+
+            const pulse =
+                Math.sin(
+                    time * 1.2 +
+                    node.phase
+                );
+
+            const radius =
+                node.size +
+                node.energy * 10 +
+                pulse * 1.5;
+
+            /*
+             * Halo.
+             */
+
+            const halo =
+                ctx.createRadialGradient(
+                    node.x,
+                    node.y,
+                    0,
+                    node.x,
+                    node.y,
+                    radius * 4
+                );
+
+            halo.addColorStop(
+                0,
+                `rgba(
+                    205,
+                    145,
+                    185,
+                    ${0.035 +
+                    node.energy * 0.12}
+                )`
+            );
+
+            halo.addColorStop(
+                0.35,
+                `rgba(
+                    120,
+                    95,
+                    170,
+                    ${0.018 +
+                    node.energy * 0.05}
+                )`
+            );
+
+            halo.addColorStop(
+                1,
+                "rgba(0,0,0,0)"
+            );
+
+            ctx.fillStyle =
+                halo;
+
+            ctx.beginPath();
+
+            ctx.arc(
+                node.x,
+                node.y,
+                radius * 4,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+
+            /*
+             * Nucli.
+             */
+
+            ctx.beginPath();
+
+            ctx.arc(
+                node.x,
+                node.y,
+                radius,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fillStyle =
+                node.hovered
+                    ? "rgba(225,190,220,0.85)"
+                    : "rgba(150,120,165,0.42)";
+
+            ctx.fill();
+
+            /*
+             * Anell.
+             */
+
+            ctx.strokeStyle =
+                `rgba(
+                    220,
+                    195,
+                    220,
+                    ${node.hovered
+                        ? 0.55
+                        : 0.16}
+                )`;
+
+            ctx.lineWidth =
+                node.hovered
+                    ? 1.4
+                    : 0.7;
+
+            ctx.beginPath();
+
+            ctx.arc(
+                node.x,
+                node.y,
+                radius *
+                (
+                    1.25 +
+                    node.energy * 0.2
+                ),
+                0,
+                Math.PI * 2
+            );
+
+            ctx.stroke();
+
+            /*
+             * Identificador discret.
+             */
+
+            ctx.font =
+                "10px monospace";
+
+            ctx.textAlign =
+                "center";
+
+            ctx.fillStyle =
+                `rgba(
+                    210,
+                    195,
+                    215,
+                    ${node.hovered
+                        ? 0.75
+                        : 0.25}
+                )`;
+
+            ctx.fillText(
+                node.title,
+                node.x,
+                node.y +
+                radius +
+                17
+            );
+
+        }
+    );
+
+}
+
+
+// ============================================================
+// CENTRAL FIELD
+// ============================================================
+
+function drawCentralField() {
 
     const cx =
         width * 0.5;
@@ -1062,63 +1718,56 @@ function drawVoid() {
     const cy =
         height * 0.5;
 
-
-    const pulse =
-        1
-        +
-        Math.sin(
-            time * 0.22
-        )
-        *
-        0.08;
-
-
     const radius =
-        32 * pulse;
+        18 +
+        field.energy * 30;
 
-
-    const glow =
+    const gradient =
         ctx.createRadialGradient(
-
             cx,
             cy,
             0,
-
             cx,
             cy,
-            radius * 3
-
+            radius * 5
         );
 
-
-    glow.addColorStop(
+    gradient.addColorStop(
         0,
-        "rgba(100,60,180,0.12)"
+        `rgba(
+            180,
+            110,
+            90,
+            ${0.04 +
+            field.energy * 0.06}
+        )`
     );
 
-
-    glow.addColorStop(
-        0.5,
-        "rgba(60,30,120,0.04)"
+    gradient.addColorStop(
+        0.35,
+        `rgba(
+            100,
+            70,
+            120,
+            ${0.025 +
+            field.energy * 0.035}
+        )`
     );
 
-
-    glow.addColorStop(
+    gradient.addColorStop(
         1,
         "rgba(0,0,0,0)"
     );
 
-
     ctx.fillStyle =
-        glow;
-
+        gradient;
 
     ctx.beginPath();
 
     ctx.arc(
         cx,
         cy,
-        radius * 3,
+        radius * 5,
         0,
         Math.PI * 2
     );
@@ -1128,274 +1777,639 @@ function drawVoid() {
 }
 
 
+// ============================================================
+// FORMULAE DRAW
+// ============================================================
 
-// ==================================================
-// NODES
-// ==================================================
+function drawFormulae() {
 
-function drawNodes() {
+    activeFormulae.forEach(
+        formula => {
 
-    const cx =
-        width * 0.5;
+            formula.life +=
+                0.016;
 
-    const cy =
-        height * 0.5;
-
-
-    nodes.forEach(
-        node => {
-
-
-            const angle =
-                node.angle
-                +
-                time * 0.018;
-
-
-            const breathing =
+            const fade =
                 Math.sin(
-                    time * 0.16
-                    +
-                    node.phase
-                )
-                *
-                16;
-
-
-            const distance =
-                node.distance
-                +
-                breathing;
-
-
-            let x =
-                cx
-                +
-                Math.cos(angle)
-                *
-                distance;
-
-
-            let y =
-                cy
-                +
-                Math.sin(angle)
-                *
-                distance
-                *
-                0.60;
-
-
-
-            const dx =
-                pointer.x - x;
-
-            const dy =
-                pointer.y - y;
-
-
-            const distanceToPointer =
-                Math.sqrt(
-                    dx * dx +
-                    dy * dy
+                    Math.min(
+                        formula.life /
+                        formula.maxLife,
+                        1
+                    )
+                    *
+                    Math.PI
                 );
 
+            ctx.save();
 
-            const targetHover =
-                pointer.active &&
-                distanceToPointer < 90
-                    ? 1
-                    : 0;
+            ctx.globalAlpha =
+                fade * 0.24;
 
-
-            node.hover +=
-                (
-                    targetHover -
-                    node.hover
-                )
-                *
-                0.08;
-
-
-            x +=
-                dx
-                *
-                node.hover
-                *
-                0.05;
-
-
-            y +=
-                dy
-                *
-                node.hover
-                *
-                0.05;
-
-
-
-            // --------------------------------------
-            // HALO
-            // --------------------------------------
-
-            if (
-                node.hover > 0.01
-            ) {
-
-                const halo =
-                    ctx.createRadialGradient(
-
-                        x,
-                        y,
-                        0,
-
-                        x,
-                        y,
-                        35
-
-                    );
-
-
-                halo.addColorStop(
-                    0,
-                    "rgba(180,130,255,0.25)"
-                );
-
-
-                halo.addColorStop(
-                    1,
-                    "rgba(100,70,220,0)"
-                );
-
-
-                ctx.fillStyle =
-                    halo;
-
-
-                ctx.beginPath();
-
-                ctx.arc(
-                    x,
-                    y,
-                    35,
-                    0,
-                    Math.PI * 2
-                );
-
-                ctx.fill();
-
-            }
-
-
-
-            // --------------------------------------
-            // NODE
-            // --------------------------------------
-
-            const pulse =
-                1
-                +
-                Math.sin(
-                    time * 0.7
-                    +
-                    node.phase
-                )
-                *
-                0.15;
-
-
-            const radius =
-                node.size
-                *
-                pulse
-                *
-                (
-                    1
-                    +
-                    node.hover * 2
-                );
-
-
-            ctx.beginPath();
-
-            ctx.arc(
-                x,
-                y,
-                radius,
-                0,
-                Math.PI * 2
-            );
-
+            ctx.font =
+                `${12 * formula.scale}px monospace`;
 
             ctx.fillStyle =
-                node.hover > 0.01
+                "#c9bacb";
 
-                    ? "rgba(220,190,255,0.95)"
+            ctx.fillText(
+                formula.text,
+                formula.x,
+                formula.y
+            );
 
-                    : "rgba(160,130,230,0.70)";
+            ctx.restore();
+
+        }
+    );
+
+    for (
+        let i =
+            activeFormulae.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        if (
+            activeFormulae[i].life >
+            activeFormulae[i].maxLife
+        ) {
+
+            activeFormulae.splice(
+                i,
+                1
+            );
+
+        }
+
+    }
+
+}
 
 
-            ctx.fill();
+// ============================================================
+// POINTER FIELD
+// ============================================================
+
+function drawPointerField() {
+
+    if (
+        !pointer.active
+    ) {
+
+        return;
+
+    }
+
+    const radius =
+        35 +
+        field.energy * 130;
+
+    const gradient =
+        ctx.createRadialGradient(
+            pointer.x,
+            pointer.y,
+            0,
+            pointer.x,
+            pointer.y,
+            radius
+        );
+
+    gradient.addColorStop(
+        0,
+        "rgba(220,190,215,0.025)"
+    );
+
+    gradient.addColorStop(
+        0.5,
+        "rgba(150,120,180,0.012)"
+    );
+
+    gradient.addColorStop(
+        1,
+        "rgba(0,0,0,0)"
+    );
+
+    ctx.fillStyle =
+        gradient;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        pointer.x,
+        pointer.y,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+}
 
 
+// ============================================================
+// AUDIO
+//
+// Minimal i coherent.
+// L'espai no ha de ser una "veu molesta".
+// ============================================================
 
-            // --------------------------------------
-            // LABEL
-            // --------------------------------------
+let audioStarted = false;
+let audioContext = null;
+
+let master = null;
+
+let droneA = null;
+let droneB = null;
+let droneGain = null;
+
+let reverb = null;
+let reverbGain = null;
+
+
+// ============================================================
+// START AUDIO
+// ============================================================
+
+function startAudio() {
+
+    if (
+        !CONFIG.audioEnabled
+    ) {
+
+        return;
+
+    }
+
+    if (
+        audioStarted
+    ) {
+
+        if (
+            audioContext.state ===
+            "suspended"
+        ) {
+
+            audioContext.resume();
+
+        }
+
+        return;
+
+    }
+
+    audioContext =
+        new AudioContext();
+
+    audioStarted =
+        true;
+
+    createAudio();
+
+}
+
+
+// ============================================================
+// AUDIO GRAPH
+// ============================================================
+
+function createAudio() {
+
+    master =
+        audioContext.createGain();
+
+    master.gain.value =
+        0.035;
+
+    master.connect(
+        audioContext.destination
+    );
+
+
+    /*
+     * Reverb sintètica.
+     */
+
+    reverb =
+        audioContext.createConvolver();
+
+    const length =
+        audioContext.sampleRate *
+        3.5;
+
+    const impulse =
+        audioContext.createBuffer(
+            2,
+            length,
+            audioContext.sampleRate
+        );
+
+    for (
+        let channel = 0;
+        channel < 2;
+        channel++
+    ) {
+
+        const data =
+            impulse.getChannelData(
+                channel
+            );
+
+        for (
+            let i = 0;
+            i < length;
+            i++
+        ) {
+
+            data[i] =
+                (
+                    Math.random() * 2 -
+                    1
+                )
+                *
+                Math.pow(
+                    1 -
+                    i / length,
+                    3
+                );
+
+        }
+
+    }
+
+    reverb.buffer =
+        impulse;
+
+    reverbGain =
+        audioContext.createGain();
+
+    reverbGain.gain.value =
+        0.12;
+
+    reverb.connect(
+        reverbGain
+    );
+
+    reverbGain.connect(
+        master
+    );
+
+
+    /*
+     * A3 / A2.
+     *
+     * 220 Hz = A3
+     * 110 Hz = A2
+     */
+
+    droneA =
+        audioContext.createOscillator();
+
+    droneB =
+        audioContext.createOscillator();
+
+    droneA.type =
+        "sine";
+
+    droneB.type =
+        "triangle";
+
+    droneA.frequency.value =
+        220;
+
+    droneB.frequency.value =
+        110;
+
+
+    droneGain =
+        audioContext.createGain();
+
+    droneGain.gain.value =
+        0;
+
+
+    droneA
+        .connect(
+            droneGain
+        );
+
+    droneB
+        .connect(
+            droneGain
+        );
+
+    droneGain.connect(
+        master
+    );
+
+    droneGain.connect(
+        reverb
+    );
+
+
+    droneA.start();
+
+    droneB.start();
+
+}
+
+
+// ============================================================
+// AUDIO UPDATE
+// ============================================================
+
+function updateAudio() {
+
+    if (
+        !audioStarted
+    ) {
+
+        return;
+
+    }
+
+    const now =
+        audioContext.currentTime;
+
+    const energy =
+        field.energy;
+
+    /*
+     * Petita deriva tonal.
+     *
+     * Sempre conserva A com a
+     * funció de centre.
+     */
+
+    const drift =
+        Math.sin(
+            time * 0.17
+        )
+        *
+        2.2;
+
+    droneA.frequency
+        .setTargetAtTime(
+            220 +
+            drift +
+            energy * 3,
+            now,
+            0.4
+        );
+
+    droneB.frequency
+        .setTargetAtTime(
+            110 +
+            drift * 0.5 +
+            energy * 1.5,
+            now,
+            0.5
+        );
+
+    droneGain.gain
+        .setTargetAtTime(
+            0.008 +
+            energy * 0.028,
+            now,
+            0.35
+        );
+
+    reverbGain.gain
+        .setTargetAtTime(
+            0.1 +
+            energy * 0.2,
+            now,
+            0.4
+        );
+
+}
+
+
+// ============================================================
+// NODE CLICK
+// ============================================================
+
+function openNode(
+    node
+) {
+
+    if (
+        !node ||
+        !node.path
+    ) {
+
+        return;
+
+    }
+
+    /*
+     * IMPORTANT:
+     *
+     * node.path ja és relatiu a /nodes/.
+     *
+     * Exemple:
+     *
+     * node2/main.js
+     *
+     * No hi afegim /nodes/.
+     */
+
+    const url =
+        new URL(
+            node.path,
+            window.location.href
+        );
+
+    /*
+     * Si main.js és un mòdul d'entrada,
+     * l'obertura directa pot no ser la
+     * manera adequada segons l'arquitectura.
+     *
+     * Primer intentem el protocol establert
+     * per l'artefacte.
+     */
+
+    window.dispatchEvent(
+        new CustomEvent(
+            "zero-infinit:open-node",
+            {
+                detail: {
+                    node,
+                    url:
+                        url.href
+                }
+            }
+        )
+    );
+
+    /*
+     * Fallback:
+     *
+     * Si ningú captura l'esdeveniment,
+     * obrim el node.
+     */
+
+    setTimeout(
+        () => {
 
             if (
-                node.hover > 0.4
+                !window.__zeroInfinitNodeHandled
             ) {
 
-                ctx.font =
-                    "9px Arial";
-
-
-                ctx.textAlign =
-                    "center";
-
-
-                ctx.fillStyle =
-                    `rgba(
-                        230,
-                        220,
-                        255,
-                        ${node.hover * 0.8}
-                    )`;
-
-
-                ctx.fillText(
-                    node.id,
-                    x,
-                    y - 14
-                );
+                window.location.href =
+                    url.href;
 
             }
 
-        }
+        },
+        60
     );
 
 }
 
 
+// ============================================================
+// CLICK / TOUCH
+// ============================================================
 
-// ==================================================
+canvas.addEventListener(
+    "click",
+    event => {
+
+        const x =
+            event.clientX;
+
+        const y =
+            event.clientY;
+
+        let selected =
+            null;
+
+        let distance =
+            Infinity;
+
+        nodes.forEach(
+            node => {
+
+                const d =
+                    Math.hypot(
+                        x - node.x,
+                        y - node.y
+                    );
+
+                if (
+                    d <
+                    node.size * 2 &&
+                    d <
+                    distance
+                ) {
+
+                    selected =
+                        node;
+
+                    distance =
+                        d;
+
+                }
+
+            }
+        );
+
+        if (
+            selected
+        ) {
+
+            selected.active =
+                true;
+
+            selected.energy =
+                1;
+
+            field.pulse =
+                1;
+
+            openNode(
+                selected
+            );
+
+        }
+
+    }
+);
+
+
+// ============================================================
+// HOVER
+// ============================================================
+
+canvas.addEventListener(
+    "pointermove",
+    () => {
+
+        nodes.forEach(
+            node => {
+
+                if (
+                    node.hovered
+                ) {
+
+                    node.energy =
+                        Math.min(
+                            1,
+                            node.energy +
+                            0.018
+                        );
+
+                }
+
+            }
+        );
+
+    }
+);
+
+
+// ============================================================
 // RENDER
-// ==================================================
+// ============================================================
 
-function render(milliseconds) {
+function render(
+    milliseconds
+) {
 
     time =
-        milliseconds * 0.001;
+        milliseconds *
+        0.001;
+
+    pointer.speed *=
+        0.92;
+
+    updateField();
+
+    updateNodes();
+
+    updateParticles();
+
+    updateAudio();
+
+    spawnFormula();
 
 
     drawBackground();
 
     drawNebula();
 
-    drawVoid();
+    drawNodeRelations();
+
+    drawParticles();
+
+    drawCentralField();
 
     drawNodes();
+
+    drawPointerField();
+
+    drawFormulae();
 
 
     requestAnimationFrame(
@@ -1405,16 +2419,111 @@ function render(milliseconds) {
 }
 
 
-requestAnimationFrame(
-    render
-);
+// ============================================================
+// BOOT
+// ============================================================
+
+async function boot() {
+
+    resize();
+
+    try {
+
+        const entries =
+            await loadRegistry();
+
+        if (
+            entries.length <
+            CONFIG.minNodes
+        ) {
+
+            console.warn(
+                "Zero Infinit: no s'han trobat nodes."
+            );
+
+        }
+
+        buildNodes(
+            entries
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "Zero Infinit — error carregant nodes:",
+            error
+        );
+
+    }
+
+    requestAnimationFrame(
+        render
+    );
+
+}
 
 
+boot();
 
-// ==================================================
-// START TEMPORAL AUDIO LOOP
-// ==================================================
 
-requestAnimationFrame(
-    updateTemporalAudio
-);
+// ============================================================
+// API EXPERIMENTAL
+//
+// Permet que altres peces de Zero Infinit
+// puguin excitar la constel·lació.
+// ============================================================
+
+window.ZeroInfinitNodes = {
+
+    getNodes() {
+
+        return nodes;
+
+    },
+
+    pulse(
+        amount = 1
+    ) {
+
+        field.pulse =
+            Math.min(
+                1,
+                amount
+            );
+
+        field.energy =
+            Math.min(
+                1,
+                field.energy +
+                amount * 0.25
+            );
+
+    },
+
+    open(
+        id
+    ) {
+
+        const node =
+            nodes.find(
+                item =>
+                    item.id === id
+            );
+
+        if (
+            node
+        ) {
+
+            node.energy =
+                1;
+
+            openNode(
+                node
+            );
+
+        }
+
+    }
+
+};

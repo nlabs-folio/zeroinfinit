@@ -4,24 +4,35 @@
 
 html,
 body {
+
     margin: 0;
+
     width: 100%;
     height: 100%;
+
     overflow: hidden;
 
-    background: #010108;
+    background: #020208;
+
+    color: #e8dff0;
 
     font-family:
         Arial,
         Helvetica,
         sans-serif;
+
 }
 
 body {
+
     position: relative;
+
+    cursor: crosshair;
+
 }
 
 #canvas {
+
     position: fixed;
 
     inset: 0;
@@ -31,74 +42,277 @@ body {
 
     display: block;
 
-    cursor: default;
 }
 
-.interface {
+#interface {
+
     position: fixed;
 
     inset: 0;
 
     pointer-events: none;
 
-    display: flex;
-
-    flex-direction: column;
-
-    align-items: center;
-
-    justify-content: center;
-
-    color: rgba(255, 255, 255, 0.72);
-
-    text-align: center;
 }
 
-.title {
+
+/* =========================================================
+   CONSTEL·LACIÓ
+   ========================================================= */
+
+#constellation {
+
     position: absolute;
 
-    top: 7vh;
+    inset: 0;
 
-    font-size: 11px;
+    pointer-events: none;
 
-    letter-spacing: 0.45em;
-
-    opacity: 0.42;
 }
 
-.symbol {
-    font-size: 34px;
 
-    font-weight: 200;
+.node {
 
-    opacity: 0.52;
+    position: absolute;
 
-    text-shadow:
-        0 0 20px rgba(150, 100, 255, 0.35),
-        0 0 50px rgba(100, 80, 255, 0.15);
+    width: 74px;
+    height: 74px;
+
+    transform:
+        translate(-50%, -50%);
+
+    border-radius: 50%;
+
+    pointer-events: auto;
+
+    cursor: pointer;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    transition:
+        transform 0.35s ease,
+        filter 0.35s ease;
+
+    z-index: 10;
+
 }
 
-.caption {
-    margin-top: 16px;
 
-    font-size: 9px;
+.node::before {
 
-    letter-spacing: 0.35em;
+    content: "";
+
+    position: absolute;
+
+    inset: 10px;
+
+    border-radius: 50%;
+
+    background:
+
+        radial-gradient(
+            circle at 35% 30%,
+            rgba(255,255,255,0.5),
+            rgba(190,120,220,0.16) 25%,
+            rgba(90,50,130,0.08) 55%,
+            transparent 72%
+        );
+
+    box-shadow:
+
+        0 0 18px
+        rgba(180,120,230,0.28),
+
+        0 0 50px
+        rgba(120,70,180,0.12);
+
+}
+
+
+.node::after {
+
+    content: "";
+
+    position: absolute;
+
+    inset: -8px;
+
+    border-radius: 50%;
+
+    border:
+
+        1px solid
+        rgba(210,180,230,0.10);
+
+    opacity: 0.65;
+
+}
+
+
+.node:hover {
+
+    transform:
+        translate(-50%, -50%)
+        scale(1.22);
+
+    filter:
+        brightness(1.35);
+
+}
+
+
+.node-label {
+
+    position: relative;
+
+    z-index: 2;
+
+    font-size: 10px;
+
+    letter-spacing: 0.18em;
 
     text-transform: uppercase;
 
-    opacity: 0.28;
+    color:
+        rgba(235,225,245,0.72);
+
+    user-select: none;
+
 }
 
-@media (max-width: 600px) {
 
-    .title {
-        top: 5vh;
-        font-size: 9px;
+.node.active {
+
+    transform:
+        translate(-50%, -50%)
+        scale(1.3);
+
+}
+
+
+.node.active::after {
+
+    inset: -18px;
+
+    border-color:
+        rgba(220,180,245,0.28);
+
+    box-shadow:
+        0 0 35px
+        rgba(170,100,220,0.20);
+
+}
+
+
+/* =========================================================
+   FÓRMULES
+   ========================================================= */
+
+#formula {
+
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    transform:
+        translate(-50%, -50%);
+
+    color:
+        rgba(220,205,230,0.13);
+
+    font-family:
+        Georgia,
+        serif;
+
+    font-size:
+        clamp(12px, 1.3vw, 18px);
+
+    letter-spacing:
+        0.12em;
+
+    white-space: nowrap;
+
+    pointer-events: none;
+
+    opacity: 0;
+
+    transition:
+        opacity 1.5s ease;
+
+}
+
+
+#formula.visible {
+
+    opacity: 1;
+
+}
+
+
+/* =========================================================
+   INSTRUCCIÓ
+   ========================================================= */
+
+#hint {
+
+    position: absolute;
+
+    bottom: 30px;
+
+    left: 50%;
+
+    transform:
+        translateX(-50%);
+
+    font-size: 9px;
+
+    letter-spacing:
+        0.35em;
+
+    text-transform: uppercase;
+
+    color:
+        rgba(225,215,235,0.28);
+
+    transition:
+        opacity 1s ease;
+
+}
+
+
+#hint.hidden {
+
+    opacity: 0;
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 700px) {
+
+    .node {
+
+        width: 62px;
+        height: 62px;
+
     }
 
-    .symbol {
-        font-size: 28px;
+    .node-label {
+
+        font-size: 8px;
+
+    }
+
+    #hint {
+
+        bottom: 20px;
+
     }
 
 }
