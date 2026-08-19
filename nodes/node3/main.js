@@ -1,7 +1,6 @@
-
 // ============================================================
 // ZERO INFINIT
-// NODE
+// NODE 3 · MATÈRIA
 //
 // MATÈRIA
 //     ↓
@@ -13,16 +12,17 @@
 //     ↓
 // SO
 //
-// El ratolí no controla la matèria.
+// El punter no controla la forma.
 // Només la pertorba.
 //
-// No hi ha lent.
-// No hi ha nucli.
-// No hi ha esferes.
-//
-// La forma emergeix.
+// El so emergeix de l'estat.
+// La música no és una capa externa.
 // ============================================================
 
+
+// ============================================================
+// CANVAS
+// ============================================================
 
 const canvas =
     document.getElementById("cosmos");
@@ -51,7 +51,9 @@ void main() {
 
     gl_Position =
         vec4(position, 0.0, 1.0);
+
 }
+
 `;
 
 
@@ -88,6 +90,7 @@ float hash(vec2 p) {
         )
         * 43758.5453
     );
+
 }
 
 
@@ -104,8 +107,7 @@ float noise(vec2 p) {
         fract(p);
 
     f =
-        f *
-        f *
+        f * f *
         (
             3.0 -
             2.0 * f
@@ -115,19 +117,29 @@ float noise(vec2 p) {
         hash(i);
 
     float b =
-        hash(i + vec2(1.0, 0.0));
+        hash(
+            i +
+            vec2(1.0, 0.0)
+        );
 
     float c =
-        hash(i + vec2(0.0, 1.0));
+        hash(
+            i +
+            vec2(0.0, 1.0)
+        );
 
     float d =
-        hash(i + vec2(1.0, 1.0));
+        hash(
+            i +
+            vec2(1.0, 1.0)
+        );
 
     return mix(
         mix(a, b, f.x),
         mix(c, d, f.x),
         f.y
     );
+
 }
 
 
@@ -147,15 +159,18 @@ float fbm(vec2 p) {
             noise(p);
 
         p *= 2.0;
+
         amplitude *= 0.5;
+
     }
 
     return value;
+
 }
 
 
 // ============================================================
-// MICROSCOPIC FIELD
+// MATTER FIELD
 // ============================================================
 
 float matterField(vec2 p) {
@@ -191,11 +206,12 @@ float matterField(vec2 p) {
         a * 0.58 +
         b * 0.29 +
         c * 0.13;
+
 }
 
 
 // ============================================================
-// ORGANIC FLOW
+// FLOW
 // ============================================================
 
 vec2 flow(vec2 p) {
@@ -225,11 +241,12 @@ vec2 flow(vec2 p) {
         -gradient.y,
         gradient.x
     );
+
 }
 
 
 // ============================================================
-// MAIN
+// MAIN SHADER
 // ============================================================
 
 void main() {
@@ -249,7 +266,7 @@ void main() {
 
 
     // --------------------------------------------------------
-    // ORGANIC MOTION
+    // FLOW
     // --------------------------------------------------------
 
     vec2 f =
@@ -257,14 +274,15 @@ void main() {
 
     vec2 q =
         p +
-        f * (
+        f *
+        (
             0.035 +
             coherence * 0.035
         );
 
 
     // --------------------------------------------------------
-    // GENTLE DISTURBANCE
+    // DISTURBANCE
     // --------------------------------------------------------
 
     float d =
@@ -282,13 +300,15 @@ void main() {
     local *=
         disturbanceEnergy;
 
+    vec2 direction =
+        normalize(
+            p -
+            disturbance +
+            vec2(0.0001)
+        );
 
     q +=
-        normalize(
-            p - disturbance +
-            vec2(0.0001)
-        )
-        *
+        direction *
         local *
         0.035;
 
@@ -299,7 +319,6 @@ void main() {
 
     float matter =
         matterField(q);
-
 
     matter =
         smoothstep(
@@ -344,10 +363,7 @@ void main() {
 
     float membrane =
         abs(
-            matterField(
-                q * 2.0
-            )
-            -
+            matterField(q * 2.0) -
             matterField(
                 q * 2.0 +
                 vec2(0.03)
@@ -366,7 +382,7 @@ void main() {
 
 
     // --------------------------------------------------------
-    // CRYSTALLINE MICROSTRUCTURE
+    // CRYSTALS
     // --------------------------------------------------------
 
     vec2 crystalSpace =
@@ -520,12 +536,10 @@ void main() {
     vec3 color =
         background;
 
-
     color +=
         mineral *
         matter *
         1.45;
-
 
     color +=
         living *
@@ -533,28 +547,23 @@ void main() {
         matter *
         1.2;
 
-
     color +=
         living *
         membrane;
-
 
     color +=
         crystalline *
         crystal *
         0.9;
 
-
     color +=
         crystalline *
         particle *
         0.8;
 
-
     color +=
         amber *
         excitationWave;
-
 
     color +=
         crystalline *
@@ -562,7 +571,7 @@ void main() {
 
 
     // --------------------------------------------------------
-    // SOFT DEPTH
+    // DEPTH
     // --------------------------------------------------------
 
     float depth =
@@ -576,7 +585,6 @@ void main() {
         0.55 +
         depth * 0.65;
 
-
     color =
         pow(
             color,
@@ -589,7 +597,9 @@ void main() {
             color,
             1.0
         );
+
 }
+
 `;
 
 
@@ -625,9 +635,11 @@ function compileShader(type, source) {
         throw new Error(
             "Shader compilation failed"
         );
+
     }
 
     return shader;
+
 }
 
 
@@ -661,7 +673,6 @@ gl.linkProgram(
     program
 );
 
-
 if (
     !gl.getProgramParameter(
         program,
@@ -672,8 +683,8 @@ if (
     throw new Error(
         "Program link failed"
     );
-}
 
+}
 
 gl.useProgram(program);
 
@@ -775,7 +786,7 @@ const uPhase =
 
 
 // ============================================================
-// STATE
+// POINTER / FIELD STATE
 // ============================================================
 
 let mouseX = 0;
@@ -786,14 +797,10 @@ let targetY = 0;
 
 let disturbanceEnergy = 0;
 
-let coherence = 0.45;
-let excitation = 0.22;
-let phase = 0;
+let pointerEnergy = 0;
 
 let previousX = 0;
 let previousY = 0;
-
-let pointerEnergy = 0;
 
 
 // ============================================================
@@ -804,45 +811,22 @@ let density = 0.5;
 let symmetry = 0.5;
 let transition = 0.0;
 
-let lastFormula =
-    0;
+let coherence = 0.5;
+let excitation = 0.18;
+
+let phase = 0;
+
+let lastFormula = null;
 
 
 // ============================================================
-// MUSICAL ENGINE
-// ============================================================
-
-let audio = null;
-let master = null;
-
-let bassGain = null;
-let padGain = null;
-let airGain = null;
-
-let bassOsc = null;
-let padOscA = null;
-let padOscB = null;
-let airOsc = null;
-
-let filter = null;
-
-let nextNoteTime = 0;
-let musicalIndex = 0;
-
-let currentRoot = 220;
-
-let modeName =
-    "A DÒRIC";
-
-
-// ============================================================
-// TONAL CENTRES
+// MUSICAL STATE
 // ============================================================
 
 const tonalCentres = [
 
     {
-        root: 220.00,
+        root: 220,
         name: "A DÒRIC",
         scale: [
             0,
@@ -856,7 +840,7 @@ const tonalCentres = [
     },
 
     {
-        root: 196.00,
+        root: 196,
         name: "G JÒNIC",
         scale: [
             0,
@@ -896,15 +880,54 @@ const tonalCentres = [
             10
         ]
     }
+
 ];
 
 
 let tonalState =
     tonalCentres[0];
 
+let musicalIndex = 0;
+
+let nextNoteTime = 0;
+
+let lastNoteTime = -Infinity;
+
 
 // ============================================================
-// AUDIO
+// AUDIO STATE
+// ============================================================
+
+let audio = null;
+
+let master = null;
+let filter = null;
+
+let bassOsc = null;
+let bassGain = null;
+
+let padOscA = null;
+let padOscB = null;
+let padGain = null;
+
+let airOsc = null;
+let airGain = null;
+
+let audioStarting = false;
+
+
+// ============================================================
+// START AUDIO
+//
+// IMPORTANT:
+//
+// Nothing is exposed as "audio active"
+// until the complete graph exists.
+//
+// This prevents:
+//     audio != null
+//     filter == null
+//
 // ============================================================
 
 async function startAudio() {
@@ -915,11 +938,28 @@ async function startAudio() {
             audio.state ===
             "suspended"
         ) {
-            await audio.resume();
+
+            try {
+                await audio.resume();
+            } catch (error) {
+                console.warn(
+                    "Audio resume failed",
+                    error
+                );
+            }
+
         }
 
         return;
+
     }
+
+
+    if (audioStarting) {
+        return;
+    }
+
+    audioStarting = true;
 
 
     const AudioContext =
@@ -928,160 +968,261 @@ async function startAudio() {
 
 
     if (!AudioContext) {
+
+        console.warn(
+            "Web Audio API no disponible"
+        );
+
+        audioStarting = false;
+
         return;
+
     }
 
 
-    audio =
+    const ctx =
         new AudioContext();
 
 
-    await audio.resume();
+    try {
+
+        await ctx.resume();
 
 
-    // --------------------------------------------------------
-    // MASTER
-    // --------------------------------------------------------
+        // ----------------------------------------------------
+        // MASTER
+        // ----------------------------------------------------
 
-    master =
-        audio.createGain();
+        const newMaster =
+            ctx.createGain();
 
-    master.gain.value =
-        6;
-
-
-    // --------------------------------------------------------
-    // FILTER
-    // --------------------------------------------------------
-
-    filter =
-        audio.createBiquadFilter();
-
-    filter.type =
-        "lowpass";
-
-    filter.frequency.value =
-        950;
-
-    filter.Q.value =
-        0.3;
+        newMaster.gain.value =
+            0.0001;
 
 
-    filter.connect(
-        master
-    );
+        // ----------------------------------------------------
+        // FILTER
+        // ----------------------------------------------------
 
-    master.connect(
-        audio.destination
-    );
+        const newFilter =
+            ctx.createBiquadFilter();
 
+        newFilter.type =
+            "lowpass";
 
-    // --------------------------------------------------------
-    // BASS
-    // --------------------------------------------------------
+        newFilter.frequency.value =
+            900;
 
-    bassOsc =
-        audio.createOscillator();
-
-    bassOsc.type =
-        "sine";
-
-    bassGain =
-        audio.createGain();
-
-    bassGain.gain.value =
-        0.3;
+        newFilter.Q.value =
+            0.45;
 
 
-    bassOsc
-        .connect(bassGain)
-        .connect(filter);
+        newFilter.connect(
+            newMaster
+        );
 
-
-    // --------------------------------------------------------
-    // PAD
-    // --------------------------------------------------------
-
-    padOscA =
-        audio.createOscillator();
-
-    padOscB =
-        audio.createOscillator();
-
-
-    padOscA.type =
-        "sine";
-
-    padOscB.type =
-        "triangle";
-
-
-    padGain =
-        audio.createGain();
-
-    padGain.gain.value =
-        0.18;
-
-
-    padOscA
-        .connect(padGain)
-        .connect(filter);
-
-    padOscB
-        .connect(padGain)
-        .connect(filter);
-
-
-    // --------------------------------------------------------
-    // AIR
-    // --------------------------------------------------------
-
-    airOsc =
-        audio.createOscillator();
-
-    airOsc.type =
-        "sine";
-
-
-    airGain =
-        audio.createGain();
-
-    airGain.gain.value =
-        0.7;
-
-
-    airOsc
-        .connect(airGain)
-        .connect(filter);
-
-
-    // --------------------------------------------------------
-    // START
-    // --------------------------------------------------------
-
-    const now =
-        audio.currentTime;
-
-    bassOsc.start(now);
-    padOscA.start(now);
-    padOscB.start(now);
-    airOsc.start(now);
-
-
-    master.gain
-        .exponentialRampToValueAtTime(
-            3,
-            now + 5
+        newMaster.connect(
+            ctx.destination
         );
 
 
-    nextNoteTime =
-        now + 1;
+        // ----------------------------------------------------
+        // BASS
+        // ----------------------------------------------------
+
+        const newBassOsc =
+            ctx.createOscillator();
+
+        const newBassGain =
+            ctx.createGain();
+
+        newBassOsc.type =
+            "sine";
+
+        newBassGain.gain.value =
+            0.0001;
+
+
+        newBassOsc
+            .connect(newBassGain)
+            .connect(newFilter);
+
+
+        // ----------------------------------------------------
+        // PAD
+        // ----------------------------------------------------
+
+        const newPadOscA =
+            ctx.createOscillator();
+
+        const newPadOscB =
+            ctx.createOscillator();
+
+        const newPadGain =
+            ctx.createGain();
+
+        newPadOscA.type =
+            "sine";
+
+        newPadOscB.type =
+            "triangle";
+
+        newPadGain.gain.value =
+            0.0001;
+
+
+        newPadOscA
+            .connect(newPadGain)
+            .connect(newFilter);
+
+        newPadOscB
+            .connect(newPadGain)
+            .connect(newFilter);
+
+
+        // ----------------------------------------------------
+        // AIR
+        // ----------------------------------------------------
+
+        const newAirOsc =
+            ctx.createOscillator();
+
+        const newAirGain =
+            ctx.createGain();
+
+        newAirOsc.type =
+            "sine";
+
+        newAirGain.gain.value =
+            0.0001;
+
+
+        newAirOsc
+            .connect(newAirGain)
+            .connect(newFilter);
+
+
+        // ----------------------------------------------------
+        // START CONTINUOUS TEXTURES
+        // ----------------------------------------------------
+
+        const now =
+            ctx.currentTime;
+
+        newBassOsc.frequency.value =
+            tonalState.root / 2;
+
+        newPadOscA.frequency.value =
+            tonalState.root;
+
+        newPadOscB.frequency.value =
+            tonalState.root * 1.5;
+
+        newAirOsc.frequency.value =
+            tonalState.root * 2;
+
+
+        newBassOsc.start(now);
+        newPadOscA.start(now);
+        newPadOscB.start(now);
+        newAirOsc.start(now);
+
+
+        // ----------------------------------------------------
+        // FADE IN
+        // ----------------------------------------------------
+
+        newMaster.gain
+            .exponentialRampToValueAtTime(
+                0.16,
+                now + 4
+            );
+
+
+        newBassGain.gain
+            .exponentialRampToValueAtTime(
+                0.035,
+                now + 3
+            );
+
+        newPadGain.gain
+            .exponentialRampToValueAtTime(
+                0.018,
+                now + 4
+            );
+
+        newAirGain.gain
+            .exponentialRampToValueAtTime(
+                0.004,
+                now + 5
+            );
+
+
+        // ----------------------------------------------------
+        // ONLY NOW EXPOSE AUDIO
+        // ----------------------------------------------------
+
+        audio =
+            ctx;
+
+        master =
+            newMaster;
+
+        filter =
+            newFilter;
+
+        bassOsc =
+            newBassOsc;
+
+        bassGain =
+            newBassGain;
+
+        padOscA =
+            newPadOscA;
+
+        padOscB =
+            newPadOscB;
+
+        padGain =
+            newPadGain;
+
+        airOsc =
+            newAirOsc;
+
+        airGain =
+            newAirGain;
+
+
+        nextNoteTime =
+            now + 2.5;
+
+
+        showFormula(
+            "ρ → f(t)"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "No s'ha pogut iniciar l'àudio:",
+            error
+        );
+
+        try {
+            await ctx.close();
+        } catch (_) {}
+
+    }
+
+
+    audioStarting = false;
+
 }
 
 
 // ============================================================
-// NOTE
+// FREQUENCY FROM SCALE
 // ============================================================
 
 function frequencyFromScale(
@@ -1111,6 +1252,85 @@ function frequencyFromScale(
             semitone / 12
         )
     );
+
+}
+
+
+// ============================================================
+// SHORT MELODIC NOTE
+//
+// Each note owns its oscillator.
+// It starts and stops exactly once.
+//
+// ============================================================
+
+function playNote(
+    frequency,
+    duration,
+    velocity
+) {
+
+    if (
+        !audio ||
+        audio.state !== "running" ||
+        !filter
+    ) {
+        return;
+    }
+
+
+    const now =
+        audio.currentTime;
+
+
+    const oscillator =
+        audio.createOscillator();
+
+    const gain =
+        audio.createGain();
+
+
+    oscillator.type =
+        "sine";
+
+    oscillator.frequency.setValueAtTime(
+        frequency,
+        now
+    );
+
+
+    gain.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+
+    gain.gain.exponentialRampToValueAtTime(
+        Math.max(
+            0.001,
+            velocity
+        ),
+        now + 0.08
+    );
+
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + duration
+    );
+
+
+    oscillator
+        .connect(gain)
+        .connect(filter);
+
+
+    oscillator.start(now);
+
+    oscillator.stop(
+        now + duration + 0.05
+    );
+
 }
 
 
@@ -1120,13 +1340,12 @@ function frequencyFromScale(
 
 function musicalDiscovery() {
 
-    if (!audio) {
+    if (
+        !audio ||
+        !filter
+    ) {
         return;
     }
-
-
-    const now =
-        audio.currentTime;
 
 
     const scale =
@@ -1142,145 +1361,135 @@ function musicalDiscovery() {
         scale.length;
 
 
+    const octaveLift =
+        coherence > 0.78
+            ? 12
+            : 0;
+
+
     const note =
         frequencyFromScale(
             tonalState.root,
             scale,
             degree
+        ) *
+        Math.pow(
+            2,
+            octaveLift / 12
         );
 
 
-    // --------------------------------------------------------
-    // MELODIC VOICE
-    // --------------------------------------------------------
-
-    const voice =
-        audio.createOscillator();
-
-    const gain =
-        audio.createGain();
+    const velocity =
+        0.010 +
+        coherence * 0.008;
 
 
-    voice.type =
-        "sine";
+    const duration =
+        coherence > 0.78
+            ? 1.8
+            : 1.35;
 
 
-    voice.frequency.value =
-        note;
-
-
-    gain.gain.setValueAtTime(
-        0.0001,
-        now
-    );
-
-
-    gain.gain.exponentialRampToValueAtTime(
-        0.018,
-        now + 0.08
-    );
-
-
-    gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + 1.8
-    );
-
-
-    voice
-        .connect(gain)
-        .connect(filter);
-
-
-    voice.start(now);
-
-    voice.stop(
-        now + 2
+    playNote(
+        note,
+        duration,
+        velocity
     );
 
 
     musicalIndex++;
 
 
-    // --------------------------------------------------------
-    // FORMULA
-    // --------------------------------------------------------
-
-    showFormula(
+    if (
         musicalIndex % 3 === 0
-            ? "ΔE → ♪"
-            : "ρ + ∇ρ → excitation"
-    );
+    ) {
+
+        showFormula(
+            "ΔE → ♪"
+        );
+
+    } else {
+
+        showFormula(
+            "ρ + ∇ρ → excitation"
+        );
+
+    }
 
 
     // --------------------------------------------------------
-    // OCCASIONAL TONAL CHANGE
+    // TONAL TRANSITION
     // --------------------------------------------------------
 
     if (
-        coherence > 0.72 &&
-        transition > 0.55 &&
-        Math.random() > 0.72
+        coherence > 0.76 &&
+        transition > 0.42 &&
+        Math.random() > 0.90
     ) {
 
         changeTonalCentre();
+
     }
+
 }
 
 
 // ============================================================
-// TONAL CHANGE
+// TONAL CENTRE
 // ============================================================
 
 function changeTonalCentre() {
 
-    let next =
-        tonalCentres[
-            Math.floor(
-                Math.random() *
-                tonalCentres.length
-            )
-        ];
-
-
-    if (
-        next ===
-        tonalState
-    ) {
+    if (!audio) {
         return;
     }
 
 
+    const candidates =
+        tonalCentres.filter(
+            centre =>
+                centre !== tonalState
+        );
+
+
+    const next =
+        candidates[
+            Math.floor(
+                Math.random() *
+                candidates.length
+            )
+        ];
+
+
     tonalState =
         next;
-
-    currentRoot =
-        next.root;
-
-    modeName =
-        next.name;
 
 
     const now =
         audio.currentTime;
 
 
-    bassOsc.frequency
-        .linearRampToValueAtTime(
-            next.root / 2,
-            now + 2.5
-        );
+    if (bassOsc) {
+
+        bassOsc.frequency
+            .linearRampToValueAtTime(
+                next.root / 2,
+                now + 4
+            );
+
+    }
 
 
     showFormula(
-        "C(t) ↑  →  " +
+        "C(t) → " +
         next.name
     );
+
 }
 
 
 // ============================================================
-// FORMULA DISPLAY
+// FORMULA
 // ============================================================
 
 function showFormula(text) {
@@ -1301,11 +1510,20 @@ function showFormula(text) {
         );
 
 
+    if (
+        !layer ||
+        !formula ||
+        !state
+    ) {
+        return;
+    }
+
+
     formula.textContent =
         text;
 
     state.textContent =
-        modeName;
+        tonalState.name;
 
 
     layer.classList.add(
@@ -1329,11 +1547,12 @@ function showFormula(text) {
             },
             1800
         );
+
 }
 
 
 // ============================================================
-// MATHEMATICAL STATE
+// MATHEMATICS
 // ============================================================
 
 function updateMathematics() {
@@ -1353,11 +1572,31 @@ function updateMathematics() {
         0.25;
 
 
+    density =
+        Math.max(
+            0,
+            Math.min(
+                1,
+                density
+            )
+        );
+
+
     symmetry =
         0.5 +
         0.35 *
         Math.cos(
             t * 0.91
+        );
+
+
+    symmetry =
+        Math.max(
+            0,
+            Math.min(
+                1,
+                symmetry
+            )
         );
 
 
@@ -1369,17 +1608,17 @@ function updateMathematics() {
 
 
     coherence =
-        1.0 -
+        1 -
         transition;
 
 
     excitation +=
         pointerEnergy *
-        0.015;
+        0.012;
 
 
     excitation *=
-        0.992;
+        0.994;
 
 
     excitation =
@@ -1390,6 +1629,12 @@ function updateMathematics() {
                 1
             )
         );
+
+
+    phase +=
+        0.002 +
+        excitation * 0.004;
+
 }
 
 
@@ -1399,7 +1644,18 @@ function updateMathematics() {
 
 function updateMusic() {
 
-    if (!audio) {
+    if (
+        !audio ||
+        audio.state !== "running" ||
+        !filter ||
+        !bassGain ||
+        !padGain ||
+        !airGain ||
+        !bassOsc ||
+        !padOscA ||
+        !padOscB ||
+        !airOsc
+    ) {
         return;
     }
 
@@ -1408,22 +1664,30 @@ function updateMusic() {
         audio.currentTime;
 
 
+    // --------------------------------------------------------
+    // FILTER
+    // --------------------------------------------------------
+
     const targetFilter =
-        600 +
-        coherence * 900 +
-        excitation * 650;
+        520 +
+        coherence * 780 +
+        excitation * 520;
 
 
     filter.frequency
         .linearRampToValueAtTime(
             targetFilter,
-            now + 0.4
+            now + 0.35
         );
 
 
+    // --------------------------------------------------------
+    // CONTINUOUS TEXTURES
+    // --------------------------------------------------------
+
     bassGain.gain
         .linearRampToValueAtTime(
-            0.035 +
+            0.025 +
             coherence * 0.025,
             now + 0.5
         );
@@ -1431,19 +1695,23 @@ function updateMusic() {
 
     padGain.gain
         .linearRampToValueAtTime(
-            0.012 +
-            coherence * 0.014,
-            now + 0.6
+            0.010 +
+            coherence * 0.010,
+            now + 0.7
         );
 
 
     airGain.gain
         .linearRampToValueAtTime(
             0.001 +
-            excitation * 0.006,
-            now + 0.7
+            excitation * 0.004,
+            now + 0.9
         );
 
+
+    // --------------------------------------------------------
+    // TONAL BODY
+    // --------------------------------------------------------
 
     bassOsc.frequency
         .linearRampToValueAtTime(
@@ -1452,60 +1720,71 @@ function updateMusic() {
         );
 
 
+    const chordDegree =
+        Math.floor(
+            symmetry * 5
+        );
+
+
     const chordRoot =
         frequencyFromScale(
             tonalState.root,
             tonalState.scale,
-            Math.floor(
-                symmetry * 5
-            )
+            chordDegree
         );
 
 
     padOscA.frequency
         .linearRampToValueAtTime(
             chordRoot,
-            now + 2
+            now + 1.8
         );
 
 
     padOscB.frequency
         .linearRampToValueAtTime(
             chordRoot * 1.5,
-            now + 2
+            now + 1.8
         );
 
 
     airOsc.frequency
         .linearRampToValueAtTime(
             chordRoot * 2,
-            now + 2.5
+            now + 2
         );
 
 
     // --------------------------------------------------------
-    // AUTOGENERATED MELODY
+    // MELODY
+    //
+    // Minimum interval deliberately enforced.
     // --------------------------------------------------------
 
     if (
         now >= nextNoteTime &&
-        coherence > 0.58
+        coherence > 0.56 &&
+        now - lastNoteTime > 1.05
     ) {
 
         musicalDiscovery();
 
 
         const duration =
-            coherence >
-            0.78
-                ? 2.2
-                : 1.4;
+            coherence > 0.78
+                ? 2.4
+                : 1.7;
 
 
         nextNoteTime =
             now +
             duration;
+
+        lastNoteTime =
+            now;
+
     }
+
 }
 
 
@@ -1530,18 +1809,14 @@ window.addEventListener(
 
 
         targetX =
-            (
-                event.clientX /
-                width
-            ) -
+            event.clientX /
+            width -
             0.5;
 
         targetY =
             0.5 -
-            (
-                event.clientY /
-                height
-            );
+            event.clientY /
+            height;
 
 
         targetX *=
@@ -1589,14 +1864,19 @@ window.addEventListener(
                 1
             );
 
-
-        startAudio();
     },
     {
         passive: true
     }
 );
 
+
+// ============================================================
+// FIRST USER GESTURE
+//
+// This is the ONLY place where audio starts.
+// Works with mouse and touch.
+// ============================================================
 
 window.addEventListener(
     "pointerdown",
@@ -1606,7 +1886,8 @@ window.addEventListener(
 
     },
     {
-        passive: true
+        passive: true,
+        once: true
     }
 );
 
@@ -1646,6 +1927,7 @@ function resize() {
         canvas.width,
         canvas.height
     );
+
 }
 
 
@@ -1653,7 +1935,6 @@ window.addEventListener(
     "resize",
     resize
 );
-
 
 resize();
 
@@ -1676,28 +1957,30 @@ function render(now) {
 
 
     // --------------------------------------------------------
-    // MATÈRIA
+    // MATTER
     // --------------------------------------------------------
 
     updateMathematics();
 
 
     // --------------------------------------------------------
-    // INÈRCIA DEL CAMP
+    // FIELD INERTIA
     // --------------------------------------------------------
 
     mouseX +=
         (
             targetX -
             mouseX
-        ) * 0.025;
+        ) *
+        0.025;
 
 
     mouseY +=
         (
             targetY -
             mouseY
-        ) * 0.025;
+        ) *
+        0.025;
 
 
     // --------------------------------------------------------
@@ -1719,7 +2002,7 @@ function render(now) {
 
 
     // --------------------------------------------------------
-    // UNIFORMS
+    // SHADER
     // --------------------------------------------------------
 
     gl.uniform1f(
@@ -1727,31 +2010,26 @@ function render(now) {
         elapsed
     );
 
-
     gl.uniform2f(
         uDisturbance,
         mouseX,
         mouseY
     );
 
-
     gl.uniform1f(
         uDisturbanceEnergy,
         disturbanceEnergy
     );
-
 
     gl.uniform1f(
         uCoherence,
         coherence
     );
 
-
     gl.uniform1f(
         uExcitation,
         excitation
     );
-
 
     gl.uniform1f(
         uPhase,
@@ -1769,6 +2047,7 @@ function render(now) {
     requestAnimationFrame(
         render
     );
+
 }
 
 
@@ -1788,6 +2067,11 @@ setInterval(
             document.getElementById(
                 "state-name"
             );
+
+
+        if (!label) {
+            return;
+        }
 
 
         if (
@@ -1815,9 +2099,9 @@ setInterval(
 
             label.textContent =
                 "OBSERVANT";
+
         }
 
     },
     800
 );
-
