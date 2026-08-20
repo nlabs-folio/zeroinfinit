@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>
+        2'N'B GROOVE
+    </title>
+
+    <link rel="stylesheet" href="./style.css">
+
+</head>
+
+
+<body>
+
+
+<h1>
+2'N'B GROOVE
+</h1>
+
+
+
+<div class="transport">
+
+
+<button id="start">
+PLAY
+</button>
+
+<button id="tap">
+TAP
+</button>
+
+
+<div class="tempo-control">
+
+<label>
+BPM
+</label>
+
+<div class="style-control">
+
+<label>
+STYLE
+</label>
+
+<select id="style">
+
+<option value="jungle">
+JUNGLE
+</option>
+
+<option value="liquid">
+LIQUID
+</option>
+
+<option value="intelligentDnB">
+INTELLIGENT DNB
+</option>
+
+<option value="neuro">
+NEURO
+</option>
+
+<option value="atmospheric">
+ATMOSPHERIC
+</option>
+
+</select>
+
+</div>
+
+
+<div class="seed-control">
+
+<label>
+SEED
+</label>
+
+<input
+id="seed"
+type="number"
+value="12345"
+>
+
+<button id="apply-seed">
+LOAD
+</button>
+
+</div>
+
+<label>
+SWING
+</label>
+
+<input
+id="swing"
+type="range"
+min="0"
+max="50"
+value="0">
+
+
+<input
+id="bpm"
+type="range"
+min="60"
+max="220"
+value="174"
+>
+
+
+<span id="bpm-value">
+174
+</span>
+
+
+</div>
+
+
+</div>
+
+
+
+<div class="controls">
+
+
+<button id="clear">
+CLEAR
+</button>
+
+
+<button id="random">
+RANDOM
+</button>
+
+
+</div>
+
+<div class="style-control">
+
+
+</div>
+
+
+
+<div id="drum-grid"></div>
+
+
+
+<div id="dfield"></div>
+
+<div id="dna">
+
+<h3>
+GROOVE DNA
+</h3>
+
+<div>
+STYLE:
+<span id="dna-style">
+---
+</span>
+</div>
+
+<div>
+SEED:
+<span id="dna-seed">
+---
+</span>
+</div>
+
+<div>
+ENERGY:
+<span id="dna-energy">
+---
+</span>
+</div>
+
+</div>
+
+
+
+
+<script
+type="module"
+src="./main.js">
+</script>
+
+
+</body>
+
+</html>

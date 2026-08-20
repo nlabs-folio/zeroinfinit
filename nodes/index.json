@@ -1,8 +1,8 @@
 {
     "nodes": [
         {
-            "id": "node2",
-            "entry": "nodes/node2/main.js"
+            "id": "2'N'GROOVE",
+            "entry": "nodes/2'n'groove/main.js"
         },
         {
             "id": "node3",
