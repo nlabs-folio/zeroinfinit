@@ -14,13 +14,24 @@ export class Lead {
         output;
 
         this.attack =
-        0.01;
+        0.005;
 
         this.release =
-        0.18;
+        0.16;
 
         this.volume =
-        0.22;
+        0.18;
+
+        this.cutoff =
+        3200;
+
+    }
+
+
+    setCutoff(value){
+
+        this.cutoff =
+        value;
 
     }
 
@@ -47,159 +58,74 @@ export class Lead {
 
 
         filter.frequency.value =
-        3200;
+        this.cutoff;
 
 
         filter.Q.value =
-        1.2;
+        1.5;
 
 
-        gain.connect(
-            filter
-        );
-
+        gain.connect(filter);
 
         filter.connect(
             this.output
         );
 
 
-        // ====================================================
-        // SAW
-        // ====================================================
-
-        const saw =
+        const osc =
         context.createOscillator();
 
 
-        saw.type =
+        osc.type =
         "sawtooth";
 
 
-        saw.frequency.value =
+        osc.frequency.value =
         note;
 
 
-        saw.detune.value =
-        -4;
-
-
-        // ====================================================
-        // TRIANGLE
-        // ====================================================
-
-        const triangle =
+        const sub =
         context.createOscillator();
 
 
-        triangle.type =
+        sub.type =
         "triangle";
 
 
-        triangle.frequency.value =
-        note;
+        sub.frequency.value =
+        note / 2;
 
 
-        triangle.detune.value =
-        4;
+        osc.connect(gain);
 
+        sub.connect(gain);
 
-        // ====================================================
-        // VIBRATO
-        // ====================================================
-
-        const lfo =
-        context.createOscillator();
-
-
-        const lfoGain =
-        context.createGain();
-
-
-        lfo.frequency.value =
-        5.5;
-
-
-        lfoGain.gain.value =
-        7;
-
-
-        lfo.connect(
-            lfoGain
-        );
-
-
-        lfoGain.connect(
-            saw.detune
-        );
-
-
-        lfoGain.connect(
-            triangle.detune
-        );
-
-
-        // ====================================================
-        // ROUTING
-        // ====================================================
-
-        saw.connect(
-            gain
-        );
-
-        triangle.connect(
-            gain
-        );
-
-
-        // ====================================================
-        // ENVELOPE
-        // ====================================================
 
         applyEnvelope(
             gain,
             context,
             this.attack,
             this.release,
-            velocity * this.volume
+            velocity *
+            this.volume
         );
 
 
-        // ====================================================
-        // START
-        // ====================================================
+        osc.start(now);
 
-        saw.start(
-            now
-        );
-
-        triangle.start(
-            now
-        );
-
-        lfo.start(
-            now
-        );
+        sub.start(now);
 
 
-        const stopTime =
+        const stop =
         now +
         this.attack +
         this.release +
         0.1;
 
 
-        saw.stop(
-            stopTime
-        );
+        osc.stop(stop);
 
-        triangle.stop(
-            stopTime
-        );
-
-        lfo.stop(
-            stopTime
-        );
+        sub.stop(stop);
 
     }
 

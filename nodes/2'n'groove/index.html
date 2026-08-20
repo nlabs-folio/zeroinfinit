@@ -9,7 +9,10 @@
         2'N'B GROOVE
     </title>
 
-    <link rel="stylesheet" href="./style.css">
+    <link
+        rel="stylesheet"
+        href="./style.css"
+    >
 
 </head>
 
@@ -18,159 +21,255 @@
 
 
 <h1>
-2'N'B GROOVE
+    2'N'B GROOVE
 </h1>
 
 
+<!-- =====================================================
+     TRANSPORT
+===================================================== -->
 
 <div class="transport">
 
 
-<button id="start">
-PLAY
-</button>
-
-<button id="tap">
-TAP
-</button>
+    <button id="start">
+        PLAY
+    </button>
 
 
-<div class="tempo-control">
+    <button id="tap">
+        TAP
+    </button>
 
-<label>
-BPM
-</label>
 
-<div class="style-control">
+    <div class="tempo-control">
 
-<label>
-STYLE
-</label>
+        <label>
+            BPM
+        </label>
 
-<select id="style">
+        <input
+            id="bpm"
+            type="range"
+            min="60"
+            max="220"
+            value="174"
+        >
 
-<option value="jungle">
-JUNGLE
-</option>
+        <span id="bpm-value">
+            174
+        </span>
 
-<option value="liquid">
-LIQUID
-</option>
+    </div>
 
-<option value="intelligentDnB">
-INTELLIGENT DNB
-</option>
 
-<option value="neuro">
-NEURO
-</option>
+    <div class="style-control">
 
-<option value="atmospheric">
-ATMOSPHERIC
-</option>
+        <label>
+            STYLE
+        </label>
 
-</select>
+        <select id="style">
+
+            <option value="jungle">
+                JUNGLE
+            </option>
+
+            <option value="liquid">
+                LIQUID
+            </option>
+
+            <option value="intelligentDnB">
+                INTELLIGENT DNB
+            </option>
+
+            <option value="neuro">
+                NEURO
+            </option>
+
+            <option value="atmospheric">
+                ATMOSPHERIC
+            </option>
+
+        </select>
+
+    </div>
+
+
+    <div class="swing-control">
+
+        <label>
+            SWING
+        </label>
+
+        <input
+            id="swing"
+            type="range"
+            min="0"
+            max="50"
+            value="0"
+        >
+
+    </div>
+
 
 </div>
 
 
-<label>
-SWING
-</label>
 
-<input
-id="swing"
-type="range"
-min="0"
-max="50"
-value="0">
-
-
-<input
-id="bpm"
-type="range"
-min="60"
-max="220"
-value="174"
->
-
-
-<span id="bpm-value">
-174
-</span>
-
-
-</div>
-
-
-</div>
-
-
+<!-- =====================================================
+     CONTROLS
+===================================================== -->
 
 <div class="controls">
 
+    <button id="clear">
+        CLEAR
+    </button>
 
-<button id="clear">
-CLEAR
-</button>
-
-
-<button id="random">
-RANDOM
-</button>
-
-
-</div>
-
-<div class="style-control">
-
+    <button id="random">
+        RANDOM
+    </button>
 
 </div>
 
 
 
-<div id="drum-grid"></div>
+<!-- =====================================================
+     DRUMS
+===================================================== -->
+
+<section class="track-section">
+
+
+    <div class="track-section-title">
+        DRUMS
+    </div>
+
+
+    <div id="drum-grid"></div>
+
+
+</section>
 
 
 
-<div id="dfield"></div>
+<!-- =====================================================
+     MUSICAL
+===================================================== -->
 
-<div id="dna">
-
-<h3>
-GROOVE DNA
-</h3>
-
-<div>
-STYLE:
-<span id="dna-style">
----
-</span>
-</div>
-
-<div>
-SEED:
-<span id="dna-seed">
----
-</span>
-</div>
-
-<div>
-ENERGY:
-<span id="dna-energy">
----
-</span>
-</div>
-
-</div>
+<section class="track-section musical-section">
 
 
+    <div class="track-section-title">
+        MUSICAL
+    </div>
+
+
+    <div id="music-grid">
+
+
+        <div class="music-track">
+
+            <span class="track-label">
+                BASS
+            </span>
+
+            <div class="music-track-placeholder">
+                BASS
+            </div>
+
+        </div>
+
+
+        <div class="music-track">
+
+            <span class="track-label">
+                PAD
+            </span>
+
+            <div class="music-track-placeholder">
+                PAD
+            </div>
+
+        </div>
+
+
+        <div class="music-track">
+
+            <span class="track-label">
+                LEAD
+            </span>
+
+            <div class="music-track-placeholder">
+                LEAD
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     TOUCH PAD
+===================================================== -->
+
+<section class="touch-section">
+
+
+    <div class="track-section-title">
+        TOUCH
+    </div>
+
+
+    <div
+        id="dfield"
+        aria-label="Touch Pad"
+    >
+
+        <div class="touch-point"></div>
+
+    </div>
+
+
+    <div class="touch-mode">
+
+        <button
+            class="touch-mode-button active"
+            data-mode="filter"
+        >
+            FILTER
+        </button>
+
+        <button
+            class="touch-mode-button"
+            data-mode="delay"
+        >
+            DELAY
+        </button>
+
+        <button
+            class="touch-mode-button"
+            data-mode="arp"
+        >
+            ARP
+        </button>
+
+    </div>
+
+
+</section>
 
 
 <script
-type="module"
-src="./main.js">
-</script>
+    type="module"
+    src="./main.js"
+></script>
 
 
 </body>

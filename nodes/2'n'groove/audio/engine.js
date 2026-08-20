@@ -1,8 +1,10 @@
+// ============================================================
+// ENGINE
+// 2'N'B GROOVE
+// ============================================================
+
 import { Mixer }
 from "./mixer.js";
-
-import { Filter }
-from "./filter.js";
 
 import { Master }
 from "./master.js";
@@ -28,7 +30,19 @@ from "./pad.js";
 import { Lead }
 from "./lead.js";
 
+import { Filter }
+from "./effects/filter.js";
 
+import { Delay }
+from "./effects/delay.js";
+
+import { Reverb }
+from "./effects/reverb.js";
+
+
+// ============================================================
+// ENGINE
+// ============================================================
 
 export class Engine {
 
@@ -36,48 +50,79 @@ export class Engine {
     constructor(){
 
 
+        // ----------------------------------------------------
+        // MASTER
+        // ----------------------------------------------------
+
         this.master =
         new Master();
 
 
-
-        this.filter =
-        new Filter();
-
-
+        // ----------------------------------------------------
+        // MIXER
+        // ----------------------------------------------------
 
         this.mixer =
         new Mixer();
 
 
+        // ----------------------------------------------------
+        // EFFECTS
+        // ----------------------------------------------------
 
-        /*
-            AUDIO CHAIN
+        this.filter =
+        new Filter();
 
-            voices
-              |
-            mixer
-              |
-            filter
-              |
-            master
-              |
-            speakers
 
-        */
+        this.delay =
+        new Delay();
 
+
+        this.reverb =
+        new Reverb();
+
+
+        // ----------------------------------------------------
+        // AUDIO CHAIN
+        //
+        // voices
+        //    ↓
+        // mixer
+        //    ↓
+        // filter
+        //    ↓
+        // delay
+        //    ↓
+        // reverb
+        //    ↓
+        // master
+        //    ↓
+        // speakers
+        // ----------------------------------------------------
 
         this.mixer.input.connect(
             this.filter.node
         );
 
 
-        this.filter.node.connect(
+        this.filter.connect(
+            this.delay.input
+        );
+
+
+        this.delay.connect(
+            this.reverb.input
+        );
+
+
+        this.reverb.connect(
             this.master.output
         );
 
 
-
+        // ----------------------------------------------------
+        // DRUMS
+        // ----------------------------------------------------
 
         this.kick =
         new Kick(
@@ -108,31 +153,39 @@ export class Engine {
             this.mixer.input
         );
 
+
+        // ----------------------------------------------------
+        // MUSICAL VOICES
+        // ----------------------------------------------------
+
         this.pad =
-new Pad(
-    this.mixer.input
-);
+        new Pad(
+            this.mixer.input
+        );
 
 
-this.lead =
-new Lead(
-    this.mixer.input
-);
-
-
+        this.lead =
+        new Lead(
+            this.mixer.input
+        );
 
     }
 
 
+
+    // ========================================================
+    // GENERIC TRIGGER
+    // ========================================================
 
     trigger(
         name,
         velocity = 1
     ){
 
-
         if(
-            this[name]
+            this[name] &&
+            typeof this[name].trigger ===
+            "function"
         ){
 
             this[name].trigger(
@@ -141,16 +194,21 @@ new Lead(
 
         }
 
-
     }
-        setCutoff(value){
 
-        this.filter.setCutoff(
+
+
+    // ========================================================
+    // FILTER
+    // ========================================================
+
+    setCutoff(value){
+
+        this.filter.setFrequency(
             value
         );
 
     }
-
 
 
     setResonance(value){
@@ -163,6 +221,56 @@ new Lead(
 
 
 
+    // ========================================================
+    // DELAY
+    // ========================================================
+
+    setDelayTime(value){
+
+        this.delay.setTime(
+            value
+        );
+
+    }
+
+
+    setDelayFeedback(value){
+
+        this.delay.setFeedback(
+            value
+        );
+
+    }
+
+
+    setDelayMix(value){
+
+        this.delay.setMix(
+            value
+        );
+
+    }
+
+
+
+    // ========================================================
+    // REVERB
+    // ========================================================
+
+    setReverbMix(value){
+
+        this.reverb.setMix(
+            value
+        );
+
+    }
+
+
+
+    // ========================================================
+    // VOLUME
+    // ========================================================
+
     setVolume(value){
 
         this.mixer.setVolume(
@@ -170,6 +278,5 @@ new Lead(
         );
 
     }
-
 
 }

@@ -14,13 +14,24 @@ export class Pad {
         output;
 
         this.attack =
-        0.35;
+        0.18;
 
         this.release =
-        1.2;
+        1.4;
 
         this.volume =
-        0.12;
+        0.10;
+
+        this.cutoff =
+        1800;
+
+    }
+
+
+    setCutoff(value){
+
+        this.cutoff =
+        value;
 
     }
 
@@ -45,16 +56,16 @@ export class Pad {
         filter.type =
         "lowpass";
 
+
         filter.frequency.value =
-        2200;
+        this.cutoff;
+
 
         filter.Q.value =
-        0.5;
+        0.7;
 
 
-        gain.connect(
-            filter
-        );
+        gain.connect(filter);
 
         filter.connect(
             this.output
@@ -65,7 +76,7 @@ export class Pad {
 
 
         notes.forEach(
-        (frequency, index)=>{
+        (frequency,index)=>{
 
             const osc =
             context.createOscillator();
@@ -79,20 +90,16 @@ export class Pad {
             frequency;
 
 
-            // Petit desfasament entre veus
             osc.detune.value =
-            index * 3 - 3;
+            index * 4 - 6;
 
 
-            osc.connect(
-                gain
-            );
+            osc.connect(gain);
 
 
             oscillators.push(
                 osc
             );
-
 
         });
 
@@ -102,16 +109,15 @@ export class Pad {
             context,
             this.attack,
             this.release,
-            velocity * this.volume
+            velocity *
+            this.volume
         );
 
 
         oscillators.forEach(
         osc=>{
 
-            osc.start(
-                now
-            );
+            osc.start(now);
 
             osc.stop(
                 now +

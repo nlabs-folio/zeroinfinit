@@ -6,36 +6,37 @@ let stepButtons = [];
 
 
 
+// =====================================================
+// CREATE DRUM GRID
+// =====================================================
+
 export function createDrumGrid(
     container,
     pattern
 ){
-
 
     container.innerHTML = "";
 
     stepButtons = [];
 
 
-
     tracks.forEach(track=>{
 
 
         const row =
-        document.createElement(
-            "div"
-        );
+        document.createElement("div");
 
 
         row.className =
-        "drum-row";
-
+        "drum-row drum-" + track;
 
 
         const label =
-        document.createElement(
-            "span"
-        );
+        document.createElement("span");
+
+
+        label.className =
+        "track-label";
 
 
         label.textContent =
@@ -45,9 +46,7 @@ export function createDrumGrid(
         row.appendChild(label);
 
 
-
         const buttons = [];
-
 
 
         pattern[track].forEach(
@@ -55,14 +54,11 @@ export function createDrumGrid(
 
 
             const step =
-            document.createElement(
-                "button"
-            );
+            document.createElement("button");
 
 
             step.className =
             "step";
-
 
 
             if(active === 1){
@@ -83,7 +79,6 @@ export function createDrumGrid(
             }
 
 
-
             step.onclick = ()=>{
 
 
@@ -91,10 +86,8 @@ export function createDrumGrid(
                 pattern[track][index];
 
 
-
                 let next =
                 value + 1;
-
 
 
                 if(next > 2){
@@ -104,17 +97,14 @@ export function createDrumGrid(
                 }
 
 
-
                 pattern[track][index] =
                 next;
-
 
 
                 step.classList.remove(
                     "active",
                     "accent"
                 );
-
 
 
                 if(next === 1){
@@ -126,7 +116,6 @@ export function createDrumGrid(
                 }
 
 
-
                 if(next === 2){
 
                     step.classList.add(
@@ -135,63 +124,55 @@ export function createDrumGrid(
 
                 }
 
-
             };
-
 
 
             row.appendChild(step);
 
             buttons.push(step);
 
-
         });
-
 
 
         stepButtons.push(buttons);
 
-
         container.appendChild(row);
 
-
     });
-
 
 }
 
 
 
-export function highlightStep(index){
+// =====================================================
+// PLAYING STEP
+// =====================================================
 
+export function highlightStep(index){
 
     stepButtons.forEach(row=>{
 
-
         row.forEach(
         (button,step)=>{
-
 
             button.classList.toggle(
                 "playing",
                 step === index
             );
 
-
         });
 
-
     });
-
 
 }
 
 
 
-export function refreshGrid(
-    pattern
-){
+// =====================================================
+// REFRESH
+// =====================================================
 
+export function refreshGrid(pattern){
 
     stepButtons.forEach(
     (row,rowIndex)=>{
@@ -199,7 +180,6 @@ export function refreshGrid(
 
         const track =
         tracks[rowIndex];
-
 
 
         row.forEach(
@@ -212,8 +192,9 @@ export function refreshGrid(
             );
 
 
-
-            if(pattern[track][index] === 1){
+            if(
+                pattern[track][index] === 1
+            ){
 
                 button.classList.add(
                     "active"
@@ -222,8 +203,9 @@ export function refreshGrid(
             }
 
 
-
-            if(pattern[track][index] === 2){
+            if(
+                pattern[track][index] === 2
+            ){
 
                 button.classList.add(
                     "accent"
@@ -231,11 +213,8 @@ export function refreshGrid(
 
             }
 
-
         });
 
-
     });
-
 
 }
