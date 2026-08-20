@@ -576,5 +576,14 @@ event=>{
     if(event.key==="5")
         engine.trigger("tom");
 
+    if(event.key==="7")
+    engine.pad.trigger();
+
+
+    if(event.key==="8")
+    engine.lead.trigger(
+        220
+    );
+
 
 });

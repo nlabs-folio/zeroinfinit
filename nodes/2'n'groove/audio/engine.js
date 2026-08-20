@@ -7,7 +7,6 @@ from "./filter.js";
 import { Master }
 from "./master.js";
 
-
 import { Kick }
 from "./kick.js";
 
@@ -22,6 +21,12 @@ from "./ride.js";
 
 import { Tom }
 from "./tom.js";
+
+import { Pad }
+from "./pad.js";
+
+import { Lead }
+from "./lead.js";
 
 
 
@@ -102,6 +107,17 @@ export class Engine {
         new Tom(
             this.mixer.input
         );
+
+        this.pad =
+new Pad(
+    this.mixer.input
+);
+
+
+this.lead =
+new Lead(
+    this.mixer.input
+);
 
 
 

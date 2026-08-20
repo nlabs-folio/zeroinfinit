@@ -1,5 +1,8 @@
-import { context } from "./context.js";
-import { applyEnvelope } from "./voices/envelope.js";
+import { context }
+from "./context.js";
+
+import { applyEnvelope }
+from "./voices/envelope.js";
 
 
 export class Hat {
@@ -7,17 +10,24 @@ export class Hat {
 
     constructor(output){
 
-        this.output = output;
+        this.output =
+        output;
 
-        this.decay = 0.06;
+        // Durada molt curta
+        this.decay =
+        0.045;
 
-        this.brightness = 8000;
+        // Zona alta
+        this.brightness =
+        7500;
 
     }
 
 
-
     trigger(velocity = 1){
+
+        const noise =
+        context.createBufferSource();
 
 
         const filter =
@@ -28,6 +38,41 @@ export class Hat {
         context.createGain();
 
 
+        // ====================================================
+        // NOISE
+        // ====================================================
+
+        const buffer =
+        context.createBuffer(
+            1,
+            context.sampleRate * 0.1,
+            context.sampleRate
+        );
+
+
+        const data =
+        buffer.getChannelData(0);
+
+
+        for(
+            let i = 0;
+            i < data.length;
+            i++
+        ){
+
+            data[i] =
+            Math.random() * 2 - 1;
+
+        }
+
+
+        noise.buffer =
+        buffer;
+
+
+        // ====================================================
+        // FILTER
+        // ====================================================
 
         filter.type =
         "highpass";
@@ -37,50 +82,22 @@ export class Hat {
         this.brightness;
 
 
-
-        const oscillators = [];
-
-
-
-        [
-            400,
-            520,
-            650,
-            780,
-            920,
-            1200
-
-        ]
-        .forEach(freq=>{
+        filter.Q.value =
+        0.7;
 
 
-            const osc =
-            context.createOscillator();
+        // ====================================================
+        // ROUTING
+        // ====================================================
+
+        noise.connect(
+            filter
+        );
 
 
-
-            osc.type =
-            "square";
-
-
-            osc.frequency.value =
-            freq;
-
-
-
-            osc.connect(filter);
-
-
-            oscillators.push(
-                osc
-            );
-
-
-        });
-
-
-
-        filter.connect(gain);
+        filter.connect(
+            gain
+        );
 
 
         gain.connect(
@@ -88,31 +105,30 @@ export class Hat {
         );
 
 
+        // ====================================================
+        // ENVELOPE
+        // ====================================================
 
         applyEnvelope(
             gain,
             context,
             0.001,
             this.decay,
-            velocity * 0.4
+            velocity * 0.22
         );
 
 
+        // ====================================================
+        // START
+        // ====================================================
 
-        oscillators.forEach(
-            osc=>{
+        noise.start();
 
-                osc.start();
 
-                osc.stop(
-                    context.currentTime + 0.1
-                );
-
-            }
+        noise.stop(
+            context.currentTime + 0.1
         );
-
 
     }
-
 
 }
