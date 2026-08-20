@@ -1,141 +1,205 @@
-
 /* ============================================================
    ZERO INFINIT
-   NODE · MICROSCOPIC MATTER
+   NODE 3 · MATÈRIA
+
+   La interfície no explica.
+   Només manifesta.
    ============================================================ */
+
 
 :root {
 
     --background:
-        #030706;
-
-    --text:
-        rgba(224, 240, 231, 0.72);
-
-    --soft:
-        rgba(190, 225, 211, 0.42);
+        #030605;
 
     --formula:
-        rgba(218, 239, 227, 0.82);
+        rgba(215, 235, 225, 0.78);
+
+    --formula-soft:
+        rgba(170, 205, 190, 0.38);
+
+    --state:
+        rgba(210, 235, 220, 0.32);
+
 }
 
 
 * {
-    box-sizing: border-box;
+
+    box-sizing:
+        border-box;
+
 }
 
 
 html,
 body {
 
-    width: 100%;
-    height: 100%;
+    width:
+        100%;
 
-    margin: 0;
+    height:
+        100%;
 
-    overflow: hidden;
+    margin:
+        0;
+
+    padding:
+        0;
+
+    overflow:
+        hidden;
 
     background:
         var(--background);
+
 }
 
 
 body {
 
-    font-family:
-        "Helvetica Neue",
-        Helvetica,
-        Arial,
-        sans-serif;
+    position:
+        relative;
 
-    cursor: default;
-}
+    cursor:
+        crosshair;
 
+    user-select:
+        none;
 
-canvas {
+    -webkit-user-select:
+        none;
 
-    position: fixed;
-
-    inset: 0;
-
-    width: 100%;
-    height: 100%;
-
-    display: block;
 }
 
 
 /* ============================================================
-   MATHEMATICAL TRACE
+   CANVAS
+   ============================================================ */
+
+#cosmos {
+
+    position:
+        fixed;
+
+    inset:
+        0;
+
+    width:
+        100%;
+
+    height:
+        100%;
+
+    display:
+        block;
+
+}
+
+
+/* ============================================================
+   FORMULA LAYER
    ============================================================ */
 
 #formula-layer {
 
-    position: fixed;
+    position:
+        fixed;
 
-    left: 50%;
-    top: 50%;
+    inset:
+        0;
 
-    transform:
-        translate(-50%, -50%);
+    pointer-events:
+        none;
 
-    pointer-events: none;
+    display:
+        flex;
 
-    text-align: center;
+    flex-direction:
+        column;
 
-    opacity: 0;
+    justify-content:
+        center;
+
+    align-items:
+        center;
+
+    opacity:
+        0;
 
     transition:
         opacity 1.2s ease;
+
+    mix-blend-mode:
+        screen;
+
 }
 
 
 #formula-layer.visible {
 
-    opacity: 1;
+    opacity:
+        1;
+
 }
 
 
-#formula {
+#visual-formula,
+#musical-formula {
+
+    min-height:
+        1.4em;
 
     font-family:
         "Times New Roman",
+        "STIX Two Math",
         serif;
 
     font-size:
-        clamp(18px, 2vw, 28px);
+        clamp(
+            18px,
+            2vw,
+            30px
+        );
+
+    font-weight:
+        400;
 
     letter-spacing:
         0.08em;
 
-    color:
-        var(--formula);
+    text-align:
+        center;
 
-    text-shadow:
-        0 0 20px
-        rgba(190, 235, 215, 0.22);
 }
 
 
-#musical-state {
-
-    margin-top: 10px;
-
-    font-family:
-        "Helvetica Neue",
-        sans-serif;
-
-    font-size:
-        10px;
-
-    letter-spacing:
-        0.28em;
-
-    text-transform:
-        uppercase;
+#visual-formula {
 
     color:
-        var(--soft);
+        var(--formula-soft);
+
+    transform:
+        translateY(-4px);
+
+}
+
+
+#musical-formula {
+
+    margin-top:
+        8px;
+
+    color:
+        var(--formula);
+
+    font-size:
+        clamp(
+            15px,
+            1.5vw,
+            22px
+        );
+
 }
 
 
@@ -145,48 +209,71 @@ canvas {
 
 #state {
 
-    position: fixed;
+    position:
+        fixed;
 
-    left: 22px;
-    bottom: 20px;
+    left:
+        50%;
 
-    pointer-events: none;
+    bottom:
+        28px;
 
-    font-size: 9px;
+    transform:
+        translateX(-50%);
 
-    letter-spacing:
-        0.24em;
+    pointer-events:
+        none;
 
-    text-transform:
-        uppercase;
+    opacity:
+        0.35;
 
-    color:
-        rgba(210, 232, 222, 0.25);
 }
 
 
-#state-name {
+#state-symbol {
+
+    display:
+        block;
+
+    font-family:
+        "Times New Roman",
+        serif;
+
+    font-size:
+        18px;
+
+    font-weight:
+        300;
+
+    color:
+        var(--state);
 
     transition:
-        opacity 0.8s ease;
+        opacity 1s ease,
+        transform 1s ease;
+
 }
 
 
 /* ============================================================
-   RESPONSIVE
+   MOBILE
    ============================================================ */
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
 
-    #state {
+    body {
 
-        left: 14px;
-        bottom: 14px;
+        cursor:
+            default;
+
     }
 
-    #formula {
+    #visual-formula,
+    #musical-formula {
 
-        font-size: 17px;
+        letter-spacing:
+            0.04em;
+
     }
+
 }
-

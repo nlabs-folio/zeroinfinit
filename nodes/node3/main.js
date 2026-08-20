@@ -4,19 +4,23 @@
 //
 // MATÈRIA
 //     ↓
-// ESTAT
+// CAMP
 //     ↓
-// MATEMÀTICA
-//     ↓
-// INTENCIÓ MUSICAL
-//     ↓
-// SO
+// FENOMEN
 //
-// El punter no controla la forma.
-// Només la pertorba.
+// MÚSICA
+//     ↓
+// CERCLE DE QUINTES
+//     ↓
+// HARMONIA
+//     ↓
+// COMPOSICIÓ
 //
-// El so emergeix de l'estat.
-// La música no és una capa externa.
+// El punter només perturba l'espai musical.
+//
+// La matèria és autònoma.
+//
+// La llum fotònica és el pont.
 // ============================================================
 
 
@@ -28,19 +32,27 @@ const canvas =
     document.getElementById("cosmos");
 
 const gl =
-    canvas.getContext("webgl", {
-        antialias: false,
-        alpha: false,
-        powerPreference: "high-performance"
-    });
+    canvas.getContext(
+        "webgl",
+        {
+            antialias: false,
+            alpha: false,
+            powerPreference:
+                "high-performance"
+        }
+    );
 
 if (!gl) {
-    throw new Error("WebGL no disponible");
+
+    throw new Error(
+        "WebGL no disponible"
+    );
+
 }
 
 
 // ============================================================
-// SHADER
+// VERTEX
 // ============================================================
 
 const vertexShaderSource = `
@@ -50,12 +62,20 @@ attribute vec2 position;
 void main() {
 
     gl_Position =
-        vec4(position, 0.0, 1.0);
+        vec4(
+            position,
+            0.0,
+            1.0
+        );
 
 }
 
 `;
 
+
+// ============================================================
+// FRAGMENT
+// ============================================================
 
 const fragmentShaderSource = `
 
@@ -64,17 +84,17 @@ precision highp float;
 uniform vec2 resolution;
 uniform float time;
 
-uniform vec2 disturbance;
-uniform float disturbanceEnergy;
+uniform vec2 photon;
+uniform float photonEnergy;
 
 uniform float coherence;
 uniform float excitation;
 uniform float phase;
 
 
-// ============================================================
+// ------------------------------------------------------------
 // HASH
-// ============================================================
+// ------------------------------------------------------------
 
 float hash(vec2 p) {
 
@@ -94,9 +114,9 @@ float hash(vec2 p) {
 }
 
 
-// ============================================================
+// ------------------------------------------------------------
 // NOISE
-// ============================================================
+// ------------------------------------------------------------
 
 float noise(vec2 p) {
 
@@ -143,24 +163,33 @@ float noise(vec2 p) {
 }
 
 
-// ============================================================
+// ------------------------------------------------------------
 // FBM
-// ============================================================
+// ------------------------------------------------------------
 
 float fbm(vec2 p) {
 
-    float value = 0.0;
-    float amplitude = 0.5;
+    float value =
+        0.0;
 
-    for (int i = 0; i < 7; i++) {
+    float amplitude =
+        0.5;
+
+    for (
+        int i = 0;
+        i < 6;
+        i++
+    ) {
 
         value +=
             amplitude *
             noise(p);
 
-        p *= 2.0;
+        p *=
+            2.0;
 
-        amplitude *= 0.5;
+        amplitude *=
+            0.5;
 
     }
 
@@ -169,66 +198,74 @@ float fbm(vec2 p) {
 }
 
 
-// ============================================================
-// MATTER FIELD
-// ============================================================
+// ------------------------------------------------------------
+// MATTER
+//
+// Mistura de:
+// microscopia
+// geografia
+// cristallografia
+// ------------------------------------------------------------
 
 float matterField(vec2 p) {
 
-    float a =
+    float continental =
         fbm(
-            p * 2.2 +
+            p * 1.8 +
             vec2(
-                time * 0.018,
-                -time * 0.011
+                time * 0.008,
+                -time * 0.006
             )
         );
 
-    float b =
+    float microscopic =
         fbm(
-            p * 5.0 -
+            p * 5.5 -
             vec2(
-                time * 0.026,
-                time * 0.014
+                time * 0.014,
+                time * 0.009
             )
         );
 
-    float c =
+    float crystalline =
         fbm(
-            p * 11.0 +
+            p * 15.0 +
             vec2(
-                -time * 0.012,
-                time * 0.019
+                -time * 0.007,
+                time * 0.012
             )
         );
 
     return
-        a * 0.58 +
-        b * 0.29 +
-        c * 0.13;
+        continental * 0.48 +
+        microscopic * 0.34 +
+        crystalline * 0.18;
 
 }
 
 
-// ============================================================
+// ------------------------------------------------------------
 // FLOW
-// ============================================================
+// ------------------------------------------------------------
 
 vec2 flow(vec2 p) {
 
-    float e = 0.003;
+    float e =
+        0.0025;
 
     float n =
         matterField(p);
 
     float nx =
         matterField(
-            p + vec2(e, 0.0)
+            p +
+            vec2(e, 0.0)
         );
 
     float ny =
         matterField(
-            p + vec2(0.0, e)
+            p +
+            vec2(0.0, e)
         );
 
     vec2 gradient =
@@ -246,7 +283,7 @@ vec2 flow(vec2 p) {
 
 
 // ============================================================
-// MAIN SHADER
+// MAIN
 // ============================================================
 
 void main() {
@@ -262,11 +299,12 @@ void main() {
     vec2 p =
         uv - 0.5;
 
-    p.x *= aspect;
+    p.x *=
+        aspect;
 
 
     // --------------------------------------------------------
-    // FLOW
+    // MATÈRIA
     // --------------------------------------------------------
 
     vec2 f =
@@ -276,174 +314,139 @@ void main() {
         p +
         f *
         (
-            0.035 +
+            0.025 +
             coherence * 0.035
         );
 
 
-    // --------------------------------------------------------
-    // DISTURBANCE
-    // --------------------------------------------------------
-
-    float d =
-        length(
-            p - disturbance
-        );
-
-    float local =
-        smoothstep(
-            0.38,
-            0.0,
-            d
-        );
-
-    local *=
-        disturbanceEnergy;
-
-    vec2 direction =
-        normalize(
-            p -
-            disturbance +
-            vec2(0.0001)
-        );
-
-    q +=
-        direction *
-        local *
-        0.035;
-
-
-    // --------------------------------------------------------
-    // MATTER
-    // --------------------------------------------------------
-
     float matter =
         matterField(q);
 
-    matter =
+
+    float continent =
         smoothstep(
-            0.36,
-            0.72,
+            0.30,
+            0.70,
             matter
         );
 
 
     // --------------------------------------------------------
-    // EXCITATION
+    // MICROESTRUCTURA
     // --------------------------------------------------------
 
-    float excitationWave =
-        sin(
-            length(q) * 34.0 -
-            time * 0.7 +
-            matter * 7.0 +
-            phase
-        );
-
-    excitationWave =
-        0.5 +
-        0.5 *
-        excitationWave;
-
-    excitationWave =
-        smoothstep(
-            0.78,
-            0.96,
-            excitationWave
-        );
-
-    excitationWave *=
-        excitation *
-        0.55;
-
-
-    // --------------------------------------------------------
-    // MEMBRANES
-    // --------------------------------------------------------
-
-    float membrane =
+    float micro =
         abs(
-            matterField(q * 2.0) -
+            matterField(q * 3.0) -
             matterField(
-                q * 2.0 +
-                vec2(0.03)
+                q * 3.0 +
+                vec2(0.018)
             )
         );
 
-    membrane =
+    micro =
         smoothstep(
-            0.025,
-            0.09,
-            membrane
+            0.018,
+            0.075,
+            micro
         );
-
-    membrane *=
-        0.28;
 
 
     // --------------------------------------------------------
-    // CRYSTALS
+    // CRISTALLS
     // --------------------------------------------------------
 
     vec2 crystalSpace =
-        q * 42.0;
+        q * 46.0;
 
     vec2 cell =
-        floor(crystalSpace);
+        floor(
+            crystalSpace
+        );
 
     vec2 localCell =
-        fract(crystalSpace) -
+        fract(
+            crystalSpace
+        ) -
         0.5;
 
-    float r =
+    float cellRandom =
         hash(cell);
 
     float crystal =
         smoothstep(
-            0.10,
-            0.015,
-            length(localCell)
+            0.095,
+            0.012,
+            length(
+                localCell
+            )
         );
 
     crystal *=
         step(
             0.90,
-            r
+            cellRandom
         );
 
-    crystal *=
-        0.25 +
-        excitation * 1.5;
+
+    // --------------------------------------------------------
+    // PHOTON
+    //
+    // El fenomen no és al punter.
+    // És un esdeveniment separat.
+    // --------------------------------------------------------
+
+    float photonDistance =
+        length(
+            p -
+            photon
+        );
+
+    float photonField =
+        smoothstep(
+            0.32,
+            0.0,
+            photonDistance
+        );
+
+    float photonWave =
+        sin(
+            photonDistance * 65.0 -
+            time * 3.0
+        );
+
+    photonWave =
+        0.5 +
+        0.5 *
+        photonWave;
+
+    photonWave *=
+        photonField *
+        photonEnergy;
 
 
     // --------------------------------------------------------
-    // FILAMENTS
+    // PHOTONIC LATTICE
     // --------------------------------------------------------
 
-    float filament =
+    float lattice =
         abs(
             sin(
-                q.x * 48.0 +
-                matter * 8.0
+                q.x * 72.0 +
+                q.y * 19.0
             )
         );
 
-    filament =
+    lattice =
         smoothstep(
-            0.91,
-            0.99,
-            filament
+            0.94,
+            0.995,
+            lattice
         );
 
-    filament *=
-        smoothstep(
-            0.25,
-            0.75,
-            matter
-        );
-
-    filament *=
-        0.18;
+    lattice *=
+        photonField *
+        0.7;
 
 
     // --------------------------------------------------------
@@ -451,7 +454,7 @@ void main() {
     // --------------------------------------------------------
 
     vec2 particleSpace =
-        q * 100.0;
+        q * 115.0;
 
     vec2 particleCell =
         floor(
@@ -471,103 +474,114 @@ void main() {
 
     float particle =
         smoothstep(
-            0.045,
+            0.05,
             0.0,
             length(
-                particleLocal -
-                f * 0.012
+                particleLocal
             )
         );
 
     particle *=
         step(
-            0.985,
+            0.987,
             particleRandom
         );
 
     particle *=
-        matter *
+        continent *
         (
-            0.25 +
-            excitation
+            0.18 +
+            excitation * 0.8
         );
 
 
     // --------------------------------------------------------
-    // COLOUR
+    // COLOUR FIELD
     // --------------------------------------------------------
 
     vec3 background =
         vec3(
-            0.008,
-            0.012,
-            0.011
+            0.004,
+            0.007,
+            0.006
         );
 
     vec3 mineral =
         vec3(
-            0.10,
-            0.19,
-            0.16
+            0.075,
+            0.15,
+            0.13
         );
 
-    vec3 living =
+    vec3 biological =
         vec3(
-            0.34,
-            0.62,
-            0.49
+            0.23,
+            0.48,
+            0.36
         );
 
-    vec3 crystalline =
+    vec3 crystalColor =
         vec3(
-            0.70,
-            0.84,
-            0.76
-        );
-
-    vec3 amber =
-        vec3(
+            0.58,
             0.78,
-            0.60,
-            0.34
+            0.70
+        );
+
+    vec3 photonColor =
+        vec3(
+            0.84,
+            0.94,
+            0.88
         );
 
 
     vec3 color =
         background;
 
+
     color +=
         mineral *
-        matter *
-        1.45;
+        continent *
+        1.7;
+
 
     color +=
-        living *
-        matter *
-        matter *
-        1.2;
+        biological *
+        continent *
+        continent *
+        1.25;
+
 
     color +=
-        living *
-        membrane;
+        biological *
+        micro *
+        0.32;
+
 
     color +=
-        crystalline *
+        crystalColor *
         crystal *
-        0.9;
+        (
+            0.35 +
+            excitation
+        );
+
 
     color +=
-        crystalline *
-        particle *
-        0.8;
+        crystalColor *
+        particle;
+
 
     color +=
-        amber *
-        excitationWave;
+        photonColor *
+        photonWave *
+        1.7;
+
 
     color +=
-        crystalline *
-        filament;
+        photonColor *
+        lattice *
+        0.45;
 
 
     // --------------------------------------------------------
@@ -576,19 +590,24 @@ void main() {
 
     float depth =
         smoothstep(
-            1.35,
+            1.25,
             0.05,
             length(p)
         );
 
     color *=
-        0.55 +
-        depth * 0.65;
+        0.50 +
+        depth * 0.70;
+
+
+    // --------------------------------------------------------
+    // SOFT GAMMA
+    // --------------------------------------------------------
 
     color =
         pow(
             color,
-            vec3(0.94)
+            vec3(0.92)
         );
 
 
@@ -607,7 +626,10 @@ void main() {
 // SHADER COMPILATION
 // ============================================================
 
-function compileShader(type, source) {
+function compileShader(
+    type,
+    source
+) {
 
     const shader =
         gl.createShader(type);
@@ -629,7 +651,9 @@ function compileShader(type, source) {
     ) {
 
         console.error(
-            gl.getShaderInfoLog(shader)
+            gl.getShaderInfoLog(
+                shader
+            )
         );
 
         throw new Error(
@@ -648,6 +672,7 @@ const vertexShader =
         gl.VERTEX_SHADER,
         vertexShaderSource
     );
+
 
 const fragmentShader =
     compileShader(
@@ -686,7 +711,9 @@ if (
 
 }
 
-gl.useProgram(program);
+gl.useProgram(
+    program
+);
 
 
 // ============================================================
@@ -754,16 +781,16 @@ const uTime =
         "time"
     );
 
-const uDisturbance =
+const uPhoton =
     gl.getUniformLocation(
         program,
-        "disturbance"
+        "photon"
     );
 
-const uDisturbanceEnergy =
+const uPhotonEnergy =
     gl.getUniformLocation(
         program,
-        "disturbanceEnergy"
+        "photonEnergy"
     );
 
 const uCoherence =
@@ -786,148 +813,357 @@ const uPhase =
 
 
 // ============================================================
-// POINTER / FIELD STATE
-// ============================================================
-
-let mouseX = 0;
-let mouseY = 0;
-
-let targetX = 0;
-let targetY = 0;
-
-let disturbanceEnergy = 0;
-
-let pointerEnergy = 0;
-
-let previousX = 0;
-let previousY = 0;
-
-
-// ============================================================
 // MATHEMATICAL STATE
 // ============================================================
 
-let density = 0.5;
-let symmetry = 0.5;
-let transition = 0.0;
+let density =
+    0.5;
 
-let coherence = 0.5;
-let excitation = 0.18;
+let symmetry =
+    0.5;
 
-let phase = 0;
+let transition =
+    0.0;
 
-let lastFormula = null;
+let coherence =
+    0.65;
+
+let excitation =
+    0.12;
+
+let phase =
+    0;
 
 
 // ============================================================
-// MUSICAL STATE
+// MUSICAL MODEL
+// ============================================================
+//
+// Circle of fifths:
+//
+// C
+// G
+// D
+// A
+// E
+// B
+// F#/Gb
+// Db
+// Ab
+// Eb
+// Bb
+// F
+//
+// The actual names are NOT displayed.
+// The structure exists internally.
 // ============================================================
 
-const tonalCentres = [
+const fifthCircle = [
 
     {
-        root: 220,
-        name: "A DÒRIC",
-        scale: [
-            0,
-            2,
-            3,
-            5,
-            7,
-            9,
-            10
-        ]
+        pc: 0,
+        ratio: 1
     },
 
     {
-        root: 196,
-        name: "G JÒNIC",
-        scale: [
-            0,
-            2,
-            4,
-            5,
-            7,
-            9,
-            11
-        ]
+        pc: 7,
+        ratio: 3 / 2
     },
 
     {
-        root: 174.61,
-        name: "F LIDI",
-        scale: [
-            0,
-            2,
-            4,
-            6,
-            7,
-            9,
-            11
-        ]
+        pc: 2,
+        ratio: 3 / 2
     },
 
     {
-        root: 146.83,
-        name: "D DÒRIC",
-        scale: [
-            0,
-            2,
-            3,
-            5,
-            7,
-            9,
-            10
-        ]
+        pc: 9,
+        ratio: 3 / 2
+    },
+
+    {
+        pc: 4,
+        ratio: 3 / 2
+    },
+
+    {
+        pc: 11,
+        ratio: 3 / 2
+    },
+
+    {
+        pc: 6,
+        ratio: 3 / 2
+    },
+
+    {
+        pc: 1,
+        ratio: 3 / 2
+    },
+
+    {
+        pc: 8,
+        ratio: 3 / 2
+    },
+
+    {
+        pc: 3,
+        ratio: 3 / 2
+    },
+
+    {
+        pc: 10,
+        ratio: 3 / 2
+    },
+
+    {
+        pc: 5,
+        ratio: 3 / 2
     }
 
 ];
 
 
-let tonalState =
-    tonalCentres[0];
+// ============================================================
+// NOTE STATE
+// ============================================================
 
-let musicalIndex = 0;
+let currentCircleIndex =
+    Math.floor(
+        Math.random() *
+        fifthCircle.length
+    );
 
-let nextNoteTime = 0;
+let targetCircleIndex =
+    currentCircleIndex;
 
-let lastNoteTime = -Infinity;
+let previousCircleIndex =
+    currentCircleIndex;
+
+let musicalDirection =
+    0;
+
+let harmonicPressure =
+    0;
+
+let phraseEnergy =
+    0.45;
+
+let phraseAge =
+    0;
+
+let restProbability =
+    0.22;
+
+let lastNoteTime =
+    -Infinity;
+
+let nextDecisionTime =
+    0;
 
 
 // ============================================================
-// AUDIO STATE
+// TONAL MODE
 // ============================================================
 
-let audio = null;
-
-let master = null;
-let filter = null;
-
-let bassOsc = null;
-let bassGain = null;
-
-let padOscA = null;
-let padOscB = null;
-let padGain = null;
-
-let airOsc = null;
-let airGain = null;
-
-let audioStarting = false;
+let mode =
+    "major";
 
 
 // ============================================================
-// START AUDIO
-//
-// IMPORTANT:
-//
-// Nothing is exposed as "audio active"
-// until the complete graph exists.
-//
-// This prevents:
-//     audio != null
-//     filter == null
-//
+// AUDIO
+// ============================================================
+
+let audio =
+    null;
+
+let master =
+    null;
+
+let compressor =
+    null;
+
+let filter =
+    null;
+
+let audioStarting =
+    false;
+
+
+// ============================================================
+// CONTINUOUS VOICES
+// ============================================================
+
+let bassOsc =
+    null;
+
+let bassGain =
+    null;
+
+let padA =
+    null;
+
+let padB =
+    null;
+
+let padGain =
+    null;
+
+let textureOsc =
+    null;
+
+let textureGain =
+    null;
+
+
+// ============================================================
+// PHOTON
+// ============================================================
+
+let photonX =
+    0.45;
+
+let photonY =
+    0.15;
+
+let photonEnergy =
+    0.0;
+
+let photonTargetX =
+    photonX;
+
+let photonTargetY =
+    photonY;
+
+
+// ============================================================
+// POINTER
+// ============================================================
+
+let pointerX =
+    0;
+
+let pointerY =
+    0;
+
+let previousPointerX =
+    0;
+
+let previousPointerY =
+    0;
+
+let pointerVelocity =
+    0;
+
+let pointerActive =
+    false;
+
+let pointerIntent =
+    0;
+
+
+// ============================================================
+// FORMULA
+// ============================================================
+
+const formulaLayer =
+    document.getElementById(
+        "formula-layer"
+    );
+
+const visualFormula =
+    document.getElementById(
+        "visual-formula"
+    );
+
+const musicalFormula =
+    document.getElementById(
+        "musical-formula"
+    );
+
+const stateSymbol =
+    document.getElementById(
+        "state-symbol"
+    );
+
+
+let formulaTimer =
+    null;
+
+
+// ============================================================
+// FORMULA HELPERS
+// ============================================================
+
+function showVisualFormula(
+    text
+) {
+
+    if (!visualFormula) {
+        return;
+    }
+
+    visualFormula.textContent =
+        text;
+
+    formulaLayer.classList.add(
+        "visible"
+    );
+
+    clearTimeout(
+        formulaTimer
+    );
+
+    formulaTimer =
+        setTimeout(
+            () => {
+
+                formulaLayer.classList.remove(
+                    "visible"
+                );
+
+            },
+            2200
+        );
+
+}
+
+
+function showMusicalFormula(
+    text
+) {
+
+    if (!musicalFormula) {
+        return;
+    }
+
+    musicalFormula.textContent =
+        text;
+
+    formulaLayer.classList.add(
+        "visible"
+    );
+
+    clearTimeout(
+        formulaTimer
+    );
+
+    formulaTimer =
+        setTimeout(
+            () => {
+
+                formulaLayer.classList.remove(
+                    "visible"
+                );
+
+            },
+            2200
+        );
+
+}
+
+
+// ============================================================
+// AUDIO START
 // ============================================================
 
 async function startAudio() {
@@ -939,14 +1175,7 @@ async function startAudio() {
             "suspended"
         ) {
 
-            try {
-                await audio.resume();
-            } catch (error) {
-                console.warn(
-                    "Audio resume failed",
-                    error
-                );
-            }
+            await audio.resume();
 
         }
 
@@ -959,7 +1188,8 @@ async function startAudio() {
         return;
     }
 
-    audioStarting = true;
+    audioStarting =
+        true;
 
 
     const AudioContext =
@@ -969,11 +1199,8 @@ async function startAudio() {
 
     if (!AudioContext) {
 
-        console.warn(
-            "Web Audio API no disponible"
-        );
-
-        audioStarting = false;
+        audioStarting =
+            false;
 
         return;
 
@@ -1001,6 +1228,29 @@ async function startAudio() {
 
 
         // ----------------------------------------------------
+        // COMPRESSOR
+        // ----------------------------------------------------
+
+        const newCompressor =
+            ctx.createDynamicsCompressor();
+
+        newCompressor.threshold.value =
+            -20;
+
+        newCompressor.knee.value =
+            18;
+
+        newCompressor.ratio.value =
+            3;
+
+        newCompressor.attack.value =
+            0.03;
+
+        newCompressor.release.value =
+            0.25;
+
+
+        // ----------------------------------------------------
         // FILTER
         // ----------------------------------------------------
 
@@ -1011,13 +1261,17 @@ async function startAudio() {
             "lowpass";
 
         newFilter.frequency.value =
-            900;
+            850;
 
         newFilter.Q.value =
-            0.45;
+            0.5;
 
 
         newFilter.connect(
+            newCompressor
+        );
+
+        newCompressor.connect(
             newMaster
         );
 
@@ -1052,114 +1306,127 @@ async function startAudio() {
         // PAD
         // ----------------------------------------------------
 
-        const newPadOscA =
+        const newPadA =
             ctx.createOscillator();
 
-        const newPadOscB =
+        const newPadB =
             ctx.createOscillator();
 
         const newPadGain =
             ctx.createGain();
 
-        newPadOscA.type =
-            "sine";
-
-        newPadOscB.type =
+        newPadA.type =
             "triangle";
+
+        newPadB.type =
+            "sine";
 
         newPadGain.gain.value =
             0.0001;
 
 
-        newPadOscA
+        newPadA
             .connect(newPadGain)
             .connect(newFilter);
 
-        newPadOscB
+        newPadB
             .connect(newPadGain)
             .connect(newFilter);
 
 
         // ----------------------------------------------------
-        // AIR
+        // AIR / TEXTURE
         // ----------------------------------------------------
 
-        const newAirOsc =
+        const newTextureOsc =
             ctx.createOscillator();
 
-        const newAirGain =
+        const newTextureGain =
             ctx.createGain();
 
-        newAirOsc.type =
+        newTextureOsc.type =
             "sine";
 
-        newAirGain.gain.value =
+        newTextureGain.gain.value =
             0.0001;
 
 
-        newAirOsc
-            .connect(newAirGain)
+        newTextureOsc
+            .connect(newTextureGain)
             .connect(newFilter);
 
 
         // ----------------------------------------------------
-        // START CONTINUOUS TEXTURES
+        // START
         // ----------------------------------------------------
 
         const now =
             ctx.currentTime;
 
+
+        const rootFrequency =
+            circleFrequency(
+                currentCircleIndex,
+                110
+            );
+
+
         newBassOsc.frequency.value =
-            tonalState.root / 2;
+            rootFrequency / 2;
 
-        newPadOscA.frequency.value =
-            tonalState.root;
 
-        newPadOscB.frequency.value =
-            tonalState.root * 1.5;
+        newPadA.frequency.value =
+            rootFrequency;
 
-        newAirOsc.frequency.value =
-            tonalState.root * 2;
+
+        newPadB.frequency.value =
+            rootFrequency * 1.5;
+
+
+        newTextureOsc.frequency.value =
+            rootFrequency * 2.0;
 
 
         newBassOsc.start(now);
-        newPadOscA.start(now);
-        newPadOscB.start(now);
-        newAirOsc.start(now);
+        newPadA.start(now);
+        newPadB.start(now);
+        newTextureOsc.start(now);
 
 
         // ----------------------------------------------------
-        // FADE IN
+        // VERY SLOW ENTRY
         // ----------------------------------------------------
 
         newMaster.gain
             .exponentialRampToValueAtTime(
-                0.16,
-                now + 4
+                0.13,
+                now + 5
             );
 
 
         newBassGain.gain
             .exponentialRampToValueAtTime(
-                0.035,
-                now + 3
-            );
-
-        newPadGain.gain
-            .exponentialRampToValueAtTime(
-                0.018,
+                0.022,
                 now + 4
             );
 
-        newAirGain.gain
+
+        newPadGain.gain
             .exponentialRampToValueAtTime(
-                0.004,
-                now + 5
+                0.012,
+                now + 6
+            );
+
+
+        newTextureGain.gain
+            .exponentialRampToValueAtTime(
+                0.002,
+                now + 7
             );
 
 
         // ----------------------------------------------------
-        // ONLY NOW EXPOSE AUDIO
+        // EXPOSE COMPLETE GRAPH
         // ----------------------------------------------------
 
         audio =
@@ -1167,6 +1434,9 @@ async function startAudio() {
 
         master =
             newMaster;
+
+        compressor =
+            newCompressor;
 
         filter =
             newFilter;
@@ -1177,79 +1447,77 @@ async function startAudio() {
         bassGain =
             newBassGain;
 
-        padOscA =
-            newPadOscA;
+        padA =
+            newPadA;
 
-        padOscB =
-            newPadOscB;
+        padB =
+            newPadB;
 
         padGain =
             newPadGain;
 
-        airOsc =
-            newAirOsc;
+        textureOsc =
+            newTextureOsc;
 
-        airGain =
-            newAirGain;
-
-
-        nextNoteTime =
-            now + 2.5;
+        textureGain =
+            newTextureGain;
 
 
-        showFormula(
-            "ρ → f(t)"
+        nextDecisionTime =
+            now + 3;
+
+
+        showMusicalFormula(
+            "∫ → ∴"
         );
 
 
     } catch (error) {
 
         console.error(
-            "No s'ha pogut iniciar l'àudio:",
+            "Audio:",
             error
         );
 
         try {
+
             await ctx.close();
+
         } catch (_) {}
 
     }
 
 
-    audioStarting = false;
+    audioStarting =
+        false;
 
 }
 
 
 // ============================================================
-// FREQUENCY FROM SCALE
+// CIRCLE FREQUENCY
 // ============================================================
 
-function frequencyFromScale(
-    root,
-    scale,
-    index
+function circleFrequency(
+    index,
+    base = 110
 ) {
 
-    const degree =
-        index %
-        scale.length;
+    const pc =
+        fifthCircle[
+            (
+                index +
+                fifthCircle.length
+            ) %
+            fifthCircle.length
+        ].pc;
 
-    const octave =
-        Math.floor(
-            index /
-            scale.length
-        );
-
-    const semitone =
-        scale[degree] +
-        octave * 12;
 
     return (
-        root *
+        base *
         Math.pow(
             2,
-            semitone / 12
+            pc / 12
         )
     );
 
@@ -1257,25 +1525,241 @@ function frequencyFromScale(
 
 
 // ============================================================
-// SHORT MELODIC NOTE
+// PITCH FROM CIRCLE
+// ============================================================
+
+function pitchFromCircle(
+    circleIndex,
+    degree,
+    octave = 0
+) {
+
+    const centre =
+        fifthCircle[
+            (
+                circleIndex +
+                fifthCircle.length
+            ) %
+            fifthCircle.length
+        ].pc;
+
+
+    // --------------------------------------------------------
+    // Major / minor interval logic
+    // --------------------------------------------------------
+
+    const majorScale = [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+    ];
+
+    const minorScale = [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+    ];
+
+
+    const scale =
+        mode === "major"
+            ? majorScale
+            : minorScale;
+
+
+    const interval =
+        scale[
+            degree %
+            scale.length
+        ];
+
+
+    return (
+        110 *
+        Math.pow(
+            2,
+            (
+                centre +
+                interval +
+                octave * 12
+            ) / 12
+        )
+    );
+
+}
+
+
+// ============================================================
+// MAJOR / MINOR LOGIC
 //
-// Each note owns its oscillator.
-// It starts and stops exactly once.
+// No és una decisió arbitrària.
+// Depèn de la relació entre graus.
+// ============================================================
+
+function determineMode() {
+
+    const distance =
+        Math.abs(
+            targetCircleIndex -
+            currentCircleIndex
+        );
+
+
+    const wrapped =
+        Math.min(
+            distance,
+            fifthCircle.length -
+            distance
+        );
+
+
+    const pressure =
+        harmonicPressure;
+
+
+    if (
+        (
+            wrapped <= 2 &&
+            pressure > 0.56
+        ) ||
+        (
+            symmetry >
+            density &&
+            coherence >
+            0.58
+        )
+    ) {
+
+        return "major";
+
+    }
+
+
+    if (
+        wrapped >= 4 ||
+        (
+            transition >
+            0.38 &&
+            excitation >
+            0.22
+        )
+    ) {
+
+        return "minor";
+
+    }
+
+
+    return mode;
+
+}
+
+
+// ============================================================
+// POINTER → MUSICAL SPACE
 //
+// Important:
+//
+// X determines tendency:
+//
+// left  → flatward
+// right → sharpward
+//
+// Angle determines which region
+// of the hidden circle is being approached.
+// ============================================================
+
+function updateMusicalIntent() {
+
+    const angle =
+        Math.atan2(
+            pointerY,
+            pointerX
+        );
+
+
+    let normalized =
+        (
+            angle +
+            Math.PI
+        ) /
+        (
+            Math.PI * 2
+        );
+
+
+    normalized =
+        (
+            normalized +
+            0.5
+        ) %
+        1;
+
+
+    const sector =
+        Math.floor(
+            normalized *
+            fifthCircle.length
+        );
+
+
+    targetCircleIndex =
+        sector;
+
+
+    musicalDirection =
+        Math.sign(
+            pointerX
+        );
+
+
+    harmonicPressure =
+        Math.min(
+            1,
+            (
+                0.25 +
+                pointerVelocity *
+                0.35 +
+                pointerIntent *
+                0.45
+            )
+        );
+
+
+    mode =
+        determineMode();
+
+}
+
+
+// ============================================================
+// AUDIO NOTE
 // ============================================================
 
 function playNote(
     frequency,
     duration,
-    velocity
+    velocity,
+    type = "sine"
 ) {
 
     if (
         !audio ||
-        audio.state !== "running" ||
+        audio.state !==
+        "running" ||
         !filter
     ) {
+
         return;
+
     }
 
 
@@ -1291,13 +1775,18 @@ function playNote(
 
 
     oscillator.type =
-        "sine";
+        type;
 
-    oscillator.frequency.setValueAtTime(
-        frequency,
-        now
-    );
+    oscillator.frequency
+        .setValueAtTime(
+            frequency,
+            now
+        );
 
+
+    // --------------------------------------------------------
+    // Very soft attack
+    // --------------------------------------------------------
 
     gain.gain.setValueAtTime(
         0.0001,
@@ -1305,19 +1794,25 @@ function playNote(
     );
 
 
-    gain.gain.exponentialRampToValueAtTime(
-        Math.max(
-            0.001,
-            velocity
-        ),
-        now + 0.08
-    );
+    gain.gain
+        .exponentialRampToValueAtTime(
+            Math.max(
+                0.001,
+                velocity
+            ),
+            now + 0.12
+        );
 
 
-    gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + duration
-    );
+    // --------------------------------------------------------
+    // Organic release
+    // --------------------------------------------------------
+
+    gain.gain
+        .exponentialRampToValueAtTime(
+            0.0001,
+            now + duration
+        );
 
 
     oscillator
@@ -1325,278 +1820,520 @@ function playNote(
         .connect(filter);
 
 
-    oscillator.start(now);
+    oscillator.start(
+        now
+    );
 
     oscillator.stop(
-        now + duration + 0.05
+        now +
+        duration +
+        0.08
     );
 
 }
 
 
 // ============================================================
-// MUSICAL DISCOVERY
+// COMPOSITION ENGINE
+//
+// No sequence.
+// A recursive decision system.
+//
+// State → tendency → interval → rest → return.
 // ============================================================
 
-function musicalDiscovery() {
+function composeMoment() {
 
     if (
         !audio ||
-        !filter
+        audio.state !==
+        "running"
     ) {
+
         return;
-    }
-
-
-    const scale =
-        tonalState.scale;
-
-
-    const degree =
-        Math.floor(
-            density *
-            scale.length
-        )
-        %
-        scale.length;
-
-
-    const octaveLift =
-        coherence > 0.78
-            ? 12
-            : 0;
-
-
-    const note =
-        frequencyFromScale(
-            tonalState.root,
-            scale,
-            degree
-        ) *
-        Math.pow(
-            2,
-            octaveLift / 12
-        );
-
-
-    const velocity =
-        0.010 +
-        coherence * 0.008;
-
-
-    const duration =
-        coherence > 0.78
-            ? 1.8
-            : 1.35;
-
-
-    playNote(
-        note,
-        duration,
-        velocity
-    );
-
-
-    musicalIndex++;
-
-
-    if (
-        musicalIndex % 3 === 0
-    ) {
-
-        showFormula(
-            "ΔE → ♪"
-        );
-
-    } else {
-
-        showFormula(
-            "ρ + ∇ρ → excitation"
-        );
 
     }
-
-
-    // --------------------------------------------------------
-    // TONAL TRANSITION
-    // --------------------------------------------------------
-
-    if (
-        coherence > 0.76 &&
-        transition > 0.42 &&
-        Math.random() > 0.90
-    ) {
-
-        changeTonalCentre();
-
-    }
-
-}
-
-
-// ============================================================
-// TONAL CENTRE
-// ============================================================
-
-function changeTonalCentre() {
-
-    if (!audio) {
-        return;
-    }
-
-
-    const candidates =
-        tonalCentres.filter(
-            centre =>
-                centre !== tonalState
-        );
-
-
-    const next =
-        candidates[
-            Math.floor(
-                Math.random() *
-                candidates.length
-            )
-        ];
-
-
-    tonalState =
-        next;
 
 
     const now =
         audio.currentTime;
 
 
-    if (bassOsc) {
+    if (
+        now -
+        lastNoteTime <
+        1.2
+    ) {
 
-        bassOsc.frequency
-            .linearRampToValueAtTime(
-                next.root / 2,
-                now + 4
-            );
+        return;
 
     }
 
 
-    showFormula(
-        "C(t) → " +
-        next.name
+    // --------------------------------------------------------
+    // REST
+    // --------------------------------------------------------
+
+    const dynamicRest =
+        restProbability +
+        (
+            1 -
+            coherence
+        ) * 0.16;
+
+
+    if (
+        Math.random() <
+        dynamicRest
+    ) {
+
+        phraseEnergy *=
+            0.92;
+
+        lastNoteTime =
+            now;
+
+        nextDecisionTime =
+            now +
+            1.5 +
+            Math.random() * 3;
+
+
+        showMusicalFormula(
+            "∅"
+        );
+
+        return;
+
+    }
+
+
+    // --------------------------------------------------------
+    // HARMONIC MOVEMENT
+    // --------------------------------------------------------
+
+    const distance =
+        targetCircleIndex -
+        currentCircleIndex;
+
+
+    const wrappedForward =
+        (
+            distance +
+            fifthCircle.length
+        ) %
+        fifthCircle.length;
+
+
+    const wrappedBackward =
+        (
+            -distance +
+            fifthCircle.length
+        ) %
+        fifthCircle.length;
+
+
+    // Prefer the shorter route.
+    // Directional tendency breaks ties.
+
+    let step;
+
+
+    if (
+        wrappedForward <
+        wrappedBackward
+    ) {
+
+        step =
+            1;
+
+    } else if (
+        wrappedBackward <
+        wrappedForward
+    ) {
+
+        step =
+            -1;
+
+    } else {
+
+        step =
+            musicalDirection >= 0
+                ? 1
+                : -1;
+
+    }
+
+
+    // Sometimes remain on current point.
+    if (
+        Math.random() <
+        0.28
+    ) {
+
+        step =
+            0;
+
+    }
+
+
+    previousCircleIndex =
+        currentCircleIndex;
+
+
+    currentCircleIndex =
+        (
+            currentCircleIndex +
+            step +
+            fifthCircle.length
+        ) %
+        fifthCircle.length;
+
+
+    // --------------------------------------------------------
+    // MODE
+    // --------------------------------------------------------
+
+    mode =
+        determineMode();
+
+
+    // --------------------------------------------------------
+    // DEGREE
+    //
+    // Musical logic rather than random notes.
+    // --------------------------------------------------------
+
+    let degree;
+
+
+    const r =
+        Math.random();
+
+
+    if (
+        r < 0.34
+    ) {
+
+        degree =
+            0;
+
+    } else if (
+        r < 0.54
+    ) {
+
+        degree =
+            2;
+
+    } else if (
+        r < 0.73
+    ) {
+
+        degree =
+            4;
+
+    } else if (
+        r < 0.88
+    ) {
+
+        degree =
+            3;
+
+    } else {
+
+        degree =
+            1;
+
+    }
+
+
+    // --------------------------------------------------------
+    // Phrase memory
+    // --------------------------------------------------------
+
+    phraseAge++;
+
+
+    if (
+        phraseAge >
+        7
+    ) {
+
+        degree =
+            Math.random() <
+            0.6
+                ? 0
+                : 4;
+
+        phraseAge =
+            0;
+
+    }
+
+
+    // --------------------------------------------------------
+    // OCTAVE
+    // --------------------------------------------------------
+
+    let octave =
+        0;
+
+
+    if (
+        excitation >
+        0.55
+    ) {
+
+        octave =
+            Math.random() <
+            0.35
+                ? 1
+                : 0;
+
+    }
+
+
+    if (
+        coherence <
+        0.45
+    ) {
+
+        octave =
+            Math.random() <
+            0.5
+                ? -1
+                : 0;
+
+    }
+
+
+    const frequency =
+        pitchFromCircle(
+            currentCircleIndex,
+            degree,
+            octave
+        );
+
+
+    // --------------------------------------------------------
+    // DURATION
+    // --------------------------------------------------------
+
+    const duration =
+        coherence >
+        0.72
+
+            ? 2.4 +
+              Math.random() * 1.6
+
+            : 1.5 +
+              Math.random() * 1.5;
+
+
+    // --------------------------------------------------------
+    // VELOCITY
+    // --------------------------------------------------------
+
+    const velocity =
+        0.008 +
+        coherence * 0.010 +
+        phraseEnergy * 0.006;
+
+
+    playNote(
+        frequency,
+        duration,
+        velocity,
+        Math.random() <
+        0.18
+            ? "triangle"
+            : "sine"
     );
+
+
+    lastNoteTime =
+        now;
+
+
+    nextDecisionTime =
+        now +
+        duration *
+        (
+            0.65 +
+            Math.random() *
+            0.55
+        );
+
+
+    phraseEnergy =
+        Math.min(
+            1,
+            phraseEnergy +
+            0.04
+        );
+
+
+    // --------------------------------------------------------
+    // Harmonic event → photon
+    // --------------------------------------------------------
+
+    if (
+        step !== 0 &&
+        Math.random() <
+        0.48
+    ) {
+
+        triggerPhoton();
+
+    }
+
+
+    // --------------------------------------------------------
+    // Formula
+    // --------------------------------------------------------
+
+    if (
+        step > 0
+    ) {
+
+        showMusicalFormula(
+            "→ ♯"
+        );
+
+    } else if (
+        step < 0
+    ) {
+
+        showMusicalFormula(
+            "← ♭"
+        );
+
+    } else {
+
+        showMusicalFormula(
+            "∴"
+        );
+
+    }
 
 }
 
 
 // ============================================================
-// FORMULA
+// PHOTON
+//
+// Never occupies pointer position.
+// It is displaced from the user's intention.
 // ============================================================
 
-function showFormula(text) {
+function triggerPhoton() {
 
-    const layer =
-        document.getElementById(
-            "formula-layer"
-        );
+    const angle =
+        Math.random() *
+        Math.PI *
+        2;
 
-    const formula =
-        document.getElementById(
-            "formula"
-        );
 
-    const state =
-        document.getElementById(
-            "musical-state"
-        );
+    const radius =
+        0.28 +
+        Math.random() *
+        0.38;
+
+
+    let x =
+        Math.cos(angle) *
+        radius;
+
+    let y =
+        Math.sin(angle) *
+        radius;
+
+
+    // --------------------------------------------------------
+    // Never too close to pointer.
+    // --------------------------------------------------------
+
+    const dx =
+        x -
+        pointerX;
+
+    const dy =
+        y -
+        pointerY;
 
 
     if (
-        !layer ||
-        !formula ||
-        !state
+        Math.sqrt(
+            dx * dx +
+            dy * dy
+        ) <
+        0.24
     ) {
-        return;
+
+        x =
+            -x;
+
+        y =
+            -y;
+
     }
 
 
-    formula.textContent =
-        text;
+    photonTargetX =
+        x;
 
-    state.textContent =
-        tonalState.name;
+    photonTargetY =
+        y;
 
 
-    layer.classList.add(
-        "visible"
+    photonEnergy =
+        0.0;
+
+
+    // Slowly emerges.
+    requestAnimationFrame(
+        () => {
+
+            photonEnergy =
+                0.85;
+
+        }
     );
 
 
-    clearTimeout(
-        lastFormula
+    showVisualFormula(
+        "∇ · Φ = ΔE"
     );
-
-
-    lastFormula =
-        setTimeout(
-            () => {
-
-                layer.classList.remove(
-                    "visible"
-                );
-
-            },
-            1800
-        );
 
 }
 
 
 // ============================================================
 // MATHEMATICS
+//
+// Independent from music.
 // ============================================================
 
 function updateMathematics() {
 
     const t =
         performance.now() *
-        0.0001;
+        0.00008;
 
 
     density =
         0.5 +
-        0.25 *
+        0.22 *
         Math.sin(
-            t * 1.7
-        ) +
-        pointerEnergy *
-        0.25;
-
-
-    density =
-        Math.max(
-            0,
-            Math.min(
-                1,
-                density
-            )
+            t * 1.31
         );
 
 
     symmetry =
         0.5 +
-        0.35 *
+        0.28 *
         Math.cos(
-            t * 0.91
-        );
-
-
-    symmetry =
-        Math.max(
-            0,
-            Math.min(
-                1,
-                symmetry
-            )
+            t * 0.73
         );
 
 
@@ -1613,50 +2350,61 @@ function updateMathematics() {
 
 
     excitation +=
-        pointerEnergy *
-        0.012;
+        photonEnergy *
+        0.0008;
 
 
     excitation *=
-        0.994;
+        0.997;
 
 
     excitation =
         Math.max(
-            0.05,
+            0.035,
             Math.min(
-                excitation,
-                1
+                1,
+                excitation
             )
         );
 
 
     phase +=
-        0.002 +
-        excitation * 0.004;
+        0.0015 +
+        excitation *
+        0.002;
+
+
+    phraseEnergy *=
+        0.999;
+
+
+    photonEnergy *=
+        0.985;
 
 }
 
 
 // ============================================================
-// AUDIO UPDATE
+// AUDIO TEXTURE UPDATE
+//
+// The harmonic centre moves continuously,
+// but never creates a permanent drone.
 // ============================================================
 
-function updateMusic() {
+function updateAudioTexture() {
 
     if (
         !audio ||
-        audio.state !== "running" ||
-        !filter ||
-        !bassGain ||
-        !padGain ||
-        !airGain ||
+        audio.state !==
+        "running" ||
         !bassOsc ||
-        !padOscA ||
-        !padOscB ||
-        !airOsc
+        !padA ||
+        !padB ||
+        !textureOsc
     ) {
+
         return;
+
     }
 
 
@@ -1664,124 +2412,128 @@ function updateMusic() {
         audio.currentTime;
 
 
-    // --------------------------------------------------------
-    // FILTER
-    // --------------------------------------------------------
-
-    const targetFilter =
-        520 +
-        coherence * 780 +
-        excitation * 520;
-
-
-    filter.frequency
-        .linearRampToValueAtTime(
-            targetFilter,
-            now + 0.35
+    const root =
+        circleFrequency(
+            currentCircleIndex,
+            110
         );
 
 
     // --------------------------------------------------------
-    // CONTINUOUS TEXTURES
+    // Harmonic root
     // --------------------------------------------------------
+
+    bassOsc.frequency
+        .linearRampToValueAtTime(
+            root / 2,
+            now + 2.5
+        );
+
+
+    // --------------------------------------------------------
+    // Mode changes colour the texture.
+    // --------------------------------------------------------
+
+    const third =
+        mode === "major"
+            ? 4
+            : 3;
+
+
+    const fifth =
+        7;
+
+
+    const chordRoot =
+        root;
+
+
+    const thirdFrequency =
+        chordRoot *
+        Math.pow(
+            2,
+            third / 12
+        );
+
+
+    const fifthFrequency =
+        chordRoot *
+        Math.pow(
+            2,
+            fifth / 12
+        );
+
+
+    padA.frequency
+        .linearRampToValueAtTime(
+            chordRoot,
+            now + 3
+        );
+
+
+    padB.frequency
+        .linearRampToValueAtTime(
+            fifthFrequency,
+            now + 3.5
+        );
+
+
+    textureOsc.frequency
+        .linearRampToValueAtTime(
+            thirdFrequency * 2,
+            now + 4
+        );
+
+
+    // --------------------------------------------------------
+    // Dynamic silence
+    // --------------------------------------------------------
+
+    const body =
+        0.004 +
+        coherence * 0.008;
+
 
     bassGain.gain
         .linearRampToValueAtTime(
-            0.025 +
-            coherence * 0.025,
-            now + 0.5
+            body,
+            now + 1.2
         );
 
 
     padGain.gain
         .linearRampToValueAtTime(
-            0.010 +
-            coherence * 0.010,
-            now + 0.7
-        );
-
-
-    airGain.gain
-        .linearRampToValueAtTime(
-            0.001 +
-            excitation * 0.004,
-            now + 0.9
-        );
-
-
-    // --------------------------------------------------------
-    // TONAL BODY
-    // --------------------------------------------------------
-
-    bassOsc.frequency
-        .linearRampToValueAtTime(
-            tonalState.root / 2,
-            now + 1.5
-        );
-
-
-    const chordDegree =
-        Math.floor(
-            symmetry * 5
-        );
-
-
-    const chordRoot =
-        frequencyFromScale(
-            tonalState.root,
-            tonalState.scale,
-            chordDegree
-        );
-
-
-    padOscA.frequency
-        .linearRampToValueAtTime(
-            chordRoot,
-            now + 1.8
-        );
-
-
-    padOscB.frequency
-        .linearRampToValueAtTime(
-            chordRoot * 1.5,
-            now + 1.8
-        );
-
-
-    airOsc.frequency
-        .linearRampToValueAtTime(
-            chordRoot * 2,
+            0.004 +
+            coherence * 0.006,
             now + 2
         );
 
 
+    textureGain.gain
+        .linearRampToValueAtTime(
+            0.0005 +
+            excitation * 0.002,
+            now + 3
+        );
+
+
     // --------------------------------------------------------
-    // MELODY
-    //
-    // Minimum interval deliberately enforced.
+    // Filter breathing
     // --------------------------------------------------------
 
-    if (
-        now >= nextNoteTime &&
-        coherence > 0.56 &&
-        now - lastNoteTime > 1.05
-    ) {
+    if (filter) {
 
-        musicalDiscovery();
-
-
-        const duration =
-            coherence > 0.78
-                ? 2.4
-                : 1.7;
+        const frequency =
+            420 +
+            coherence * 1050 +
+            excitation * 750;
 
 
-        nextNoteTime =
-            now +
-            duration;
-
-        lastNoteTime =
-            now;
+        filter.frequency
+            .linearRampToValueAtTime(
+                frequency,
+                now + 1.5
+            );
 
     }
 
@@ -1808,28 +2560,29 @@ window.addEventListener(
             height;
 
 
-        targetX =
+        pointerX =
             event.clientX /
             width -
             0.5;
 
-        targetY =
+
+        pointerY =
             0.5 -
             event.clientY /
             height;
 
 
-        targetX *=
+        pointerX *=
             aspect;
 
 
         const dx =
             event.clientX -
-            previousX;
+            previousPointerX;
 
         const dy =
             event.clientY -
-            previousY;
+            previousPointerY;
 
 
         const velocity =
@@ -1839,30 +2592,34 @@ window.addEventListener(
             );
 
 
-        pointerEnergy =
+        pointerVelocity =
             Math.min(
-                velocity / 45,
-                1
+                1,
+                velocity / 55
             );
 
 
-        previousX =
+        pointerIntent =
+            Math.min(
+                1,
+                pointerIntent +
+                pointerVelocity *
+                0.08
+            );
+
+
+        previousPointerX =
             event.clientX;
 
-        previousY =
+        previousPointerY =
             event.clientY;
 
 
-        disturbanceEnergy +=
-            pointerEnergy *
-            0.06;
+        pointerActive =
+            true;
 
 
-        disturbanceEnergy =
-            Math.min(
-                disturbanceEnergy,
-                1
-            );
+        updateMusicalIntent();
 
     },
     {
@@ -1872,10 +2629,22 @@ window.addEventListener(
 
 
 // ============================================================
-// FIRST USER GESTURE
-//
-// This is the ONLY place where audio starts.
-// Works with mouse and touch.
+// POINTER REST
+// ============================================================
+
+window.addEventListener(
+    "pointerleave",
+    () => {
+
+        pointerActive =
+            false;
+
+    }
+);
+
+
+// ============================================================
+// FIRST GESTURE
 // ============================================================
 
 window.addEventListener(
@@ -1900,7 +2669,8 @@ function resize() {
 
     const dpr =
         Math.min(
-            window.devicePixelRatio || 1,
+            window.devicePixelRatio ||
+            1,
             2
         );
 
@@ -1953,52 +2723,66 @@ function render(now) {
         (
             now -
             start
-        ) / 1000;
+        ) /
+        1000;
 
 
     // --------------------------------------------------------
-    // MATTER
+    // MATHEMATICS
     // --------------------------------------------------------
 
     updateMathematics();
 
 
     // --------------------------------------------------------
-    // FIELD INERTIA
+    // USER INTENTION DECAY
     // --------------------------------------------------------
 
-    mouseX +=
+    pointerIntent *=
+        0.994;
+
+    pointerVelocity *=
+        0.96;
+
+
+    // --------------------------------------------------------
+    // PHOTON MOTION
+    // --------------------------------------------------------
+
+    photonX +=
         (
-            targetX -
-            mouseX
+            photonTargetX -
+            photonX
         ) *
-        0.025;
+        0.012;
 
 
-    mouseY +=
+    photonY +=
         (
-            targetY -
-            mouseY
+            photonTargetY -
+            photonY
         ) *
-        0.025;
-
-
-    // --------------------------------------------------------
-    // DECAY
-    // --------------------------------------------------------
-
-    disturbanceEnergy *=
-        0.985;
-
-    pointerEnergy *=
-        0.93;
+        0.012;
 
 
     // --------------------------------------------------------
     // AUDIO
     // --------------------------------------------------------
 
-    updateMusic();
+    updateAudioTexture();
+
+
+    if (
+        audio &&
+        audio.state ===
+        "running" &&
+        now / 1000 >=
+        nextDecisionTime
+    ) {
+
+        composeMoment();
+
+    }
 
 
     // --------------------------------------------------------
@@ -2010,26 +2794,31 @@ function render(now) {
         elapsed
     );
 
+
     gl.uniform2f(
-        uDisturbance,
-        mouseX,
-        mouseY
+        uPhoton,
+        photonX,
+        photonY
     );
 
+
     gl.uniform1f(
-        uDisturbanceEnergy,
-        disturbanceEnergy
+        uPhotonEnergy,
+        photonEnergy
     );
+
 
     gl.uniform1f(
         uCoherence,
         coherence
     );
 
+
     gl.uniform1f(
         uExcitation,
         excitation
     );
+
 
     gl.uniform1f(
         uPhase,
@@ -2057,51 +2846,59 @@ requestAnimationFrame(
 
 
 // ============================================================
-// STATE LABEL
+// STATE SYMBOL
+//
+// No descriptive text.
 // ============================================================
 
 setInterval(
     () => {
 
-        const label =
-            document.getElementById(
-                "state-name"
-            );
-
-
-        if (!label) {
+        if (!stateSymbol) {
             return;
         }
 
 
         if (
-            coherence > 0.78
+            photonEnergy >
+            0.45
         ) {
 
-            label.textContent =
-                "COHERENT";
+            stateSymbol.textContent =
+                "◌";
 
         } else if (
-            excitation > 0.55
+            coherence >
+            0.78
         ) {
 
-            label.textContent =
-                "EXCITED";
+            stateSymbol.textContent =
+                "∴";
 
         } else if (
-            transition > 0.45
+            transition >
+            0.35
         ) {
 
-            label.textContent =
-                "TRANSITION";
+            stateSymbol.textContent =
+                "∿";
+
+        } else if (
+            pointerActive &&
+            pointerIntent >
+            0.25
+        ) {
+
+            stateSymbol.textContent =
+                "·";
 
         } else {
 
-            label.textContent =
-                "OBSERVANT";
+            stateSymbol.textContent =
+                "∅";
 
         }
 
     },
-    800
+    700
 );
