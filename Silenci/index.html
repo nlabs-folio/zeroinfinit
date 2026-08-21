@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>RENTAT DE CERVELL</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<main class="scene">
+
+    <div class="washing-machine">
+
+        <div class="machine-top">
+
+            <div class="brand">
+                RENTAT DE CERVELL<span></span>
+            </div>
+
+            <div class="controls">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+        </div>
+
+
+        <div class="door">
+
+            <div class="glass">
+
+                <div class="drum">
+
+
+                    <!-- =====================================
+                         FILAMENTS ORGÀNICS
+                    ====================================== -->
+
+                    <div class="organic-debris">
+
+                        <span class="filament filament-1"></span>
+                        <span class="filament filament-2"></span>
+                        <span class="filament filament-3"></span>
+                        <span class="filament filament-4"></span>
+                        <span class="filament filament-5"></span>
+                        <span class="filament filament-6"></span>
+
+                        <span class="organic-piece piece-1"></span>
+                        <span class="organic-piece piece-2"></span>
+                        <span class="organic-piece piece-3"></span>
+
+                    </div>
+
+
+                    <!-- =====================================
+                         CERVELL
+                    ====================================== -->
+
+                    <div class="brain">
+
+                        <svg
+                            class="brain-svg"
+                            viewBox="0 0 360 230"
+                            xmlns="http://www.w3.org/2000/svg"
+                            aria-label="Cervell humà"
+                        >
+
+                            <defs>
+
+                                <radialGradient
+                                    id="brainVolume"
+                                    cx="30%"
+                                    cy="22%"
+                                    r="82%"
+                                >
+
+                                    <stop
+                                        offset="0%"
+                                        stop-color="#ffb6a9"
+                                    />
+
+                                    <stop
+                                        offset="24%"
+                                        stop-color="#e87873"
+                                    />
+
+                                    <stop
+                                        offset="52%"
+                                        stop-color="#bd414d"
+                                    />
+
+                                    <stop
+                                        offset="76%"
+                                        stop-color="#7c2639"
+                                    />
+
+                                    <stop
+                                        offset="100%"
+                                        stop-color="#351421"
+                                    />
+
+                                </radialGradient>
+
+                                <filter id="brainShadow">
+
+                                    <feDropShadow
+                                        dx="7"
+                                        dy="9"
+                                        stdDeviation="2"
+                                        flood-color="#09070a"
+                                        flood-opacity=".95"
+                                    />
+
+                                </filter>
+
+                            </defs>
+
+
+                            <!-- MASSA CEREBRAL -->
+
+                            <path
+                                class="brain-mass"
+                                d="
+                                    M43 151
+
+                                    C24 139 18 119 27 99
+                                    C17 78 29 55 50 48
+                                    C52 28 70 15 91 18
+                                    C108 2 134 8 146 22
+                                    C164 7 191 7 207 22
+                                    C228 7 255 13 263 31
+                                    C288 26 308 43 308 65
+                                    C332 72 340 96 327 115
+                                    C339 137 325 158 306 163
+
+                                    C303 185 282 200 260 196
+                                    C243 217 214 218 198 201
+                                    C177 216 151 216 135 201
+                                    C115 214 87 208 77 190
+                                    C55 190 39 176 43 151
+
+                                    Z
+                                "
+                                fill="url(#brainVolume)"
+                                stroke="#171017"
+                                stroke-width="8"
+                                stroke-linejoin="round"
+                                filter="url(#brainShadow)"
+                            />
+
+
+                            <!-- FISSURA CENTRAL -->
+
+                            <path
+                                d="
+                                    M178 22
+                                    C171 51 177 73 174 98
+                                    C171 124 178 149 174 177
+                                    C172 190 169 198 166 205
+                                "
+                                fill="none"
+                                stroke="#3a1020"
+                                stroke-width="9"
+                                stroke-linecap="round"
+                            />
+
+
+                            <!-- GYRI ESQUERRA -->
+
+                            <g
+                                class="cortex-left"
+                                fill="none"
+                                stroke="#64152c"
+                                stroke-width="7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+
+                                <path d="
+                                    M48 69
+                                    C58 58 69 54 79 57
+                                    C91 61 96 51 104 42
+                                    C113 31 127 29 140 36
+                                    C145 39 148 42 151 46
+                                "/>
+
+                                <path d="
+                                    M35 91
+                                    C46 80 57 76 67 80
+                                    C77 84 84 78 90 69
+                                    C97 59 108 57 118 62
+                                    C126 66 132 61 138 55
+                                "/>
+
+                                <path d="
+                                    M34 116
+                                    C45 104 56 99 66 104
+                                    C77 110 82 104 89 96
+                                    C98 86 108 83 118 88
+                                    C126 92 134 87 141 80
+                                "/>
+
+                                <path d="
+                                    M43 143
+                                    C53 133 64 127 74 132
+                                    C84 137 91 133 97 124
+                                    C105 113 116 109 126 115
+                                    C134 120 141 114 147 106
+                                "/>
+
+                                <path d="
+                                    M58 168
+                                    C68 157 78 151 87 156
+                                    C97 162 103 156 109 148
+                                    C117 138 128 134 138 139
+                                    C143 142 148 139 153 133
+                                "/>
+
+                                <path d="
+                                    M82 188
+                                    C91 177 100 172 108 176
+                                    C117 181 123 176 129 168
+                                    C136 159 145 156 154 161
+                                "/>
+
+                            </g>
+
+
+                            <!-- GYRI DRETA -->
+
+                            <g
+                                class="cortex-right"
+                                fill="none"
+                                stroke="#64152c"
+                                stroke-width="7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+
+                                <path d="
+                                    M204 44
+                                    C213 34 224 30 235 34
+                                    C245 37 249 47 256 53
+                                    C265 61 276 58 285 63
+                                    C291 66 296 70 301 76
+                                "/>
+
+                                <path d="
+                                    M191 57
+                                    C201 64 211 65 219 60
+                                    C228 55 236 60 241 68
+                                    C248 79 258 81 267 77
+                                    C277 73 287 78 295 87
+                                "/>
+
+                                <path d="
+                                    M188 80
+                                    C198 87 208 89 216 84
+                                    C225 79 233 84 239 93
+                                    C246 103 256 105 265 100
+                                    C275 95 286 101 295 111
+                                "/>
+
+                                <path d="
+                                    M186 104
+                                    C196 111 206 114 214 109
+                                    C223 104 231 110 237 119
+                                    C244 130 254 132 263 127
+                                    C274 122 286 128 301 140
+                                "/>
+
+                                <path d="
+                                    M186 129
+                                    C196 136 205 139 214 134
+                                    C223 129 231 135 237 145
+                                    C244 156 254 158 263 153
+                                    C273 148 282 153 292 162
+                                "/>
+
+                                <path d="
+                                    M185 154
+                                    C195 161 204 164 212 159
+                                    C221 154 228 160 234 170
+                                    C241 180 251 183 260 178
+                                    C267 174 274 178 280 184
+                                "/>
+
+                            </g>
+
+
+                            <!-- SULCI FINS -->
+
+                            <g
+                                class="secondary-sulci"
+                                fill="none"
+                                stroke="#ff9a8d"
+                                stroke-width="3"
+                                stroke-linecap="round"
+                                opacity=".7"
+                            >
+
+                                <path d="M58 61 C65 66 71 65 77 60" />
+                                <path d="M83 48 C91 54 97 51 102 45" />
+
+                                <path d="M48 84 C55 90 62 89 68 83" />
+                                <path d="M73 74 C80 79 86 76 91 70" />
+
+                                <path d="M51 108 C58 114 65 113 71 107" />
+                                <path d="M77 98 C84 103 89 100 94 95" />
+
+                                <path d="M58 136 C65 142 72 140 77 134" />
+                                <path d="M82 126 C89 132 95 128 100 123" />
+
+                                <path d="M72 160 C79 166 86 163 91 157" />
+                                <path d="M96 150 C103 155 109 152 114 147" />
+
+                                <path d="M101 180 C108 185 114 181 119 175" />
+
+                                <path d="M216 48 C223 54 229 52 234 46" />
+                                <path d="M243 56 C250 62 256 60 261 55" />
+
+                                <path d="M205 72 C212 78 218 76 223 70" />
+                                <path d="M233 78 C240 84 246 81 251 76" />
+
+                                <path d="M207 96 C214 102 221 100 226 94" />
+                                <path d="M236 105 C243 111 249 108 254 103" />
+
+                                <path d="M205 121 C212 127 219 125 224 119" />
+                                <path d="M236 133 C243 139 249 136 254 131" />
+
+                                <path d="M207 147 C214 153 221 151 226 145" />
+                                <path d="M235 160 C242 166 248 163 253 158" />
+
+                                <path d="M218 177 C225 183 231 180 236 175" />
+
+                            </g>
+
+
+                            <!-- REFLEX -->
+
+                            <path
+                                d="
+                                    M48 63
+                                    C75 28 116 25 143 39
+                                "
+                                fill="none"
+                                stroke="#ffe1d4"
+                                stroke-width="5"
+                                stroke-linecap="round"
+                                opacity=".32"
+                            />
+
+                        </svg>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="door-ring"></div>
+
+        </div>
+
+
+        <div class="machine-bottom"></div>
+
+    </div>
+
+</main>
+
+</body>
+</html>

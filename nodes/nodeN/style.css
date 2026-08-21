@@ -1,51 +1,705 @@
+/* ============================================================
+   ZERO INFINIT · NODE 3 · MATÈRIA
+
+   MATÈRIA MICROSCÒPICA
+
+   carbó mineral
+   violeta
+   ocre
+   magenta mineral
+   llum càlida
+
+   Sense fons còsmic.
+   La superfície és la matèria.
+   ============================================================ */
+
+:root {
+
+    --black:
+        #050407;
+
+    --mineral:
+        #111016;
+
+    --violet:
+        #563b69;
+
+    --violet-light:
+        #9272a2;
+
+    --magenta:
+        #713a58;
+
+    --ochre:
+        #aa7940;
+
+    --amber:
+        #d6aa68;
+
+    --photon:
+        #eadcbf;
+
+}
+
+
+/* ============================================================
+   RESET
+   ============================================================ */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
 html,
 body {
-    margin: 0;
+
     width: 100%;
     height: 100%;
+
+    margin: 0;
+
     overflow: hidden;
 
-    background: #000;
+    background:
+        #050407;
 
-    cursor: default;
 }
+
+
+/* ============================================================
+   BODY
+   ============================================================ */
 
 body {
-    position: relative;
-}
 
-#cosmos {
-    position: fixed;
+    cursor:
+        crosshair;
 
-    inset: 0;
+    user-select:
+        none;
 
-    width: 100vw;
-    height: 100vh;
-
-    display: block;
-}
-
-.core {
-    position: fixed;
-
-    left: 50%;
-    top: 50%;
-
-    transform: translate(-50%, -50%);
-
-    color: rgba(255, 255, 255, 0.72);
+    -webkit-user-select:
+        none;
 
     font-family:
+        "Helvetica Neue",
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    -webkit-font-smoothing:
+        antialiased;
+
+}
+
+
+/* ============================================================
+   EXPERIENCE
+
+   Sense atmosfera espacial.
+
+   El fons és una superfície microscòpica fosca.
+   ============================================================ */
+
+#experience {
+
+    position:
+        fixed;
+
+    inset:
+        0;
+
+    width:
+        100vw;
+
+    height:
+        100vh;
+
+    overflow:
+        hidden;
+
+    background:
+        #050407;
+
+}
+
+
+/* ============================================================
+   CANVAS
+   ============================================================ */
+
+#cosmos {
+
+    position:
+        absolute;
+
+    inset:
+        0;
+
+    width:
+        100%;
+
+    height:
+        100%;
+
+    display:
+        block;
+
+    z-index:
+        1;
+
+}
+
+
+/* ============================================================
+   MATÈRIA / BORDA
+   ============================================================ */
+
+#experience::before {
+
+    content:
+        "";
+
+    position:
+        absolute;
+
+    inset:
+        0;
+
+    z-index:
+        2;
+
+    pointer-events:
+        none;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(3, 2, 5, 0.22),
+            transparent 18%,
+            transparent 82%,
+            rgba(3, 2, 5, 0.22)
+        );
+
+    opacity:
+        0.7;
+
+}
+
+
+/* ============================================================
+   FENOMENOLOGIA
+   ============================================================ */
+
+#phenomenology {
+
+    position:
+        absolute;
+
+    inset:
+        0;
+
+    z-index:
+        8;
+
+    pointer-events:
+        none;
+
+    overflow:
+        hidden;
+
+}
+
+
+/* ============================================================
+   FÓRMULES
+   ============================================================ */
+
+#formula {
+
+    position:
+        absolute;
+
+    color:
+        rgba(
+            221,
+            198,
+            165,
+            0.80
+        );
+
+    font-family:
+        "STIX Two Math",
         "Times New Roman",
+        Georgia,
         serif;
 
-    font-size: clamp(2rem, 4vw, 4rem);
+    font-size:
+        clamp(
+            16px,
+            1.7vw,
+            29px
+        );
 
-    font-weight: 300;
+    font-weight:
+        400;
 
-    pointer-events: none;
+    line-height:
+        1;
+
+    letter-spacing:
+        0.035em;
+
+    white-space:
+        nowrap;
+
+    opacity:
+        0;
+
+    transform:
+        translate(-50%, -50%)
+        scale(0.68);
+
+    filter:
+        blur(2px);
+
+    mix-blend-mode:
+        screen;
 
     text-shadow:
-        0 0 12px rgba(255,255,255,0.15),
-        0 0 40px rgba(150,120,255,0.12);
+        0 0 9px
+        rgba(
+            201,
+            156,
+            88,
+            0.34
+        ),
+
+        0 0 24px
+        rgba(
+            119,
+            69,
+            137,
+            0.20
+        );
+
+    transition:
+        opacity 1s ease,
+        transform 2.8s cubic-bezier(
+            .22,
+            1,
+            .36,
+            1
+        ),
+        filter 2.8s ease;
+
+}
+
+
+#formula.visible {
+
+    opacity:
+        0.78;
+
+    transform:
+        translate(-50%, -50%)
+        scale(1);
+
+    filter:
+        blur(0);
+
+}
+
+
+/* ============================================================
+   RELACIONS MUSICALS
+   ============================================================ */
+
+#notation {
+
+    position:
+        absolute;
+
+    color:
+        rgba(
+            198,
+            157,
+            91,
+            0.70
+        );
+
+    font-family:
+        "STIX Two Math",
+        "Times New Roman",
+        Georgia,
+        serif;
+
+    font-size:
+        clamp(
+            13px,
+            1.25vw,
+            22px
+        );
+
+    letter-spacing:
+        0.13em;
+
+    white-space:
+        nowrap;
+
+    opacity:
+        0;
+
+    transform:
+        translate(-50%, -50%)
+        rotate(-4deg)
+        scale(0.70);
+
+    filter:
+        blur(2px);
+
+    mix-blend-mode:
+        screen;
+
+    text-shadow:
+        0 0 12px
+        rgba(
+            187,
+            138,
+            73,
+            0.30
+        );
+
+    transition:
+        opacity 1s ease,
+        transform 2.5s cubic-bezier(
+            .22,
+            1,
+            .36,
+            1
+        ),
+        filter 2.5s ease;
+
+}
+
+
+#notation.visible {
+
+    opacity:
+        0.68;
+
+    transform:
+        translate(-50%, -50%)
+        rotate(1deg)
+        scale(1);
+
+    filter:
+        blur(0);
+
+}
+
+
+/* ============================================================
+   LLUM FOTÒNICA
+   ============================================================ */
+
+#resonance {
+
+    position:
+        absolute;
+
+    inset:
+        0;
+
+    z-index:
+        7;
+
+    pointer-events:
+        none;
+
+    opacity:
+        0;
+
+    background:
+        radial-gradient(
+            circle at
+            var(--resonance-x, 50%)
+            var(--resonance-y, 50%),
+
+            rgba(
+                239,
+                222,
+                185,
+                0.34
+            )
+            0%,
+
+            rgba(
+                214,
+                163,
+                93,
+                0.19
+            )
+            5%,
+
+            rgba(
+                133,
+                76,
+                132,
+                0.13
+            )
+            13%,
+
+            transparent
+            34%
+        );
+
+    filter:
+        blur(1px);
+
+    mix-blend-mode:
+        screen;
+
+}
+
+
+#resonance.active {
+
+    opacity:
+        1;
+
+    animation:
+        resonance-event
+        2.7s
+        cubic-bezier(
+            .19,
+            1,
+            .22,
+            1
+        )
+        forwards;
+
+}
+
+
+@keyframes resonance-event {
+
+    0% {
+
+        opacity:
+            0;
+
+        transform:
+            scale(0.78);
+
+    }
+
+    12% {
+
+        opacity:
+            0.96;
+
+    }
+
+    38% {
+
+        opacity:
+            0.60;
+
+        transform:
+            scale(0.93);
+
+    }
+
+    65% {
+
+        opacity:
+            0.24;
+
+        transform:
+            scale(1.10);
+
+    }
+
+    100% {
+
+        opacity:
+            0;
+
+        transform:
+            scale(1.30);
+
+    }
+
+}
+
+
+/* ============================================================
+   THRESHOLD
+   ============================================================ */
+
+#threshold {
+
+    position:
+        absolute;
+
+    inset:
+        0;
+
+    z-index:
+        15;
+
+    display:
+        grid;
+
+    place-items:
+        center;
+
+    pointer-events:
+        none;
+
+    opacity:
+        1;
+
+    background:
+        rgba(
+            5,
+            4,
+            7,
+            0.12
+        );
+
+    transition:
+        opacity 2.4s ease;
+
+}
+
+
+#threshold.hidden {
+
+    opacity:
+        0;
+
+}
+
+
+#threshold-symbol {
+
+    width:
+        50px;
+
+    height:
+        50px;
+
+    display:
+        grid;
+
+    place-items:
+        center;
+
+    border:
+        1px solid
+        rgba(
+            202,
+            166,
+            104,
+            0.22
+        );
+
+    border-radius:
+        50%;
+
+    color:
+        rgba(
+            216,
+            191,
+            154,
+            0.42
+        );
+
+    font-family:
+        Georgia,
+        serif;
+
+    font-size:
+        24px;
+
+    animation:
+        threshold-breathe
+        4.5s
+        ease-in-out
+        infinite;
+
+}
+
+
+@keyframes threshold-breathe {
+
+    0%,
+    100% {
+
+        opacity:
+            0.30;
+
+        transform:
+            scale(0.93);
+
+    }
+
+    50% {
+
+        opacity:
+            0.70;
+
+        transform:
+            scale(1.07);
+
+    }
+
+}
+
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (
+    max-width: 700px
+) {
+
+    #formula {
+
+        font-size:
+            16px;
+
+    }
+
+    #notation {
+
+        font-size:
+            13px;
+
+    }
+
+}
+
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (
+    prefers-reduced-motion: reduce
+) {
+
+    #threshold-symbol {
+
+        animation:
+            none;
+
+    }
+
 }

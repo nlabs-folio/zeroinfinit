@@ -1,24 +1,42 @@
 // ============================================================
-// ZERO INFINIT — nodeN
+// ZERO INFINIT · NODE 3 · MATÈRIA
 //
-// LENT → MATÈRIA → FRACTAL → MÚSICA
+// MOTOR MUSICAL + MATÈRIA MICROSCÒPICA + FOTONS
 //
-// La lent observa i altera el camp.
-// El camp produeix operacions fractals.
-// Les operacions determinen densitat, estabilitat i melodia.
-// La música no és un loop: es regenera contínuament.
+// MATÈRIA
+//      ↓
+// ESTAT
+//      ↓
+// CÀLCUL
+//      ↓
+// FENOMEN
+//      ↓
+// LLUM FOTÒNICA
+//      ↙       ↘
+// MATÈRIA     MÚSICA
 //
-// Centres tonals mòbils:
-// A minor → C major → E minor → D major → F# minor...
+// El punter no toca notes.
+// Modifica un estat musical.
+//
+// El cercle de quintes és latent.
+// La composició té memòria.
+// El silenci és un estat.
 // ============================================================
 
-const canvas = document.getElementById("cosmos");
 
-const gl = canvas.getContext("webgl", {
-    antialias: false,
-    alpha: false,
-    powerPreference: "high-performance"
-});
+// ============================================================
+// CANVAS
+// ============================================================
+
+const canvas =
+    document.getElementById("cosmos");
+
+const gl =
+    canvas.getContext("webgl", {
+        antialias: false,
+        alpha: false,
+        powerPreference: "high-performance"
+    });
 
 if (!gl) {
     throw new Error("WebGL no disponible");
@@ -26,429 +44,1296 @@ if (!gl) {
 
 
 // ============================================================
-// SHADERS
+// VERTEX SHADER
 // ============================================================
 
 const vertexShaderSource = `
+
 attribute vec2 position;
 
 void main() {
-    gl_Position = vec4(position, 0.0, 1.0);
+
+    gl_Position =
+        vec4(
+            position,
+            0.0,
+            1.0
+        );
+
 }
+
 `;
 
+
+// ============================================================
+// FRAGMENT SHADER
+//
+// MATÈRIA MICROSCÒPICA VIVA
+//
+// Fractal iteratiu
+// Domain warp
+// membranes
+// cristalls
+// colònies
+// filaments
+// interferència
+// fotons
+// ============================================================
+
 const fragmentShaderSource = `
+
 precision highp float;
 
 uniform vec2 resolution;
 uniform float time;
 
-uniform vec2 lens;
-uniform float lensRadius;
-uniform float lensEnergy;
-uniform float memory;
-uniform float fractalDepth;
+uniform vec2 disturbance;
+uniform float disturbanceEnergy;
+
+uniform float coherence;
+uniform float excitation;
+
+uniform vec2 photon;
+uniform float photonEnergy;
+
+uniform float phase;
+
+
+// ============================================================
+// HASH
+// ============================================================
 
 float hash(vec2 p) {
+
+    p =
+        fract(
+            p *
+            vec2(
+                123.34,
+                456.21
+            )
+        );
+
+    p +=
+        dot(
+            p,
+            p + 45.32
+        );
+
     return fract(
-        sin(dot(p, vec2(127.1,311.7))) *
-        43758.5453
+        p.x * p.y
     );
+
 }
+
+
+// ============================================================
+// ROTACIÓ
+// ============================================================
+
+mat2 rot(float a) {
+
+    float c =
+        cos(a);
+
+    float s =
+        sin(a);
+
+    return mat2(
+        c,
+        -s,
+        s,
+        c
+    );
+
+}
+
+
+// ============================================================
+// NOISE
+// ============================================================
 
 float noise(vec2 p) {
 
-    vec2 i = floor(p);
-    vec2 f = fract(p);
+    vec2 i =
+        floor(p);
 
-    f = f*f*(3.0-2.0*f);
+    vec2 f =
+        fract(p);
 
-    float a = hash(i);
-    float b = hash(i + vec2(1.0,0.0));
-    float c = hash(i + vec2(0.0,1.0));
-    float d = hash(i + vec2(1.0,1.0));
+    f =
+        f *
+        f *
+        (
+            3.0 -
+            2.0 *
+            f
+        );
+
+    float a =
+        hash(i);
+
+    float b =
+        hash(
+            i +
+            vec2(
+                1.0,
+                0.0
+            )
+        );
+
+    float c =
+        hash(
+            i +
+            vec2(
+                0.0,
+                1.0
+            )
+        );
+
+    float d =
+        hash(
+            i +
+            vec2(
+                1.0,
+                1.0
+            )
+        );
 
     return mix(
-        mix(a,b,f.x),
-        mix(c,d,f.x),
+        mix(
+            a,
+            b,
+            f.x
+        ),
+        mix(
+            c,
+            d,
+            f.x
+        ),
         f.y
     );
+
 }
 
-float fbm(vec2 p) {
 
-    float value = 0.0;
-    float amp = 0.5;
+// ============================================================
+// FRACTAL VIU
+// ============================================================
 
-    for (int i=0;i<6;i++) {
-        value += amp * noise(p);
-        p *= 2.0;
-        amp *= 0.5;
+float livingFractal(vec2 p) {
+
+    vec2 z =
+        p;
+
+    float value =
+        0.0;
+
+    float weight =
+        0.56;
+
+
+    for (
+        int i = 0;
+        i < 8;
+        i++
+    ) {
+
+        float fi =
+            float(i);
+
+        z =
+            abs(
+                z
+            );
+
+
+        float localTime =
+            time *
+            (
+                0.012 +
+                fi *
+                0.0025
+            );
+
+
+        z -=
+            vec2(
+                0.34 +
+                sin(
+                    localTime +
+                    fi
+                )
+                *
+                0.055,
+
+                0.25 +
+                cos(
+                    localTime *
+                    0.83 +
+                    fi
+                )
+                *
+                0.038
+            );
+
+
+        z =
+            rot(
+                0.38 +
+                sin(
+                    time *
+                    0.014 +
+                    fi
+                )
+                *
+                0.09
+            )
+            *
+            z;
+
+
+        float radius =
+            length(z);
+
+
+        value +=
+            exp(
+                -radius *
+                (
+                    5.0 +
+                    coherence *
+                    1.9
+                )
+            )
+            *
+            weight;
+
+
+        z *=
+            1.58 +
+            coherence *
+            0.19;
+
+
+        weight *=
+            0.51;
+
     }
 
+
     return value;
+
 }
 
-vec2 flowField(vec2 p) {
 
-    float e = 0.002;
+// ============================================================
+// DOMAIN WARP
+// ============================================================
 
-    vec2 drift = vec2(
-        time * 0.035,
-        -time * 0.022
-    );
+vec2 warp(vec2 p) {
 
-    float n = fbm(p*2.3 + drift);
-    float nx = fbm(p*2.3 + drift + vec2(e,0.0));
-    float ny = fbm(p*2.3 + drift + vec2(0.0,e));
+    float t =
+        time;
 
-    vec2 g = vec2(
-        nx-n,
-        ny-n
-    ) / e;
+    vec2 q =
+        p;
 
-    return vec2(-g.y,g.x);
-}
 
-void main() {
+    q +=
+        vec2(
+            sin(
+                q.y *
+                3.3 +
+                t *
+                0.21
+            ),
 
-    vec2 uv = gl_FragCoord.xy / resolution.xy;
-
-    float aspect =
-        resolution.x / resolution.y;
-
-    vec2 p = uv - 0.5;
-    p.x *= aspect;
-
-    vec2 flow = flowField(p);
-
-    vec2 field =
-        p +
-        flow * (0.055 + fractalDepth*0.025);
-
-    field += vec2(
-        sin(time*0.22+p.y*2.8),
-        cos(time*0.17+p.x*2.2)
-    ) * 0.018;
-
-    float cloudA = fbm(
-        field*2.0 +
-        vec2(time*0.08,-time*0.05)
-    );
-
-    float cloudB = fbm(
-        field*4.5 -
-        vec2(time*0.035,time*0.07)
-    );
-
-    float matter =
-        cloudA*0.72 +
-        cloudB*0.28;
-
-    matter = smoothstep(
-        0.29,
-        0.78,
-        matter
-    );
-
-    vec2 lv = p-lens;
-
-    float dist = length(lv);
-
-    float influence =
-        smoothstep(
-            lensRadius*1.15,
-            0.0,
-            dist
-        );
-
-    influence *= lensEnergy;
-
-    vec2 direction =
-        normalize(lv+vec2(0.0001));
-
-    float pressure =
-        influence *
-        (1.0-smoothstep(
-            0.0,
-            lensRadius,
-            dist
-        ));
-
-    field +=
-        direction *
-        pressure *
-        0.11;
-
-    vec2 refracted = p;
-
-    refracted +=
-        direction *
-        influence *
-        0.065;
-
-    refracted +=
-        flow *
-        influence *
-        0.04;
-
-    float altered =
-        fbm(
-            refracted *
-            (2.5+fractalDepth*1.8) +
-            vec2(
-                time*0.10,
-                -time*0.06
+            cos(
+                q.x *
+                2.8 -
+                t *
+                0.17
             )
+        )
+        *
+        0.045;
+
+
+    q +=
+        vec2(
+            sin(
+                q.y *
+                8.0 -
+                t *
+                0.31
+            ),
+
+            sin(
+                q.x *
+                7.0 +
+                t *
+                0.27
+            )
+        )
+        *
+        0.014;
+
+
+    return q;
+
+}
+
+
+// ============================================================
+// FORMA EXTERIOR
+// ============================================================
+
+float organismMask(vec2 p) {
+
+    float angle =
+        atan(
+            p.y,
+            p.x
         );
 
-    altered = smoothstep(
-        0.32,
-        0.76,
-        altered
-    );
 
-    matter = mix(
-        matter,
-        altered,
-        influence*0.78
-    );
+    float radius =
+        length(p);
 
-    matter +=
-        memory *
-        influence *
-        0.07;
 
-    float r = length(p);
-
-    float fractalWave =
+    float lobes =
+        0.055 *
         sin(
-            r *
-            (18.0+fractalDepth*14.0)
-            -
-            time*0.42 +
-            cloudA*4.0
+            angle *
+            5.0 +
+            time *
+            0.11
         );
 
-    fractalWave =
-        0.5 +
-        0.5*fractalWave;
 
-    fractalWave =
-        smoothstep(
-            0.68,
-            0.95,
-            fractalWave
+    lobes +=
+        0.038 *
+        sin(
+            angle *
+            9.0 -
+            time *
+            0.07
         );
 
-    fractalWave *=
-        0.10 +
-        fractalDepth*0.14;
 
-    float glow =
-        smoothstep(
-            lensRadius*1.1,
-            0.0,
-            dist
-        );
-
-    glow *=
-        0.25 +
-        lensEnergy*0.7;
-
-    vec2 ps = refracted *
-        (88.0+fractalDepth*35.0);
-
-    vec2 cell = floor(ps);
-
-    vec2 local =
-        fract(ps)-0.5;
-
-    float rnd = hash(cell);
-
-    float particleShape =
-        length(
-            local-flow*0.018
-        );
-
-    float particle =
-        smoothstep(
-            0.065,
-            0.0,
-            particleShape
-        );
-
-    particle *=
-        step(
-            0.9955,
-            rnd
-        );
-
-    particle *=
-        0.2+
-        0.75*
-        (
-            0.5+
-            0.5*sin(
-                time*0.8+
-                rnd*30.0
-            )
-        );
-
-    particle *=
-        0.2+
-        matter*1.4;
-
-    particle +=
-        particle*
-        influence*
-        1.8;
-
-    float voidMask =
-        smoothstep(
-            0.105,
-            0.018,
-            r
-        );
-
-    matter *=
-        1.0-voidMask;
-
-    fractalWave *=
-        1.0-voidMask;
-
-    particle *=
-        1.0-voidMask;
-
-    vec3 color =
-        vec3(
-            0.002,
-            0.001,
-            0.008
-        );
-
-    vec3 deep =
-        vec3(
-            0.075,
-            0.018,
+    lobes +=
+        0.025 *
+        sin(
+            angle *
+            14.0 +
+            time *
             0.17
         );
 
-    vec3 body =
-        vec3(
-            0.25,
-            0.055,
+
+    float boundary =
+        0.60 +
+        lobes;
+
+
+    return
+        1.0 -
+        smoothstep(
+            boundary * 0.78,
+            boundary,
+            radius
+        );
+
+}
+
+
+// ============================================================
+// CRISTALLS
+// ============================================================
+
+float crystalField(vec2 p) {
+
+    vec2 lattice =
+        p *
+        (
+            26.0 +
+            coherence *
+            12.0
+        );
+
+
+    lattice +=
+        vec2(
+            sin(
+                time *
+                0.019
+            )
+            *
+            1.7,
+
+            cos(
+                time *
+                0.014
+            )
+            *
+            1.4
+        );
+
+
+    vec2 cell =
+        floor(
+            lattice
+        );
+
+
+    vec2 local =
+        fract(
+            lattice
+        )
+        -
+        0.5;
+
+
+    float random =
+        hash(cell);
+
+
+    float crystal =
+        smoothstep(
+            0.105,
+            0.012,
+            length(
+                local
+            )
+        );
+
+
+    crystal *=
+        step(
+            0.74,
+            random
+        );
+
+
+    crystal *=
+        0.60 +
+        0.40 *
+        (
+            0.5 +
+            0.5 *
+            sin(
+                time *
+                0.17 +
+                random *
+                6.283
+            )
+        );
+
+
+    return crystal;
+
+}
+
+
+// ============================================================
+// MEMBRANES
+// ============================================================
+
+float membraneField(vec2 p) {
+
+    float a =
+        livingFractal(
+            p *
+            2.0
+        );
+
+
+    float b =
+        livingFractal(
+            (
+                p +
+                vec2(
+                    0.031,
+                    -0.022
+                )
+            )
+            *
+            2.0
+        );
+
+
+    return
+        smoothstep(
+            0.010,
+            0.070,
+            abs(
+                a -
+                b
+            )
+        );
+
+}
+
+
+// ============================================================
+// COLÒNIES MICROSCÒPIQUES
+// ============================================================
+
+float colonyField(vec2 p) {
+
+    vec2 grid =
+        p *
+        98.0;
+
+
+    grid +=
+        vec2(
+            time *
+            0.13,
+
+            -time *
+            0.087
+        );
+
+
+    vec2 cell =
+        floor(
+            grid
+        );
+
+
+    vec2 local =
+        fract(
+            grid
+        )
+        -
+        0.5;
+
+
+    float random =
+        hash(cell);
+
+
+    float colony =
+        smoothstep(
+            0.043,
+            0.0,
+            length(
+                local
+            )
+        );
+
+
+    float activity =
+        0.5 +
+        0.5 *
+        sin(
+            time *
+            (
+                0.22 +
+                random *
+                0.18
+            )
+            +
+            random *
+            15.0
+        );
+
+
+    colony *=
+        smoothstep(
+            0.20,
+            0.78,
+            activity
+        );
+
+
+    colony *=
+        step(
+            0.90,
+            random
+        );
+
+
+    return colony;
+
+}
+
+
+// ============================================================
+// FILAMENTS
+// ============================================================
+
+float filamentField(vec2 p) {
+
+    float a =
+        livingFractal(
+            p *
+            5.5
+        );
+
+
+    float b =
+        livingFractal(
+            (
+                p +
+                vec2(
+                    0.09,
+                    -0.06
+                )
+            )
+            *
+            5.5
+        );
+
+
+    return
+        smoothstep(
+            0.007,
+            0.040,
+            abs(
+                a -
+                b
+            )
+        );
+
+}
+
+
+// ============================================================
+// FOTÓ
+//
+// Nucli
+// camp proper
+// anells de difracció
+// distribució angular
+// caustiques
+// ============================================================
+
+float photonCluster(vec2 p) {
+
+    vec2 d =
+        p -
+        photon;
+
+
+    float radius =
+        length(d);
+
+
+    float core =
+        exp(
+            -radius *
+            88.0
+        );
+
+
+    float nearField =
+        exp(
+            -radius *
+            28.0
+        );
+
+
+    float rings =
+        sin(
+            radius *
+            138.0 -
+            time *
+            2.6
+        );
+
+
+    rings =
+        smoothstep(
+            0.62,
+            0.98,
+            0.5 +
+            0.5 *
+            rings
+        );
+
+
+    float angular =
+        sin(
+            atan(
+                d.y,
+                d.x
+            )
+            *
+            11.0 +
+            phase
+        );
+
+
+    angular =
+        0.5 +
+        0.5 *
+        angular;
+
+
+    float caustic =
+        sin(
+            d.x *
+            76.0 +
+            sin(
+                d.y *
+                9.0
+            )
+        );
+
+
+    caustic =
+        smoothstep(
+            0.78,
+            0.99,
+            0.5 +
+            0.5 *
+            caustic
+        );
+
+
+    float secondary =
+        nearField *
+        rings *
+        angular;
+
+
+    return
+        (
+            core *
+            1.00
+            +
+            secondary *
             0.46
+            +
+            caustic *
+            nearField *
+            0.18
+        )
+        *
+        photonEnergy;
+
+}
+
+
+// ============================================================
+// MAIN
+// ============================================================
+
+void main() {
+
+    vec2 uv =
+        gl_FragCoord.xy /
+        resolution.xy;
+
+
+    vec2 p =
+        uv -
+        0.5;
+
+
+    p.x *=
+        resolution.x /
+        resolution.y;
+
+
+    // --------------------------------------------------------
+    // ORGANISME
+    // --------------------------------------------------------
+
+    vec2 q =
+        warp(p);
+
+
+    float mask =
+        organismMask(q);
+
+
+    // --------------------------------------------------------
+    // MATÈRIA
+    // --------------------------------------------------------
+
+    float large =
+        livingFractal(
+            q *
+            1.5
         );
 
-    vec3 light =
+
+    float medium =
+        livingFractal(
+            q *
+            3.3
+        );
+
+
+    float fine =
+        livingFractal(
+            q *
+            7.4
+        );
+
+
+    float matter =
+        large *
+        0.48
+        +
+        medium *
+        0.34
+        +
+        fine *
+        0.18;
+
+
+    matter =
+        smoothstep(
+            0.18,
+            0.93,
+            matter
+        );
+
+
+    // --------------------------------------------------------
+    // PERTORBACIÓ
+    // --------------------------------------------------------
+
+    vec2 pointerVector =
+        q -
+        disturbance;
+
+
+    float pointerDistance =
+        length(
+            pointerVector
+        );
+
+
+    float disturbanceField =
+        exp(
+            -pointerDistance *
+            7.5
+        )
+        *
+        disturbanceEnergy;
+
+
+    vec2 pointerDirection =
+        normalize(
+            pointerVector +
+            vec2(
+                0.00001
+            )
+        );
+
+
+    vec2 perturbed =
+        q +
+        pointerDirection *
+        disturbanceField *
+        0.020;
+
+
+    // --------------------------------------------------------
+    // MICROESTRUCTURES
+    // --------------------------------------------------------
+
+    float membranes =
+        membraneField(
+            perturbed
+        );
+
+
+    float crystals =
+        crystalField(
+            perturbed
+        );
+
+
+    float colonies =
+        colonyField(
+            perturbed
+        );
+
+
+    float filaments =
+        filamentField(
+            perturbed
+        );
+
+
+    // --------------------------------------------------------
+    // FOTÓ
+    // --------------------------------------------------------
+
+    float photon =
+        photonCluster(
+            perturbed
+        );
+
+
+    // --------------------------------------------------------
+    // REORGANITZACIÓ LOCAL
+    // --------------------------------------------------------
+
+    float photonMatter =
+        smoothstep(
+            0.04,
+            0.36,
+            photon
+        );
+
+
+    float localReorganization =
+        photon *
+        (
+            0.32 +
+            excitation *
+            0.6
+        );
+
+
+    // --------------------------------------------------------
+    // INTERFERÈNCIA
+    // --------------------------------------------------------
+
+    float interference =
+        sin(
+            perturbed.x *
+            57.0 +
+            matter *
+            9.0 +
+            phase
+        )
+        *
+        sin(
+            perturbed.y *
+            71.0 -
+            matter *
+            6.0 -
+            phase *
+            0.67
+        );
+
+
+    interference =
+        smoothstep(
+            0.73,
+            0.985,
+            0.5 +
+            0.5 *
+            interference
+        );
+
+
+    interference *=
+        0.06 +
+        photon *
+        0.48;
+
+
+    // --------------------------------------------------------
+    // ESPECTRE FOTÒNIC
+    // --------------------------------------------------------
+
+    float spectrum =
+        sin(
+            perturbed.x *
+            101.0 +
+            perturbed.y *
+            47.0 -
+            time *
+            1.6
+        );
+
+
+    spectrum =
+        smoothstep(
+            0.76,
+            0.995,
+            0.5 +
+            0.5 *
+            spectrum
+        );
+
+
+    spectrum *=
+        photon;
+
+
+    // --------------------------------------------------------
+    // TRANSICIÓ
+    // --------------------------------------------------------
+
+    float transition =
+        abs(
+            large -
+            medium
+        );
+
+
+    transition =
+        smoothstep(
+            0.035,
+            0.23,
+            transition
+        );
+
+
+    // --------------------------------------------------------
+    // COLORS
+    // --------------------------------------------------------
+
+    vec3 black =
         vec3(
-            0.67,
+            0.004,
+            0.003,
+            0.006
+        );
+
+
+    vec3 deepViolet =
+        vec3(
+            0.095,
+            0.043,
+            0.14
+        );
+
+
+    vec3 violet =
+        vec3(
+            0.28,
+            0.13,
+            0.35
+        );
+
+
+    vec3 magenta =
+        vec3(
+            0.45,
+            0.075,
+            0.26
+        );
+
+
+    vec3 ochre =
+        vec3(
+            0.53,
+            0.30,
+            0.11
+        );
+
+
+    vec3 amber =
+        vec3(
+            0.82,
+            0.57,
+            0.23
+        );
+
+
+    vec3 photonWhite =
+        vec3(
+            1.0,
+            0.91,
+            0.73
+        );
+
+
+    vec3 colour =
+        black;
+
+
+    colour +=
+        deepViolet *
+        matter *
+        1.38;
+
+
+    colour +=
+        violet *
+        matter *
+        matter *
+        1.50;
+
+
+    colour +=
+        magenta *
+        membranes *
+        0.84;
+
+
+    colour +=
+        ochre *
+        filaments *
+        0.48;
+
+
+    colour +=
+        amber *
+        crystals *
+        (
+            0.56 +
+            excitation *
+            0.82
+        );
+
+
+    colour +=
+        ochre *
+        colonies *
+        0.92;
+
+
+    colour +=
+        magenta *
+        transition *
+        0.78;
+
+
+    colour +=
+        amber *
+        localReorganization;
+
+
+    colour +=
+        violet *
+        interference *
+        0.84;
+
+
+    colour +=
+        amber *
+        spectrum *
+        0.68;
+
+
+    colour +=
+        photonWhite *
+        photon *
+        1.85;
+
+
+    // --------------------------------------------------------
+    // MÀSCARA
+    // --------------------------------------------------------
+
+    float interior =
+        smoothstep(
+            0.05,
             0.42,
-            0.96
+            mask
         );
 
-    vec3 lensLight =
-        vec3(
-            0.55,
-            0.72,
+
+    colour *=
+        0.04 +
+        interior *
+        0.96;
+
+
+    // --------------------------------------------------------
+    // PROFUNDITAT
+    // --------------------------------------------------------
+
+    float depth =
+        smoothstep(
+            1.38,
+            0.05,
+            length(p)
+        );
+
+
+    colour *=
+        0.62 +
+        depth *
+        0.50;
+
+
+    // --------------------------------------------------------
+    // TONEMAP
+    // --------------------------------------------------------
+
+    colour =
+        colour /
+        (
+            1.0 +
+            colour
+        );
+
+
+    colour =
+        pow(
+            colour,
+            vec3(
+                0.88
+            )
+        );
+
+
+    gl_FragColor =
+        vec4(
+            colour,
             1.0
         );
 
-    color +=
-        deep *
-        matter *
-        1.45;
-
-    color +=
-        body *
-        matter *
-        matter *
-        1.15;
-
-    color +=
-        light *
-        fractalWave;
-
-    color +=
-        light *
-        particle *
-        0.95;
-
-    color +=
-        lensLight *
-        glow *
-        0.22;
-
-    float ring =
-        abs(
-            dist-lensRadius
-        );
-
-    float ringLight =
-        smoothstep(
-            0.018,
-            0.0,
-            ring
-        );
-
-    ringLight *=
-        0.10+
-        lensEnergy*0.30;
-
-    color +=
-        lensLight *
-        ringLight;
-
-    float vignette =
-        smoothstep(
-            1.48,
-            0.20,
-            r
-        );
-
-    color *= vignette;
-
-    color =
-        pow(
-            color,
-            vec3(0.94)
-        );
-
-    gl_FragColor =
-        vec4(color,1.0);
 }
+
 `;
 
 
 // ============================================================
-// SHADER SETUP
+// SHADER COMPILATION
 // ============================================================
 
-function compileShader(type, source) {
+function compileShader(
+    type,
+    source
+) {
 
     const shader =
-        gl.createShader(type);
+        gl.createShader(
+            type
+        );
 
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
 
-    if (!gl.getShaderParameter(
+    gl.shaderSource(
         shader,
-        gl.COMPILE_STATUS
-    )) {
+        source
+    );
+
+
+    gl.compileShader(
+        shader
+    );
+
+
+    if (
+        !gl.getShaderParameter(
+            shader,
+            gl.COMPILE_STATUS
+        )
+    ) {
 
         console.error(
-            gl.getShaderInfoLog(shader)
+            gl.getShaderInfoLog(
+                shader
+            )
         );
+
 
         throw new Error(
-            "Threshold: shader compilation failed"
+            "Shader compilation failed"
         );
+
     }
 
+
     return shader;
+
 }
+
 
 const vertexShader =
     compileShader(
@@ -456,38 +1341,51 @@ const vertexShader =
         vertexShaderSource
     );
 
+
 const fragmentShader =
     compileShader(
         gl.FRAGMENT_SHADER,
         fragmentShaderSource
     );
 
+
 const program =
     gl.createProgram();
+
 
 gl.attachShader(
     program,
     vertexShader
 );
 
+
 gl.attachShader(
     program,
     fragmentShader
 );
 
-gl.linkProgram(program);
 
-if (!gl.getProgramParameter(
-    program,
-    gl.LINK_STATUS
-)) {
+gl.linkProgram(
+    program );
+
+
+if (
+    !gl.getProgramParameter(
+        program,
+        gl.LINK_STATUS
+    )
+) {
 
     throw new Error(
-        "Threshold: WebGL link failed"
+        "Program link failed"
     );
+
 }
 
-gl.useProgram(program);
+
+gl.useProgram(
+    program
+);
 
 
 // ============================================================
@@ -497,24 +1395,29 @@ gl.useProgram(program);
 const buffer =
     gl.createBuffer();
 
+
 gl.bindBuffer(
     gl.ARRAY_BUFFER,
     buffer
 );
 
+
 gl.bufferData(
     gl.ARRAY_BUFFER,
-    new Float32Array([
-        -1,-1,
-         1,-1,
-        -1, 1,
 
-        -1, 1,
-         1,-1,
-         1, 1
+    new Float32Array([
+        -1, -1,
+         1, -1,
+        -1,  1,
+
+        -1,  1,
+         1, -1,
+         1,  1
     ]),
+
     gl.STATIC_DRAW
 );
+
 
 const position =
     gl.getAttribLocation(
@@ -522,9 +1425,11 @@ const position =
         "position"
     );
 
+
 gl.enableVertexAttribArray(
     position
 );
+
 
 gl.vertexAttribPointer(
     position,
@@ -540,826 +1445,3841 @@ gl.vertexAttribPointer(
 // UNIFORMS
 // ============================================================
 
-const U = {
+const uResolution =
+    gl.getUniformLocation(
+        program,
+        "resolution"
+    );
 
-    resolution:
-        gl.getUniformLocation(
-            program,
-            "resolution"
-        ),
 
-    time:
-        gl.getUniformLocation(
-            program,
-            "time"
-        ),
+const uTime =
+    gl.getUniformLocation(
+        program,
+        "time"
+    );
 
-    lens:
-        gl.getUniformLocation(
-            program,
-            "lens"
-        ),
 
-    lensRadius:
-        gl.getUniformLocation(
-            program,
-            "lensRadius"
-        ),
+const uDisturbance =
+    gl.getUniformLocation(
+        program,
+        "disturbance"
+    );
 
-    lensEnergy:
-        gl.getUniformLocation(
-            program,
-            "lensEnergy"
-        ),
 
-    memory:
-        gl.getUniformLocation(
-            program,
-            "memory"
-        ),
+const uDisturbanceEnergy =
+    gl.getUniformLocation(
+        program,
+        "disturbanceEnergy"
+    );
 
-    fractalDepth:
-        gl.getUniformLocation(
-            program,
-            "fractalDepth"
-        )
+
+const uCoherence =
+    gl.getUniformLocation(
+        program,
+        "coherence"
+    );
+
+
+const uExcitation =
+    gl.getUniformLocation(
+        program,
+        "excitation"
+    );
+
+
+const uPhoton =
+    gl.getUniformLocation(
+        program,
+        "photon"
+    );
+
+
+const uPhotonEnergy =
+    gl.getUniformLocation(
+        program,
+        "photonEnergy"
+    );
+
+
+const uPhase =
+    gl.getUniformLocation(
+        program,
+        "phase"
+    );
+
+
+// ============================================================
+// VISUAL STATE
+// ============================================================
+
+let visualCoherence =
+    0.58;
+
+let visualExcitation =
+    0.12;
+
+let visualDensity =
+    0.45;
+
+let visualTransition =
+    0;
+
+let visualPhase =
+    Math.random() *
+    Math.PI *
+    2;
+
+
+// ============================================================
+// PHOTON
+// ============================================================
+
+let photonX =
+    -0.22;
+
+let photonY =
+    0.18;
+
+let photonTargetX =
+    0.30;
+
+let photonTargetY =
+    -0.16;
+
+let photonEnergy =
+    0.035;
+
+let photonClock =
+    0;
+
+
+// ============================================================
+// POINTER
+// ============================================================
+
+let pointerX = 0;
+let pointerY = 0;
+
+let targetPointerX = 0;
+let targetPointerY = 0;
+
+let pointerVelocity = 0;
+
+let previousPointerX = 0;
+let previousPointerY = 0;
+
+let musicalPerturbation =
+    0;
+
+
+// ============================================================
+// CIRCLE OF FIFTHS
+// ============================================================
+
+const circleOfFifths = [
+
+    {
+        name: "C",
+        root: 261.6256,
+        up: 1,
+        down: 11
+    },
+
+    {
+        name: "G",
+        root: 391.9954,
+        up: 2,
+        down: 0
+    },
+
+    {
+        name: "D",
+        root: 293.6648,
+        up: 3,
+        down: 1
+    },
+
+    {
+        name: "A",
+        root: 440,
+        up: 4,
+        down: 2
+    },
+
+    {
+        name: "E",
+        root: 329.6276,
+        up: 5,
+        down: 3
+    },
+
+    {
+        name: "B",
+        root: 493.8833,
+        up: 6,
+        down: 4
+    },
+
+    {
+        name: "F#/Gb",
+        root: 369.9944,
+        up: 7,
+        down: 5
+    },
+
+    {
+        name: "Db",
+        root: 277.1826,
+        up: 8,
+        down: 6
+    },
+
+    {
+        name: "Ab",
+        root: 415.3047,
+        up: 9,
+        down: 7
+    },
+
+    {
+        name: "Eb",
+        root: 311.127,
+        up: 10,
+        down: 8
+    },
+
+    {
+        name: "Bb",
+        root: 466.1638,
+        up: 11,
+        down: 9
+    },
+
+    {
+        name: "F",
+        root: 349.2282,
+        up: 0,
+        down: 10
+    }
+
+];
+
+
+let circleIndex =
+    Math.floor(
+        Math.random() *
+        circleOfFifths.length
+    );
+
+
+let previousCircleIndex =
+    circleIndex;
+
+
+let harmonicDirection =
+    0;
+
+
+let directionConfidence =
+    0;
+
+
+// ============================================================
+// MUSICAL STATE
+// ============================================================
+
+let mode =
+    Math.random() >
+    0.5
+        ? "major"
+        : "minor";
+
+
+let musicalDegree =
+    Math.floor(
+        Math.random() *
+        7
+    );
+
+
+let harmonicTension =
+    0.18;
+
+
+let harmonicStability =
+    0.76;
+
+
+let melodicMemory = [];
+
+let compositionCycle =
+    0;
+
+let phraseProgress =
+    0;
+
+let phraseTarget =
+    3 +
+    Math.floor(
+        Math.random() *
+        3
+    );
+
+
+let lastHarmonicMove =
+    -Infinity;
+
+
+// ============================================================
+// SCALES
+// ============================================================
+
+const majorScale = [
+    0,
+    2,
+    4,
+    5,
+    7,
+    9,
+    11
+];
+
+
+const minorScale = [
+    0,
+    2,
+    3,
+    5,
+    7,
+    8,
+    10
+];
+
+
+// ============================================================
+// AUDIO GRAPH
+// ============================================================
+
+let audio =
+    null;
+
+let master =
+    null;
+
+let output =
+    null;
+
+let compressor =
+    null;
+
+let highPass =
+    null;
+
+let lowPass =
+    null;
+
+let reverb =
+    null;
+
+let reverbGain =
+    null;
+
+
+// ============================================================
+// VOICES
+// ============================================================
+
+let bassOsc =
+    null;
+
+let bassGain =
+    null;
+
+
+let midBassOsc =
+    null;
+
+let midBassGain =
+    null;
+
+
+let padOscA =
+    null;
+
+let padOscB =
+    null;
+
+let padGain =
+    null;
+
+
+let airOsc =
+    null;
+
+let airGain =
+    null;
+
+
+let textureSource =
+    null;
+
+let textureGain =
+    null;
+
+
+let audioStarting =
+    false;
+
+
+// ============================================================
+// AUDIO CLOCK
+// ============================================================
+
+let nextCompositionTime =
+    0;
+
+let nextTextureTime =
+    0;
+
+let silenceUntil =
+    0;
+
+let currentSilence =
+    null;
+
+
+// ============================================================
+// SILENCE TYPES
+// ============================================================
+
+const silenceTypes = {
+
+    breath: {
+
+        min: 0.45,
+        max: 1.15,
+
+        body: 0.58,
+        harmony: 0.72,
+        air: 0.55,
+        texture: 0.42
+
+    },
+
+    suspension: {
+
+        min: 1.2,
+        max: 2.8,
+
+        body: 0.22,
+        harmony: 0.30,
+        air: 0.22,
+        texture: 0.08
+
+    },
+
+    retention: {
+
+        min: 1.7,
+        max: 3.6,
+
+        body: 0.34,
+        harmony: 0.44,
+        air: 0.30,
+        texture: 0.06
+
+    },
+
+    dissolution: {
+
+        min: 2.3,
+        max: 4.8,
+
+        body: 0.07,
+        harmony: 0.10,
+        air: 0.05,
+        texture: 0.015
+
+    },
+
+    absence: {
+
+        min: 3.5,
+        max: 6.8,
+
+        body: 0.0,
+        harmony: 0.0,
+        air: 0.0,
+        texture: 0.0
+
+    },
+
+    resolution: {
+
+        min: 1.1,
+        max: 3.1,
+
+        body: 0.14,
+        harmony: 0.20,
+        air: 0.12,
+        texture: 0.02
+
+    }
+
 };
 
 
 // ============================================================
-// STATE
+// SILENCE SELECTION
 // ============================================================
 
-let targetLensX = 0;
-let targetLensY = 0;
+function chooseSilenceType() {
 
-let currentLensX = 0;
-let currentLensY = 0;
+    if (
+        harmonicTension >
+        0.78
+    ) {
 
-let previousX = 0;
-let previousY = 0;
+        return "resolution";
 
-let pointerVelocity = 0;
-
-let lensEnergyValue = 0;
-let memoryValue = 0;
-
-let exploration = 0;
-let fractalDepth = 0;
-
-
-// ============================================================
-// FRACTAL MUSICAL SYSTEM
-// ============================================================
-
-const tonalCenters = [
-
-    {
-        name: "A minor",
-        root: 220.00,
-        scale: [0,2,3,5,7,8,10]
-    },
-
-    {
-        name: "C major",
-        root: 261.63,
-        scale: [0,2,4,5,7,9,11]
-    },
-
-    {
-        name: "E minor",
-        root: 164.81,
-        scale: [0,2,3,5,7,8,10]
-    },
-
-    {
-        name: "D major",
-        root: 293.66,
-        scale: [0,2,4,5,7,9,11]
-    },
-
-    {
-        name: "F# minor",
-        root: 185.00,
-        scale: [0,2,3,5,7,9,10]
     }
-];
 
-let tonalIndex = 0;
 
-let tonalEnergy = 0;
-let lastTonalChange = 0;
+    if (
+        harmonicStability >
+        0.86
+    ) {
+
+        return "retention";
+
+    }
+
+
+    if (
+        musicalPerturbation >
+        0.56
+    ) {
+
+        return "suspension";
+
+    }
+
+
+    if (
+        visualTransition >
+        0.055
+    ) {
+
+        return "dissolution";
+
+    }
+
+
+    if (
+        compositionCycle %
+        7 ===
+        0
+    ) {
+
+        return "absence";
+
+    }
+
+
+    return "breath";
+
+}
 
 
 // ============================================================
-// AUDIO
+// ENTER SILENCE
 // ============================================================
 
-let audio = null;
-let audioStarted = false;
+function enterSilence(
+    forcedType = null
+) {
 
-let master = null;
-let compressor = null;
-let filter = null;
-let pan = null;
+    if (!audio) {
+        return;
+    }
 
-let drone = null;
-let sub = null;
-let harmonic = null;
-let texture = null;
 
-let droneGain = null;
-let subGain = null;
-let harmonicGain = null;
-let textureGain = null;
+    const type =
+        forcedType ||
+        chooseSilenceType();
 
-let lfo = null;
-let lfoGain = null;
 
-let melodyTimer = null;
+    const definition =
+        silenceTypes[type];
+
+
+    const duration =
+        definition.min +
+        Math.random() *
+        (
+            definition.max -
+            definition.min
+        );
+
+
+    silenceUntil =
+        audio.currentTime +
+        duration;
+
+
+    currentSilence =
+        type;
+
+}
 
 
 // ============================================================
-// AUDIO START
+// AUDIO SUPPORT
+// ============================================================
+
+function createNoiseBuffer(
+    ctx
+) {
+
+    const length =
+        ctx.sampleRate *
+        2;
+
+
+    const buffer =
+        ctx.createBuffer(
+            1,
+            length,
+            ctx.sampleRate
+        );
+
+
+    const data =
+        buffer.getChannelData(
+            0
+        );
+
+
+    for (
+        let i = 0;
+        i < data.length;
+        i++
+    ) {
+
+        data[i] =
+            Math.random() *
+            2 -
+            1;
+
+    }
+
+
+    return buffer;
+
+}
+
+
+// ============================================================
+// REVERB
+// ============================================================
+
+function createReverbBuffer(
+    ctx,
+    duration,
+    decay
+) {
+
+    const length =
+        Math.floor(
+            ctx.sampleRate *
+            duration
+        );
+
+
+    const buffer =
+        ctx.createBuffer(
+            2,
+            length,
+            ctx.sampleRate
+        );
+
+
+    for (
+        let channel = 0;
+        channel < 2;
+        channel++
+    ) {
+
+        const data =
+            buffer.getChannelData(
+                channel
+            );
+
+
+        for (
+            let i = 0;
+            i < length;
+            i++
+        ) {
+
+            const fade =
+                Math.pow(
+                    1 -
+                    i / length,
+                    decay
+                );
+
+
+            data[i] =
+                (
+                    Math.random() *
+                    2 -
+                    1
+                )
+                *
+                fade;
+
+        }
+
+    }
+
+
+    return buffer;
+
+}
+
+
+// ============================================================
+// START AUDIO
 // ============================================================
 
 async function startAudio() {
 
-    if (audioStarted && audio) {
+    if (audio) {
 
-        if (audio.state === "suspended") {
+        if (
+            audio.state ===
+            "suspended"
+        ) {
 
             try {
+
                 await audio.resume();
-            } catch (error) {
+
+            }
+            catch (error) {
+
                 console.warn(
-                    "Threshold audio resume:",
+                    "Audio resume failed",
                     error
                 );
+
             }
+
         }
 
         return;
+
     }
+
+
+    if (audioStarting) {
+        return;
+    }
+
+
+    audioStarting =
+        true;
+
 
     const AudioContext =
         window.AudioContext ||
         window.webkitAudioContext;
 
+
     if (!AudioContext) {
+
         console.warn(
-            "Threshold: Web Audio API no disponible"
+            "Web Audio API no disponible"
         );
+
+        audioStarting =
+            false;
+
         return;
+
     }
 
+
+    const ctx =
+        new AudioContext();
+
+
     try {
+
+        await ctx.resume();
+
+
+        // ----------------------------------------------------
+        // OUTPUT
+        // ----------------------------------------------------
+
+        const newOutput =
+            ctx.createGain();
+
+
+        newOutput.gain.value =
+            1.0;
+
+
+        // ----------------------------------------------------
+        // MASTER
+        // ----------------------------------------------------
+
+        const newMaster =
+            ctx.createGain();
+
+
+        newMaster.gain.value =
+            0.0001;
+
+
+        // ----------------------------------------------------
+        // COMPRESSOR
+        // ----------------------------------------------------
+
+        const newCompressor =
+            ctx.createDynamicsCompressor();
+
+
+        newCompressor.threshold.value =
+            -20;
+
+
+        newCompressor.knee.value =
+            14;
+
+
+        newCompressor.ratio.value =
+            3.2;
+
+
+        newCompressor.attack.value =
+            0.012;
+
+
+        newCompressor.release.value =
+            0.28;
+
+
+        // ----------------------------------------------------
+        // HIGH PASS
+        // ----------------------------------------------------
+
+        const newHighPass =
+            ctx.createBiquadFilter();
+
+
+        newHighPass.type =
+            "highpass";
+
+
+        newHighPass.frequency.value =
+            42;
+
+
+        newHighPass.Q.value =
+            0.34;
+
+
+        // ----------------------------------------------------
+        // LOW PASS
+        // ----------------------------------------------------
+
+        const newLowPass =
+            ctx.createBiquadFilter();
+
+
+        newLowPass.type =
+            "lowpass";
+
+
+        newLowPass.frequency.value =
+            5200;
+
+
+        newLowPass.Q.value =
+            0.35;
+
+
+        // ----------------------------------------------------
+        // REVERB
+        // ----------------------------------------------------
+
+        const newReverb =
+            ctx.createConvolver();
+
+
+        newReverb.buffer =
+            createReverbBuffer(
+                ctx,
+                4.0,
+                2.8
+            );
+
+
+        const newReverbGain =
+            ctx.createGain();
+
+
+        newReverbGain.gain.value =
+            0.11;
+
+
+        // ----------------------------------------------------
+        // GRAPH
+        // ----------------------------------------------------
+
+        newHighPass
+            .connect(
+                newLowPass
+            )
+            .connect(
+                newCompressor
+            )
+            .connect(
+                newMaster
+            );
+
+
+        newCompressor.connect(
+            newReverb
+        );
+
+
+        newReverb
+            .connect(
+                newReverbGain
+            )
+            .connect(
+                newMaster
+            );
+
+
+        newMaster
+            .connect(
+                newOutput
+            );
+
+
+        newOutput.connect(
+            ctx.destination
+        );
+
+
+        // ====================================================
+        // BASS
+        // ====================================================
+
+        const newBassOsc =
+            ctx.createOscillator();
+
+
+        const newBassGain =
+            ctx.createGain();
+
+
+        newBassOsc.type =
+            "sine";
+
+
+        newBassGain.gain.value =
+            0.0001;
+
+
+        newBassOsc
+            .connect(
+                newBassGain
+            )
+            .connect(
+                newHighPass
+            );
+
+
+        // ====================================================
+        // MID BASS
+        // ====================================================
+
+        const newMidBassOsc =
+            ctx.createOscillator();
+
+
+        const newMidBassGain =
+            ctx.createGain();
+
+
+        newMidBassOsc.type =
+            "triangle";
+
+
+        newMidBassGain.gain.value =
+            0.0001;
+
+
+        newMidBassOsc
+            .connect(
+                newMidBassGain
+            )
+            .connect(
+                newHighPass
+            );
+
+
+        // ====================================================
+        // PAD
+        // ====================================================
+
+        const newPadOscA =
+            ctx.createOscillator();
+
+
+        const newPadOscB =
+            ctx.createOscillator();
+
+
+        const newPadGain =
+            ctx.createGain();
+
+
+        newPadOscA.type =
+            "triangle";
+
+
+        newPadOscB.type =
+            "sine";
+
+
+        newPadGain.gain.value =
+            0.0001;
+
+
+        newPadOscA
+            .connect(
+                newPadGain
+            )
+            .connect(
+                newHighPass
+            );
+
+
+        newPadOscB
+            .connect(
+                newPadGain
+            )
+            .connect(
+                newHighPass
+            );
+
+
+        // ====================================================
+        // AIR
+        // ====================================================
+
+        const newAirOsc =
+            ctx.createOscillator();
+
+
+        const newAirGain =
+            ctx.createGain();
+
+
+        newAirOsc.type =
+            "sine";
+
+
+        newAirGain.gain.value =
+            0.0001;
+
+
+        newAirOsc
+            .connect(
+                newAirGain
+            )
+            .connect(
+                newHighPass
+            );
+
+
+        // ====================================================
+        // TEXTURE
+        // ====================================================
+
+        const noise =
+            ctx.createBufferSource();
+
+
+        noise.buffer =
+            createNoiseBuffer(
+                ctx
+            );
+
+
+        noise.loop =
+            true;
+
+
+        const noiseFilter =
+            ctx.createBiquadFilter();
+
+
+        noiseFilter.type =
+            "bandpass";
+
+
+        noiseFilter.frequency.value =
+            1150;
+
+
+        noiseFilter.Q.value =
+            0.58;
+
+
+        const newTextureGain =
+            ctx.createGain();
+
+
+        newTextureGain.gain.value =
+            0.0001;
+
+
+        noise
+            .connect(
+                noiseFilter
+            )
+            .connect(
+                newTextureGain
+            )
+            .connect(
+                newHighPass
+            );
+
+
+        // ====================================================
+        // INITIAL HARMONIC STATE
+        // ====================================================
+
+        const root =
+            circleOfFifths[
+                circleIndex
+            ].root;
+
+
+        const now =
+            ctx.currentTime;
+
+
+        newBassOsc.frequency.value =
+            root / 2;
+
+
+        newMidBassOsc.frequency.value =
+            root;
+
+
+        newPadOscA.frequency.value =
+            root;
+
+
+        newPadOscB.frequency.value =
+            root * 1.498;
+
+
+        newAirOsc.frequency.value =
+            root * 2;
+
+
+        // ====================================================
+        // START
+        // ====================================================
+
+        newBassOsc.start(now);
+
+        newMidBassOsc.start(now);
+
+        newPadOscA.start(now);
+
+        newPadOscB.start(now);
+
+        newAirOsc.start(now);
+
+        noise.start(now);
+
+
+        // ====================================================
+        // ENTRY
+        // ====================================================
+
+        newMaster.gain
+            .exponentialRampToValueAtTime(
+                0.82,
+                now + 4.5
+            );
+
+
+        newBassGain.gain
+            .exponentialRampToValueAtTime(
+                0.085,
+                now + 3.5
+            );
+
+
+        newMidBassGain.gain
+            .exponentialRampToValueAtTime(
+                0.070,
+                now + 3.8
+            );
+
+
+        newPadGain.gain
+            .exponentialRampToValueAtTime(
+                0.050,
+                now + 4.5
+            );
+
+
+        newAirGain.gain
+            .exponentialRampToValueAtTime(
+                0.013,
+                now + 5.5
+            );
+
+
+        newTextureGain.gain
+            .exponentialRampToValueAtTime(
+                0.004,
+                now + 6.5
+            );
+
+
+        // ====================================================
+        // EXPOSE
+        // ====================================================
 
         audio =
-            new AudioContext();
+            ctx;
 
-        if (audio.state === "suspended") {
-            await audio.resume();
+
+        master =
+            newMaster;
+
+
+        output =
+            newOutput;
+
+
+        compressor =
+            newCompressor;
+
+
+        highPass =
+            newHighPass;
+
+
+        lowPass =
+            newLowPass;
+
+
+        reverb =
+            newReverb;
+
+
+        reverbGain =
+            newReverbGain;
+
+
+        bassOsc =
+            newBassOsc;
+
+
+        bassGain =
+            newBassGain;
+
+
+        midBassOsc =
+            newMidBassOsc;
+
+
+        midBassGain =
+            newMidBassGain;
+
+
+        padOscA =
+            newPadOscA;
+
+
+        padOscB =
+            newPadOscB;
+
+
+        padGain =
+            newPadGain;
+
+
+        airOsc =
+            newAirOsc;
+
+
+        airGain =
+            newAirGain;
+
+
+        textureSource =
+            noise;
+
+
+        textureGain =
+            newTextureGain;
+
+
+        nextCompositionTime =
+            now +
+            3.5;
+
+
+        nextTextureTime =
+            now +
+            6.0;
+
+
+        console.log(
+            "[AUDIO] started",
+            {
+                state:
+                    audio.state,
+
+                sampleRate:
+                    audio.sampleRate,
+
+                output:
+                    output.gain.value
+            }
+        );
+
+
+        // Únicament el llindar d'entrada.
+        playEntryResonance();
+
+    }
+    catch (error) {
+
+        console.error(
+            "Audio initialization failed:",
+            error
+        );
+
+
+        try {
+
+            await ctx.close();
+
         }
+        catch (_) {}
 
-    } catch (error) {
-
-        console.warn(
-            "Threshold audio:",
-            error
-        );
-
-        audio = null;
-        return;
     }
 
 
-    // ========================================================
-    // MASTER
-    // ========================================================
+    audioStarting =
+        false;
 
-    master =
-        audio.createGain();
-
-    master.gain.value =
-        0.0001;
-
-
-    // ========================================================
-    // COMPRESSOR
-    // ========================================================
-
-    compressor =
-        audio.createDynamicsCompressor();
-
-    compressor.threshold.value =
-        -26;
-
-    compressor.knee.value =
-        20;
-
-    compressor.ratio.value =
-        2;
-
-    compressor.attack.value =
-        0.08;
-
-    compressor.release.value =
-        0.5;
-
-
-    // ========================================================
-    // FILTER
-    //
-    // Fix explícit de canals:
-    // el filtre rep i retorna sempre estèreo.
-    // ========================================================
-
-    filter =
-        audio.createBiquadFilter();
-
-    filter.type =
-        "lowpass";
-
-    filter.frequency.value =
-        900;
-
-    filter.Q.value =
-        0.28;
-
-    try {
-
-        filter.channelCountMode =
-            "explicit";
-
-        filter.channelCount =
-            2;
-
-        filter.channelInterpretation =
-            "speakers";
-
-    } catch (error) {
-
-        console.warn(
-            "Threshold: no s'ha pogut fixar el mode de canals del filtre.",
-            error
-        );
-    }
-
-
-    // ========================================================
-    // PAN
-    // ========================================================
-
-    if (audio.createStereoPanner) {
-
-        pan =
-            audio.createStereoPanner();
-
-        pan.channelCountMode =
-            "clamped-max";
-
-        pan.channelCount =
-            2;
-
-    } else {
-
-        pan = null;
-    }
-
-
-    // ========================================================
-    // ROUTING
-    //
-    // Totes les veus → filter → compressor → pan → master
-    // ========================================================
-
-    filter.connect(compressor);
-
-    if (pan) {
-
-        compressor.connect(pan);
-        pan.connect(master);
-
-    } else {
-
-        compressor.connect(master);
-    }
-
-    master.connect(
-        audio.destination
-    );
-
-
-    // ========================================================
-    // DRONE
-    // ========================================================
-
-    drone =
-        audio.createOscillator();
-
-    drone.type =
-        "sine";
-
-    drone.frequency.value =
-        110;
-
-    droneGain =
-        audio.createGain();
-
-    droneGain.gain.value =
-        0.045;
-
-    drone
-        .connect(droneGain)
-        .connect(filter);
-
-
-    // ========================================================
-    // SUBHARMONIC
-    // ========================================================
-
-    sub =
-        audio.createOscillator();
-
-    sub.type =
-        "sine";
-
-    sub.frequency.value =
-        55;
-
-    subGain =
-        audio.createGain();
-
-    subGain.gain.value =
-        0.018;
-
-    sub
-        .connect(subGain)
-        .connect(filter);
-
-
-    // ========================================================
-    // HARMONIC
-    // ========================================================
-
-    harmonic =
-        audio.createOscillator();
-
-    harmonic.type =
-        "triangle";
-
-    harmonic.frequency.value =
-        220;
-
-    harmonicGain =
-        audio.createGain();
-
-    harmonicGain.gain.value =
-        0.006;
-
-    harmonic
-        .connect(harmonicGain)
-        .connect(filter);
-
-
-    // ========================================================
-    // AIR
-    // ========================================================
-
-    texture =
-        audio.createOscillator();
-
-    texture.type =
-        "sine";
-
-    texture.frequency.value =
-        440;
-
-    textureGain =
-        audio.createGain();
-
-    textureGain.gain.value =
-        0.0018;
-
-    texture
-        .connect(textureGain)
-        .connect(filter);
-
-
-    // ========================================================
-    // LFO
-    // ========================================================
-
-    lfo =
-        audio.createOscillator();
-
-    lfo.frequency.value =
-        0.055;
-
-    lfoGain =
-        audio.createGain();
-
-    lfoGain.gain.value =
-        140;
-
-    lfo
-        .connect(lfoGain)
-        .connect(filter.frequency);
-
-
-    // ========================================================
-    // START
-    // ========================================================
-
-    const now =
-        audio.currentTime;
-
-    drone.start(now);
-    sub.start(now);
-    harmonic.start(now);
-    texture.start(now);
-    lfo.start(now);
-
-    master.gain.setValueAtTime(
-        0.0001,
-        now
-    );
-
-    master.gain.exponentialRampToValueAtTime(
-        0.045,
-        now + 5
-    );
-
-    audioStarted = true;
-
-    startMelodyEngine();
 }
 
 
 // ============================================================
-// FRACTAL → NOTE
+// ENTRY RESONANCE
 // ============================================================
 
-function fractalNote() {
+function playEntryResonance() {
 
-    const tonal =
-        tonalCenters[tonalIndex];
+    if (
+        !audio ||
+        !lowPass
+    ) {
 
-    const scale =
-        tonal.scale;
-
-    const depth =
-        Math.floor(
-            fractalDepth * 5
-        );
-
-    const seed =
-        Math.floor(
-            Math.random() *
-            scale.length
-        );
-
-    const degree =
-        (
-            seed +
-            depth +
-            Math.floor(
-                exploration * 4
-            )
-        ) %
-        scale.length;
-
-    const octave =
-        Math.random() > 0.72
-            ? 2
-            : 1;
-
-    const semitone =
-        scale[degree] +
-        octave * 12;
-
-    return (
-        tonal.root *
-        Math.pow(
-            2,
-            semitone / 12
-        )
-    );
-}
-
-
-// ============================================================
-// MELODY VOICE
-// ============================================================
-
-function playMelodyNote() {
-
-    if (!audioStarted || !audio) {
         return;
+
     }
+
 
     const now =
         audio.currentTime;
 
-    const osc =
+
+    const oscillator =
         audio.createOscillator();
+
 
     const gain =
         audio.createGain();
 
-    const notePan =
-        audio.createStereoPanner
-            ? audio.createStereoPanner()
-            : null;
 
-    osc.type =
+    const filter =
+        audio.createBiquadFilter();
+
+
+    oscillator.type =
         "sine";
 
-    const frequency =
-        fractalNote();
 
-    osc.frequency.setValueAtTime(
-        frequency,
-        now
-    );
+    oscillator.frequency.value =
+        110;
 
-    osc.detune.setValueAtTime(
-        (
-            Math.random() - 0.5
-        ) * 12,
-        now
-    );
 
-    const intensity =
-        0.010 +
-        fractalDepth * 0.018;
+    filter.type =
+        "lowpass";
 
-    const duration =
-        1.3 +
-        Math.random() * 1.7;
+
+    filter.frequency.value =
+        780;
+
+
+    filter.Q.value =
+        0.6;
+
 
     gain.gain.setValueAtTime(
         0.0001,
         now
     );
 
-    gain.gain.exponentialRampToValueAtTime(
-        intensity,
-        now + 0.12
+
+    gain.gain
+        .exponentialRampToValueAtTime(
+            0.045,
+            now + 0.18
+        );
+
+
+    gain.gain
+        .exponentialRampToValueAtTime(
+            0.0001,
+            now + 1.7
+        );
+
+
+    oscillator
+        .connect(
+            filter
+        )
+        .connect(
+            gain
+        )
+        .connect(
+            lowPass
+        );
+
+
+    oscillator.start(
+        now
     );
 
-    gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + duration
+
+    oscillator.stop(
+        now + 1.9
     );
 
-    if (notePan) {
-
-        notePan.channelCountMode =
-            "clamped-max";
-
-        notePan.channelCount =
-            2;
-
-        notePan.pan.value =
-            Math.max(
-                -0.75,
-                Math.min(
-                    0.75,
-                    currentLensX +
-                    (
-                        Math.random() - 0.5
-                    ) * 0.35
-                )
-            );
-
-        osc
-            .connect(gain)
-            .connect(notePan)
-            .connect(filter);
-
-    } else {
-
-        osc
-            .connect(gain)
-            .connect(filter);
-    }
-
-    osc.start(now);
-
-    osc.stop(
-        now + duration + 0.1
-    );
 }
 
 
 // ============================================================
-// AUTOGENERATED MUSIC
+// SCALE
 // ============================================================
 
-function startMelodyEngine() {
+function currentScale() {
 
-    if (melodyTimer) {
-        return;
-    }
+    return mode ===
+        "major"
+        ? majorScale
+        : minorScale;
 
-    function tick() {
+}
 
-        if (!audioStarted || !audio) {
-            melodyTimer = null;
-            return;
-        }
 
-        const activity =
-            lensEnergyValue +
-            fractalDepth +
-            exploration;
+// ============================================================
+// FREQUENCY
+// ============================================================
 
-        if (
-            Math.random() <
-            0.30 +
-            Math.min(
-                activity * 0.10,
-                0.35
+function frequencyFromDegree(
+    degree,
+    octave = 0
+) {
+
+    const scale =
+        currentScale();
+
+
+    const index =
+        (
+            degree %
+            scale.length +
+            scale.length
+        )
+        %
+        scale.length;
+
+
+    const scaleOctave =
+        Math.floor(
+            degree /
+            scale.length
+        );
+
+
+    const semitone =
+        scale[index] +
+        (
+            scaleOctave +
+            octave
+        )
+        *
+        12;
+
+
+    const root =
+        circleOfFifths[
+            circleIndex
+        ].root;
+
+
+    return (
+        root *
+        Math.pow(
+            2,
+            semitone /
+            12
+        )
+    );
+
+}
+
+
+// ============================================================
+// MODE
+// ============================================================
+
+function evaluateMode() {
+
+    const distance =
+        Math.min(
+            Math.abs(
+                circleIndex -
+                previousCircleIndex
+            ),
+            12 -
+            Math.abs(
+                circleIndex -
+                previousCircleIndex
             )
-        ) {
+        );
 
-            playMelodyNote();
-        }
 
-        const next =
-            1100 +
-            Math.random() * 1100 -
-            fractalDepth * 350;
+    const minorPressure =
+        harmonicTension *
+        0.60
+        +
+        (
+            musicalDegree === 2
+                ? 0.15
+                : 0
+        )
+        +
+        (
+            distance > 1
+                ? 0.09
+                : 0
+        );
 
-        melodyTimer =
-            setTimeout(
-                tick,
-                Math.max(
-                    650,
-                    next
-                )
-            );
+
+    const majorPressure =
+        harmonicStability *
+        0.44
+        +
+        (
+            musicalDegree === 0
+                ? 0.18
+                : 0
+        );
+
+
+    if (
+        minorPressure >
+        majorPressure +
+        0.10
+    ) {
+
+        mode =
+            "minor";
+
+    }
+    else if (
+        majorPressure >
+        minorPressure +
+        0.10
+    ) {
+
+        mode =
+            "major";
+
     }
 
-    tick();
 }
 
 
 // ============================================================
-// TONAL MIGRATION
+// CIRCLE MOVEMENT
 // ============================================================
 
-function updateTonalCenter(elapsed) {
-
-    const activity =
-        lensEnergyValue * 0.5 +
-        exploration * 0.3 +
-        fractalDepth * 0.2;
-
-    tonalEnergy +=
-        activity * 0.002;
-
-    tonalEnergy *=
-        0.997;
+function moveAroundCircle(
+    direction
+) {
 
     if (
-        elapsed -
-        lastTonalChange <
-        18
+        direction === 0
     ) {
+
         return;
+
     }
+
+
+    const current =
+        circleOfFifths[
+            circleIndex
+        ];
+
+
+    const next =
+        direction > 0
+            ? current.up
+            : current.down;
+
 
     if (
-        tonalEnergy >
-        0.52
+        next ===
+        circleIndex
     ) {
 
-        const direction =
-            Math.random() > 0.5
-                ? 1
-                : -1;
+        return;
 
-        tonalIndex =
-            (
-                tonalIndex +
-                direction +
-                tonalCenters.length
-            ) %
-            tonalCenters.length;
-
-        tonalEnergy = 0;
-
-        lastTonalChange =
-            elapsed;
     }
+
+
+    previousCircleIndex =
+        circleIndex;
+
+
+    circleIndex =
+        next;
+
+
+    harmonicTension =
+        Math.min(
+            1,
+            harmonicTension +
+            0.12
+        );
+
+
+    harmonicStability =
+        Math.max(
+            0.20,
+            harmonicStability -
+            0.07
+        );
+
+
+    evaluateMode();
+
+
+    if (
+        Math.random() <
+        0.60
+    ) {
+
+        triggerPhotonicBridge(
+            "harmonic"
+        );
+
+    }
+
 }
 
 
 // ============================================================
-// AUDIO UPDATE
+// POINTER → MUSICAL STATE
 // ============================================================
 
-function updateAudio() {
+function updateMusicalPointer() {
 
-    if (!audioStarted || !audio) {
+    const speed =
+        pointerVelocity;
+
+
+    if (
+        speed <
+        0.012
+    ) {
+
+        directionConfidence *=
+            0.968;
+
+
+        musicalPerturbation *=
+            0.986;
+
+
         return;
+
     }
+
+
+    const direction =
+        targetPointerX >
+        0.055
+            ? 1
+            : targetPointerX <
+                -0.055
+                ? -1
+                : 0;
+
+
+    if (
+        direction !==
+        harmonicDirection
+    ) {
+
+        directionConfidence =
+            0;
+
+    }
+
+
+    harmonicDirection =
+        direction;
+
+
+    directionConfidence +=
+        speed *
+        0.17;
+
+
+    directionConfidence =
+        Math.min(
+            1,
+            directionConfidence
+        );
+
+
+    musicalPerturbation =
+        Math.min(
+            1,
+            musicalPerturbation +
+            speed *
+            0.14
+        );
+
+
+    const normalized =
+        Math.max(
+            0,
+            Math.min(
+                0.999,
+                0.5 -
+                targetPointerY
+            )
+        );
+
+
+    musicalDegree =
+        Math.floor(
+            normalized *
+            7
+        );
+
+
+    const now =
+        performance.now()
+        /
+        1000;
+
+
+    if (
+        direction !== 0 &&
+        directionConfidence >
+        0.35 &&
+        speed >
+        0.035 &&
+        now -
+        lastHarmonicMove >
+        6.5
+    ) {
+
+        moveAroundCircle(
+            direction
+        );
+
+
+        lastHarmonicMove =
+            now;
+
+
+        directionConfidence =
+            0;
+
+    }
+
+
+    harmonicTension +=
+        speed *
+        0.0035;
+
+
+    harmonicTension *=
+        0.9985;
+
+
+    harmonicTension =
+        Math.max(
+            0.05,
+            Math.min(
+                0.96,
+                harmonicTension
+            )
+        );
+
+
+    harmonicStability =
+        1 -
+        harmonicTension *
+        0.67;
+
+}
+
+
+// ============================================================
+// PLAY NOTE
+// ============================================================
+
+function playNote(
+    frequency,
+    duration,
+    velocity,
+    waveform = "sine"
+) {
+
+    if (
+        !audio ||
+        audio.state !==
+        "running"
+        ||
+        !lowPass
+    ) {
+
+        return;
+
+    }
+
 
     const now =
         audio.currentTime;
 
-    const activity =
-        Math.min(
-            1,
-            0.25 +
-            lensEnergyValue * 0.45 +
-            fractalDepth * 0.35
+
+    const oscillator =
+        audio.createOscillator();
+
+
+    const gain =
+        audio.createGain();
+
+
+    oscillator.type =
+        waveform;
+
+
+    oscillator.frequency
+        .setValueAtTime(
+            frequency,
+            now
         );
 
-    filter.frequency.linearRampToValueAtTime(
-        650 +
-        activity * 850,
-        now + 0.5
+
+    gain.gain.setValueAtTime(
+        0.0001,
+        now
     );
 
-    const tonal =
-        tonalCenters[tonalIndex];
+
+    const attack =
+        Math.min(
+            0.16,
+            duration *
+            0.20
+        );
+
+
+    gain.gain
+        .exponentialRampToValueAtTime(
+            Math.max(
+                0.002,
+                velocity
+            ),
+            now +
+            attack
+        );
+
+
+    gain.gain
+        .exponentialRampToValueAtTime(
+            0.0001,
+            now +
+            duration
+        );
+
+
+    oscillator
+        .connect(
+            gain
+        )
+        .connect(
+            lowPass
+        );
+
+
+    oscillator.start(
+        now
+    );
+
+
+    oscillator.stop(
+        now +
+        duration +
+        0.08
+    );
+
+}
+
+
+// ============================================================
+// SILENCE PROBABILITY
+// ============================================================
+
+function silenceProbability() {
+
+    let probability =
+        0.14;
+
+
+    probability +=
+        harmonicStability *
+        0.13;
+
+
+    probability +=
+        (
+            1 -
+            musicalPerturbation
+        )
+        *
+        0.10;
+
+
+    if (
+        phraseProgress >=
+        phraseTarget -
+        1
+    ) {
+
+        probability +=
+            0.14;
+
+    }
+
+
+    if (
+        compositionCycle %
+        7 ===
+        0
+    ) {
+
+        probability +=
+            0.10;
+
+    }
+
+
+    return Math.min(
+        probability,
+        0.48
+    );
+
+}
+
+
+// ============================================================
+// NOTE DURATION
+// ============================================================
+
+function chooseNoteDuration() {
+
+    const values = [
+
+        0.58,
+        0.82,
+        1.12,
+        1.55,
+        2.10,
+        3.00
+
+    ];
+
+
+    let duration =
+        values[
+            Math.floor(
+                Math.random() *
+                values.length
+            )
+        ];
+
+
+    if (
+        harmonicStability >
+        0.82
+    ) {
+
+        duration *=
+            1.28;
+
+    }
+
+
+    if (
+        harmonicTension >
+        0.74
+    ) {
+
+        duration *=
+            0.72;
+
+    }
+
+
+    return duration;
+
+}
+
+
+// ============================================================
+// MUSIC COHERENCE
+// ============================================================
+
+function coherenceForMusic() {
+
+    return (
+        harmonicStability *
+        0.67
+    )
+    +
+    (
+        visualCoherence *
+        0.13
+    )
+    +
+    (
+        1 -
+        harmonicTension
+    )
+    *
+    0.20;
+
+}
+
+
+// ============================================================
+// COMPOSITION
+// ============================================================
+
+function generateMusicalEvent() {
+
+    if (
+        !audio ||
+        audio.state !==
+        "running"
+    ) {
+
+        return;
+
+    }
+
+
+    const now =
+        audio.currentTime;
+
+
+    if (
+        now <
+        silenceUntil
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        Math.random() <
+        silenceProbability()
+    ) {
+
+        enterSilence();
+
+        return;
+
+    }
+
+
+    let degree;
+
+
+    if (
+        melodicMemory.length &&
+        Math.random() <
+        0.46
+    ) {
+
+        const remembered =
+            melodicMemory[
+                Math.floor(
+                    Math.random() *
+                    melodicMemory.length
+                )
+            ];
+
+
+        const direction =
+            Math.random() >
+            0.5
+                ? 1
+                : -1;
+
+
+        const step =
+            Math.random() >
+            0.76
+                ? 2
+                : 1;
+
+
+        degree =
+            remembered +
+            direction *
+            step;
+
+    }
+    else {
+
+        degree =
+            musicalDegree;
+
+    }
+
+
+    if (
+        harmonicDirection !== 0 &&
+        Math.random() <
+        0.42
+    ) {
+
+        degree +=
+            harmonicDirection;
+
+    }
+
+
+    let resolved =
+        false;
+
+
+    if (
+        harmonicTension >
+        0.74 &&
+        Math.random() >
+        0.43
+    ) {
+
+        degree =
+            Math.random() >
+            0.5
+                ? 0
+                : 4;
+
+
+        harmonicTension *=
+            0.50;
+
+
+        harmonicStability =
+            Math.min(
+                0.94,
+                harmonicStability +
+                0.20
+            );
+
+
+        resolved =
+            true;
+
+    }
+
+
+    degree =
+        Math.max(
+            -7,
+            Math.min(
+                14,
+                degree
+            )
+        );
+
+
+    let octave =
+        0;
+
+
+    if (
+        harmonicTension >
+        0.64
+    ) {
+
+        octave =
+            Math.random() >
+            0.55
+                ? 1
+                : 0;
+
+    }
+
+
+    if (
+        coherenceForMusic() >
+        0.84 &&
+        Math.random() >
+        0.80
+    ) {
+
+        octave =
+            2;
+
+    }
+
+
+    const frequency =
+        frequencyFromDegree(
+            degree,
+            octave
+        );
+
+
+    const duration =
+        chooseNoteDuration();
+
+
+    const velocity =
+        0.085
+        +
+        harmonicStability *
+        0.065
+        +
+        musicalPerturbation *
+        0.028;
+
+
+    const waveform =
+        harmonicTension >
+        0.58
+            ? "triangle"
+            : "sine";
+
+
+    playNote(
+        frequency,
+        duration,
+        velocity,
+        waveform
+    );
+
+
+    melodicMemory.push(
+        degree
+    );
+
+
+    if (
+        melodicMemory.length >
+        12
+    ) {
+
+        melodicMemory.shift();
+
+    }
+
+
+    musicalDegree =
+        degree;
+
+
+    compositionCycle++;
+    phraseProgress++;
+
+
+    // --------------------------------------------------------
+    // UPPER VOICE
+    // --------------------------------------------------------
+
+    if (
+        phraseProgress >=
+        2
+        &&
+        Math.random() >
+        0.32
+    ) {
+
+        playNote(
+            frequency *
+            (
+                Math.random() >
+                0.5
+                    ? 2
+                    : 4
+            ),
+            duration *
+            0.68,
+            velocity *
+            0.40,
+            "sine"
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // LOW RESONANCE
+    // --------------------------------------------------------
+
+    if (
+        harmonicStability >
+        0.55
+        &&
+        Math.random() >
+        0.54
+    ) {
+
+        playNote(
+            frequency /
+            2,
+            duration *
+            1.4,
+            velocity *
+            0.36,
+            "sine"
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // MUSICAL SYMBOL
+    // --------------------------------------------------------
+
+    if (
+        harmonicStability >
+        0.67
+        &&
+        Math.random() >
+        0.46
+    ) {
+
+        showMusicalRelation();
+
+    }
+
+
+    // --------------------------------------------------------
+    // PHRASE
+    // --------------------------------------------------------
+
+    if (
+        phraseProgress >=
+        phraseTarget
+        ||
+        resolved
+    ) {
+
+        phraseProgress =
+            0;
+
+
+        phraseTarget =
+            2 +
+            Math.floor(
+                Math.random() *
+                4
+            );
+
+
+        if (
+            resolved
+        ) {
+
+            enterSilence(
+                "resolution"
+            );
+
+        }
+        else if (
+            Math.random() >
+            0.34
+        ) {
+
+            enterSilence();
+
+        }
+
+
+        if (
+            resolved &&
+            Math.random() >
+            0.28
+        ) {
+
+            triggerPhotonicBridge(
+                "resolution"
+            );
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// COMPOSITION CLOCK
+// ============================================================
+
+function updateComposition() {
+
+    if (
+        !audio ||
+        audio.state !==
+        "running"
+    ) {
+
+        return;
+
+    }
+
+
+    const now =
+        audio.currentTime;
+
+
+    if (
+        now <
+        nextCompositionTime
+    ) {
+
+        return;
+
+    }
+
+
+    generateMusicalEvent();
+
+
+    let interval =
+        1.55 +
+        Math.random() *
+        2.85;
+
+
+    interval *=
+        0.83 +
+        harmonicStability *
+        0.43;
+
+
+    if (
+        harmonicTension >
+        0.72
+    ) {
+
+        interval *=
+            0.76;
+
+    }
+
+
+    if (
+        silenceUntil >
+        now
+    ) {
+
+        interval +=
+            silenceUntil -
+            now;
+
+    }
+
+
+    nextCompositionTime =
+        now +
+        interval;
+
+}
+
+
+// ============================================================
+// AUDIO BODY
+// ============================================================
+
+function updateAudioBody() {
+
+    if (
+        !audio ||
+        audio.state !==
+        "running"
+    ) {
+
+        return;
+
+    }
+
+
+    const now =
+        audio.currentTime;
+
 
     const root =
-        tonal.root;
+        circleOfFifths[
+            circleIndex
+        ].root;
 
-    drone.frequency.linearRampToValueAtTime(
-        root * 0.5,
-        now + 2.5
-    );
 
-    sub.frequency.linearRampToValueAtTime(
-        root * 0.25,
-        now + 2.8
-    );
-
-    harmonic.frequency.linearRampToValueAtTime(
-        root,
-        now + 3.0
-    );
-
-    texture.frequency.linearRampToValueAtTime(
-        root * 2,
-        now + 3.5
-    );
-
-    droneGain.gain.linearRampToValueAtTime(
-        0.042 +
-        activity * 0.025,
-        now + 0.5
-    );
-
-    subGain.gain.linearRampToValueAtTime(
-        0.015 +
-        activity * 0.014,
-        now + 0.7
-    );
-
-    harmonicGain.gain.linearRampToValueAtTime(
-        0.004 +
-        fractalDepth * 0.010,
-        now + 0.8
-    );
-
-    textureGain.gain.linearRampToValueAtTime(
-        0.0015 +
-        pointerVelocity * 0.003,
-        now + 0.4
-    );
-
-    if (pan) {
-
-        pan.pan.linearRampToValueAtTime(
-            Math.max(
-                -0.68,
-                Math.min(
-                    0.68,
-                    currentLensX * 1.15
-                )
-            ),
-            now + 0.6
+    const chordRoot =
+        frequencyFromDegree(
+            musicalDegree,
+            0
         );
+
+
+    // --------------------------------------------------------
+    // FREQUENCIES
+    // --------------------------------------------------------
+
+    const bassFrequency =
+        root /
+        (
+            harmonicTension >
+            0.72
+                ? 1
+                : 2
+        );
+
+
+    bassOsc.frequency
+        .linearRampToValueAtTime(
+            bassFrequency,
+            now +
+            1.5
+        );
+
+
+    midBassOsc.frequency
+        .linearRampToValueAtTime(
+            root,
+            now +
+            1.65
+        );
+
+
+    padOscA.frequency
+        .linearRampToValueAtTime(
+            chordRoot,
+            now +
+            1.9
+        );
+
+
+    padOscB.frequency
+        .linearRampToValueAtTime(
+            chordRoot *
+            1.498,
+            now +
+            2.1
+        );
+
+
+    airOsc.frequency
+        .linearRampToValueAtTime(
+            chordRoot *
+            (
+                harmonicTension >
+                0.55
+                    ? 2
+                    : 1.5
+            ),
+            now +
+            2.6
+        );
+
+
+    // --------------------------------------------------------
+    // RESPIRACIÓ
+    // --------------------------------------------------------
+
+    const a =
+        0.5 +
+        0.5 *
+        Math.sin(
+            now *
+            0.13
+        );
+
+
+    const b =
+        0.5 +
+        0.5 *
+        Math.sin(
+            now *
+            0.079 +
+            1.8
+        );
+
+
+    const c =
+        0.5 +
+        0.5 *
+        Math.sin(
+            now *
+            0.217 +
+            3.4
+        );
+
+
+    const breath =
+        a * 0.43 +
+        b * 0.35 +
+        c * 0.22;
+
+
+    // --------------------------------------------------------
+    // SILENCE FACTORS
+    // --------------------------------------------------------
+
+    const definition =
+        currentSilence
+            ? silenceTypes[
+                currentSilence
+            ]
+            : null;
+
+
+    const bodyFactor =
+        definition
+            ? definition.body
+            : 1;
+
+
+    const harmonyFactor =
+        definition
+            ? definition.harmony
+            : 1;
+
+
+    const airFactor =
+        definition
+            ? definition.air
+            : 1;
+
+
+    const textureFactor =
+        definition
+            ? definition.texture
+            : 1;
+
+
+    // --------------------------------------------------------
+    // LEVELS
+    // --------------------------------------------------------
+
+    const bassLevel =
+        (
+            0.020 +
+            breath *
+            0.032
+        )
+        *
+        bodyFactor;
+
+
+    const midBassLevel =
+        (
+            0.015 +
+            breath *
+            0.024
+        )
+        *
+        bodyFactor;
+
+
+    const padLevel =
+        (
+            0.011 +
+            breath *
+            0.017
+        )
+        *
+        harmonyFactor;
+
+
+    const airLevel =
+        (
+            0.0015 +
+            visualExcitation *
+            0.006
+        )
+        *
+        airFactor;
+
+
+    const textureLevel =
+        (
+            0.0011 +
+            visualExcitation *
+            0.004
+        )
+        *
+        textureFactor;
+
+
+    bassGain.gain
+        .linearRampToValueAtTime(
+            bassLevel,
+            now +
+            1.2
+        );
+
+
+    midBassGain.gain
+        .linearRampToValueAtTime(
+            midBassLevel,
+            now +
+            1.3
+        );
+
+
+    padGain.gain
+        .linearRampToValueAtTime(
+            padLevel,
+            now +
+            1.6
+        );
+
+
+    airGain.gain
+        .linearRampToValueAtTime(
+            airLevel,
+            now +
+            1.9
+        );
+
+
+    textureGain.gain
+        .linearRampToValueAtTime(
+            textureLevel,
+            now +
+            1.5
+        );
+
+
+    // --------------------------------------------------------
+    // FILTRE
+    // --------------------------------------------------------
+
+    const filterTarget =
+        1050
+        +
+        harmonicStability *
+        2050
+        +
+        visualExcitation *
+        2600;
+
+
+    lowPass.frequency
+        .linearRampToValueAtTime(
+            filterTarget,
+            now +
+            1.15
+        );
+
+
+    // --------------------------------------------------------
+    // REVERB
+    // --------------------------------------------------------
+
+    if (
+        reverbGain
+    ) {
+
+        reverbGain.gain
+            .linearRampToValueAtTime(
+                0.075
+                +
+                harmonicStability *
+                0.065
+                +
+                visualExcitation *
+                0.035,
+                now +
+                1.5
+            );
+
     }
+
+}
+
+
+// ============================================================
+// TEXTURE EVENTS
+// ============================================================
+
+function updateTextureEvents() {
+
+    if (
+        !audio ||
+        audio.state !==
+        "running"
+    ) {
+
+        return;
+
+    }
+
+
+    const now =
+        audio.currentTime;
+
+
+    if (
+        now <
+        nextTextureTime
+    ) {
+
+        return;
+
+    }
+
+
+    const definition =
+        currentSilence
+            ? silenceTypes[
+                currentSilence
+            ]
+            : null;
+
+
+    if (
+        definition &&
+        definition.texture ===
+        0
+    ) {
+
+        nextTextureTime =
+            now +
+            3.5;
+
+        return;
+
+    }
+
+
+    const scale =
+        currentScale();
+
+
+    const degree =
+        Math.floor(
+            Math.random() *
+            7
+        );
+
+
+    const octave =
+        2 +
+        Math.floor(
+            Math.random() *
+            3
+        );
+
+
+    const frequency =
+        circleOfFifths[
+            circleIndex
+        ].root
+        *
+        Math.pow(
+            2,
+            (
+                scale[degree] +
+                octave *
+                12
+            )
+            /
+            12
+        );
+
+
+    const oscillator =
+        audio.createOscillator();
+
+
+    const gain =
+        audio.createGain();
+
+
+    const filter =
+        audio.createBiquadFilter();
+
+
+    oscillator.type =
+        Math.random() >
+        0.72
+            ? "triangle"
+            : "sine";
+
+
+    oscillator.frequency.value =
+        frequency;
+
+
+    filter.type =
+        "bandpass";
+
+
+    filter.frequency.value =
+        Math.min(
+            frequency,
+            5500
+        );
+
+
+    filter.Q.value =
+        2.8;
+
+
+    const duration =
+        1.3 +
+        Math.random() *
+        3.6;
+
+
+    gain.gain
+        .setValueAtTime(
+            0.0001,
+            now
+        );
+
+
+    gain.gain
+        .exponentialRampToValueAtTime(
+            0.015,
+            now +
+            0.68
+        );
+
+
+    gain.gain
+        .exponentialRampToValueAtTime(
+            0.0001,
+            now +
+            duration
+        );
+
+
+    oscillator
+        .connect(
+            filter
+        )
+        .connect(
+            gain
+        )
+        .connect(
+            lowPass
+        );
+
+
+    oscillator.start(
+        now
+    );
+
+
+    oscillator.stop(
+        now +
+        duration +
+        0.1
+    );
+
+
+    nextTextureTime =
+        now +
+        3.5 +
+        Math.random() *
+        6.0;
+
+}
+
+
+// ============================================================
+// PHOTONIC BRIDGE
+// ============================================================
+
+function triggerPhotonicBridge(
+    reason = "harmonic"
+) {
+
+    let probability =
+        0.52;
+
+
+    if (
+        reason ===
+        "resolution"
+    ) {
+
+        probability =
+            0.74;
+
+    }
+
+
+    if (
+        Math.random() >
+        probability
+    ) {
+
+        return;
+
+    }
+
+
+    const baseAngle =
+        (
+            circleIndex /
+            12
+        )
+        *
+        Math.PI *
+        2;
+
+
+    const angle =
+        baseAngle +
+        (
+            Math.random() -
+            0.5
+        )
+        *
+        2.5;
+
+
+    const radius =
+        0.16 +
+        Math.random() *
+        0.56;
+
+
+    let x =
+        Math.cos(angle) *
+        radius;
+
+
+    let y =
+        Math.sin(angle) *
+        radius;
+
+
+    if (
+        Math.hypot(
+            x -
+            targetPointerX,
+            y -
+            targetPointerY
+        )
+        <
+        0.28
+    ) {
+
+        x *=
+            -1;
+
+        y *=
+            -1;
+
+    }
+
+
+    photonTargetX =
+        x;
+
+
+    photonTargetY =
+        y;
+
+
+    photonEnergy =
+        reason ===
+        "resolution"
+            ? 0.56 +
+              Math.random() *
+              0.40
+            : 0.32 +
+              Math.random() *
+              0.46;
+
+
+    photonClock =
+        0;
+
+
+    activateResonance();
+
+
+    if (
+        Math.random() >
+        0.18
+    ) {
+
+        showFormula(
+            reason ===
+            "resolution"
+                ? "Δφ → interferència"
+                : "E = hν"
+        );
+
+    }
+
+
+    if (
+        Math.random() >
+        0.32
+    ) {
+
+        showMusicalRelation();
+
+    }
+
+}
+
+
+// ============================================================
+// AUTONOMOUS PHOTON
+// ============================================================
+
+function triggerAutonomousPhoton() {
+
+    const angle =
+        Math.random()
+        *
+        Math.PI *
+        2;
+
+
+    const radius =
+        0.20 +
+        Math.random() *
+        0.50;
+
+
+    let x =
+        Math.cos(angle) *
+        radius;
+
+
+    let y =
+        Math.sin(angle) *
+        radius;
+
+
+    if (
+        Math.hypot(
+            x -
+            targetPointerX,
+            y -
+            targetPointerY
+        )
+        <
+        0.28
+    ) {
+
+        x *=
+            -1;
+
+        y *=
+            -1;
+
+    }
+
+
+    photonTargetX =
+        x;
+
+
+    photonTargetY =
+        y;
+
+
+    photonEnergy =
+        0.11 +
+        Math.random() *
+        0.24;
+
+
+    photonClock =
+        0;
+
+}
+
+
+// ============================================================
+// PHOTON UPDATE
+// ============================================================
+
+function updatePhoton(dt) {
+
+    photonClock +=
+        dt;
+
+
+    photonX +=
+        (
+            photonTargetX -
+            photonX
+        )
+        *
+        Math.min(
+            1,
+            dt *
+            0.68
+        );
+
+
+    photonY +=
+        (
+            photonTargetY -
+            photonY
+        )
+        *
+        Math.min(
+            1,
+            dt *
+            0.68
+        );
+
+
+    const drift =
+        photonClock *
+        0.17;
+
+
+    photonX +=
+        Math.sin(
+            drift
+        )
+        *
+        dt *
+        0.013;
+
+
+    photonY +=
+        Math.cos(
+            drift *
+            0.71
+        )
+        *
+        dt *
+        0.009;
+
+
+    photonEnergy *=
+        Math.pow(
+            0.985,
+            dt *
+            60
+        );
+
+
+    photonEnergy =
+        Math.max(
+            0.018,
+            photonEnergy
+        );
+
+
+    if (
+        photonClock >
+        16 +
+        Math.random() *
+        20
+    ) {
+
+        photonClock =
+            0;
+
+
+        if (
+            Math.random() >
+            0.42
+        ) {
+
+            triggerAutonomousPhoton();
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// VISUAL STATE
+// ============================================================
+
+function updateVisualState(
+    elapsed
+) {
+
+    const a =
+        0.5 +
+        0.5 *
+        Math.sin(
+            elapsed *
+            0.081
+        );
+
+
+    const b =
+        0.5 +
+        0.5 *
+        Math.sin(
+            elapsed *
+            0.169 +
+            1.4
+        );
+
+
+    const c =
+        0.5 +
+        0.5 *
+        Math.sin(
+            elapsed *
+            0.287 +
+            4.1
+        );
+
+
+    const density =
+        a * 0.46 +
+        b * 0.35 +
+        c * 0.19;
+
+
+    const excitation =
+        0.08 +
+        (
+            0.5 +
+            0.5 *
+            Math.sin(
+                elapsed *
+                0.129
+            )
+        )
+        *
+        0.31;
+
+
+    const coherence =
+        0.55 +
+        0.34 *
+        (
+            0.5 +
+            0.5 *
+            Math.sin(
+                elapsed *
+                0.044 +
+                2.2
+            )
+        );
+
+
+    visualTransition =
+        Math.abs(
+            density -
+            visualDensity
+        );
+
+
+    visualDensity =
+        density;
+
+
+    visualExcitation =
+        excitation;
+
+
+    visualCoherence =
+        coherence;
+
+
+    visualPhase +=
+        0.0018 +
+        excitation *
+        0.0032;
+
+
+    if (
+        visualTransition >
+        0.048 &&
+        Math.random() >
+        0.997
+    ) {
+
+        triggerAutonomousPhoton();
+
+    }
+
+}
+
+
+// ============================================================
+// FORMULES
+// ============================================================
+
+const formulas = [
+
+    "∇ρ ≠ 0",
+    "Δφ",
+    "E = hν",
+    "ΔE · Δt ≳ ħ / 2",
+    "ψ → |ψ|²",
+    "k = 2π / λ",
+    "∂ρ / ∂t ≠ 0",
+    "∇ · J + ∂ρ / ∂t = 0",
+    "Δx · Δp ≳ ħ / 2",
+    "φ(t + T) ≈ φ(t)",
+    "∇²ψ",
+    "iℏ ∂ψ / ∂t = Ĥψ"
+
+];
+
+
+const musicalRelations = [
+
+    "3 : 2",
+    "5 : 4",
+    "2 : 1",
+    "6 : 5",
+    "9 : 8",
+    "3 : 2 : 4",
+    "2ⁿ⁄¹²",
+    "f₂ / f₁",
+    "Δf",
+    "φ₁ → φ₂"
+
+];
+
+
+let lastFormulaTime =
+    -Infinity;
+
+
+let lastNotationTime =
+    -Infinity;
+
+
+// ============================================================
+// FORMULA
+// ============================================================
+
+function showFormula(
+    preferred = null
+) {
+
+    const now =
+        performance.now()
+        /
+        1000;
+
+
+    if (
+        now -
+        lastFormulaTime <
+        5.8
+    ) {
+
+        return;
+
+    }
+
+
+    lastFormulaTime =
+        now;
+
+
+    const element =
+        document.getElementById(
+            "formula"
+        );
+
+
+    if (!element) {
+
+        return;
+
+    }
+
+
+    element.textContent =
+        preferred ||
+        formulas[
+            Math.floor(
+                Math.random() *
+                formulas.length
+            )
+        ];
+
+
+    element.style.left =
+        `${7 + Math.random() * 84}%`;
+
+
+    element.style.top =
+        `${9 + Math.random() * 82}%`;
+
+
+    const scale =
+        0.75 +
+        Math.random() *
+        0.72;
+
+
+    const rotation =
+        -4 +
+        Math.random() *
+        8;
+
+
+    element.style.transform =
+        `
+        translate(-50%, -50%)
+        rotate(${rotation}deg)
+        scale(${scale})
+        `;
+
+
+    element.classList.remove(
+        "visible"
+    );
+
+
+    void element.offsetWidth;
+
+
+    element.classList.add(
+        "visible"
+    );
+
+
+    setTimeout(
+        () => {
+
+            element.classList.remove(
+                "visible"
+            );
+
+        },
+        3500 +
+        Math.random() *
+        2200
+    );
+
+}
+
+
+// ============================================================
+// MUSICAL RELATION
+// ============================================================
+
+function showMusicalRelation(
+    preferred = null
+) {
+
+    const now =
+        performance.now()
+        /
+        1000;
+
+
+    if (
+        now -
+        lastNotationTime <
+        6.0
+    ) {
+
+        return;
+
+    }
+
+
+    lastNotationTime =
+        now;
+
+
+    const element =
+        document.getElementById(
+            "notation"
+        );
+
+
+    if (!element) {
+
+        return;
+
+    }
+
+
+    element.textContent =
+        preferred ||
+        musicalRelations[
+            Math.floor(
+                Math.random() *
+                musicalRelations.length
+            )
+        ];
+
+
+    element.style.left =
+        `${7 + Math.random() * 84}%`;
+
+
+    element.style.top =
+        `${10 + Math.random() * 80}%`;
+
+
+    const scale =
+        0.74 +
+        Math.random() *
+        0.70;
+
+
+    const rotation =
+        -5 +
+        Math.random() *
+        10;
+
+
+    element.style.transform =
+        `
+        translate(-50%, -50%)
+        rotate(${rotation}deg)
+        scale(${scale})
+        `;
+
+
+    element.classList.remove(
+        "visible"
+    );
+
+
+    void element.offsetWidth;
+
+
+    element.classList.add(
+        "visible"
+    );
+
+
+    setTimeout(
+        () => {
+
+            element.classList.remove(
+                "visible"
+            );
+
+        },
+        2800 +
+        Math.random() *
+        1900
+    );
+
+}
+
+
+// ============================================================
+// RESONANCE DOM
+// ============================================================
+
+let resonanceTimeout =
+    null;
+
+
+function activateResonance() {
+
+    const element =
+        document.getElementById(
+            "resonance"
+        );
+
+
+    if (!element) {
+
+        return;
+
+    }
+
+
+    element.style.setProperty(
+        "--resonance-x",
+        `${8 + Math.random() * 84}%`
+    );
+
+
+    element.style.setProperty(
+        "--resonance-y",
+        `${8 + Math.random() * 84}%`
+    );
+
+
+    element.classList.remove(
+        "active"
+    );
+
+
+    void element.offsetWidth;
+
+
+    element.classList.add(
+        "active"
+    );
+
+
+    clearTimeout(
+        resonanceTimeout
+    );
+
+
+    resonanceTimeout =
+        setTimeout(
+            () => {
+
+                element.classList.remove(
+                    "active"
+                );
+
+            },
+            2900
+        );
+
 }
 
 
 // ============================================================
 // POINTER
+// ============================================================
+
+window.addEventListener(
+    "pointermove",
+    event => {
+
+        const width =
+            window.innerWidth;
+
+
+        const height =
+            window.innerHeight;
+
+
+        const aspect =
+            width /
+            height;
+
+
+        targetPointerX =
+            (
+                event.clientX /
+                width -
+                0.5
+            )
+            *
+            aspect;
+
+
+        targetPointerY =
+            0.5 -
+            event.clientY /
+            height;
+
+
+        const dx =
+            event.clientX -
+            previousPointerX;
+
+
+        const dy =
+            event.clientY -
+            previousPointerY;
+
+
+        pointerVelocity =
+            Math.min(
+                1,
+                Math.hypot(
+                    dx,
+                    dy
+                ) /
+                100
+            );
+
+
+        previousPointerX =
+            event.clientX;
+
+
+        previousPointerY =
+            event.clientY;
+
+    },
+    {
+        passive: true
+    }
+);
+
+
+// ============================================================
+// FIRST GESTURE
 //
-// IMPORTANT:
-// El moviment del ratolí NO inicia l'àudio.
-// Només un gest explícit ho pot fer.
-//
-// Això evita els avisos d'AudioContext bloquejat
-// quan simplement passem per damunt del node.
+// Únicament activa Web Audio.
+// No és un esdeveniment musical.
 // ============================================================
 
 window.addEventListener(
@@ -1368,119 +5288,25 @@ window.addEventListener(
 
         startAudio();
 
-    },
-    {
-        passive: true
-    }
-);
 
-
-window.addEventListener(
-    "pointermove",
-    event => {
-
-        const w =
-            window.innerWidth;
-
-        const h =
-            window.innerHeight;
-
-        const aspect =
-            w / h;
-
-        targetLensX =
-            (
-                event.clientX / w
-            ) - 0.5;
-
-        targetLensX *=
-            aspect;
-
-        targetLensY =
-            0.5 -
-            (
-                event.clientY / h
+        const threshold =
+            document.getElementById(
+                "threshold"
             );
 
-        const dx =
-            event.clientX -
-            previousX;
 
-        const dy =
-            event.clientY -
-            previousY;
+        if (threshold) {
 
-        const velocity =
-            Math.sqrt(
-                dx * dx +
-                dy * dy
-            ) / 35;
-
-        pointerVelocity =
-            Math.min(
-                velocity,
-                1
+            threshold.classList.add(
+                "hidden"
             );
 
-        previousX =
-            event.clientX;
-
-        previousY =
-            event.clientY;
-
-        lensEnergyValue +=
-            pointerVelocity * 0.075;
-
-        lensEnergyValue =
-            Math.min(
-                1,
-                lensEnergyValue
-            );
-
-        exploration +=
-            pointerVelocity * 0.018;
-
-        exploration =
-            Math.min(
-                1,
-                exploration
-            );
-
-        fractalDepth +=
-            pointerVelocity * 0.012;
-
-        fractalDepth =
-            Math.min(
-                1,
-                fractalDepth
-            );
-
-        memoryValue +=
-            pointerVelocity * 0.008;
-
-        memoryValue =
-            Math.min(
-                1,
-                memoryValue
-            );
+        }
 
     },
     {
+        once: true,
         passive: true
-    }
-);
-
-
-// ============================================================
-// POINTER LEAVE
-// ============================================================
-
-window.addEventListener(
-    "pointerleave",
-    () => {
-
-        pointerVelocity *= 0.35;
-
     }
 );
 
@@ -1493,19 +5319,21 @@ function resize() {
 
     const dpr =
         Math.min(
-            window.devicePixelRatio || 1,
+            window.devicePixelRatio ||
+            1,
             2
         );
 
+
     canvas.width =
-        Math.floor(
-            window.innerWidth * dpr
-        );
+        window.innerWidth *
+        dpr;
+
 
     canvas.height =
-        Math.floor(
-            window.innerHeight * dpr
-        );
+        window.innerHeight *
+        dpr;
+
 
     gl.viewport(
         0,
@@ -1514,17 +5342,21 @@ function resize() {
         canvas.height
     );
 
+
     gl.uniform2f(
-        U.resolution,
+        uResolution,
         canvas.width,
         canvas.height
     );
+
 }
+
 
 window.addEventListener(
     "resize",
     resize
 );
+
 
 resize();
 
@@ -1533,77 +5365,151 @@ resize();
 // RENDER
 // ============================================================
 
-const start =
+const startTime =
     performance.now();
+
+
+let previousFrame =
+    startTime;
+
 
 function render(now) {
 
     const elapsed =
-        (now - start) / 1000;
-
-    currentLensX +=
         (
-            targetLensX -
-            currentLensX
-        ) * 0.055;
+            now -
+            startTime
+        )
+        /
+        1000;
 
-    currentLensY +=
+
+    const dt =
+        Math.min(
+            0.05,
+            (
+                now -
+                previousFrame
+            )
+            /
+            1000
+        );
+
+
+    previousFrame =
+        now;
+
+
+    // --------------------------------------------------------
+    // VISUAL
+    // --------------------------------------------------------
+
+    updateVisualState(
+        elapsed
+    );
+
+
+    updatePhoton(
+        dt
+    );
+
+
+    // --------------------------------------------------------
+    // MUSICAL
+    // --------------------------------------------------------
+
+    updateMusicalPointer();
+
+    updateComposition();
+
+    updateTextureEvents();
+
+    updateAudioBody();
+
+
+    // --------------------------------------------------------
+    // POINTER INERTIA
+    // --------------------------------------------------------
+
+    pointerX +=
         (
-            targetLensY -
-            currentLensY
-        ) * 0.055;
+            targetPointerX -
+            pointerX
+        )
+        *
+        0.042;
 
-    lensEnergyValue *=
-        0.992;
 
-    exploration *=
-        0.9985;
+    pointerY +=
+        (
+            targetPointerY -
+            pointerY
+        )
+        *
+        0.042;
 
-    memoryValue *=
-        0.9995;
-
-    fractalDepth *=
-        0.999;
 
     pointerVelocity *=
         0.94;
 
-    updateTonalCenter(
-        elapsed
-    );
 
-    updateAudio();
+    musicalPerturbation *=
+        0.992;
+
+
+    // --------------------------------------------------------
+    // SHADER
+    // --------------------------------------------------------
 
     gl.uniform1f(
-        U.time,
+        uTime,
         elapsed
     );
+
 
     gl.uniform2f(
-        U.lens,
-        currentLensX,
-        currentLensY
+        uDisturbance,
+        pointerX,
+        pointerY
     );
 
-    gl.uniform1f(
-        U.lensRadius,
-        0.135
-    );
 
     gl.uniform1f(
-        U.lensEnergy,
-        lensEnergyValue
+        uDisturbanceEnergy,
+        musicalPerturbation
     );
 
-    gl.uniform1f(
-        U.memory,
-        memoryValue
-    );
 
     gl.uniform1f(
-        U.fractalDepth,
-        fractalDepth
+        uCoherence,
+        visualCoherence
     );
+
+
+    gl.uniform1f(
+        uExcitation,
+        visualExcitation
+    );
+
+
+    gl.uniform2f(
+        uPhoton,
+        photonX,
+        photonY
+    );
+
+
+    gl.uniform1f(
+        uPhotonEnergy,
+        photonEnergy
+    );
+
+
+    gl.uniform1f(
+        uPhase,
+        visualPhase
+    );
+
 
     gl.drawArrays(
         gl.TRIANGLES,
@@ -1611,11 +5517,131 @@ function render(now) {
         6
     );
 
+
     requestAnimationFrame(
         render
     );
+
 }
+
 
 requestAnimationFrame(
     render
+);
+
+
+// ============================================================
+// FIRST FORMULA
+// ============================================================
+
+setTimeout(
+    () => {
+
+        showFormula(
+            "∂ρ / ∂t"
+        );
+
+    },
+    5200
+);
+
+
+// ============================================================
+// PHENOMENOLOGY CLOCK
+// ============================================================
+
+setInterval(
+    () => {
+
+        const r =
+            Math.random();
+
+
+        if (
+            r >
+            0.20
+        ) {
+
+            showFormula();
+
+        }
+
+
+        if (
+            r <
+            0.72
+        ) {
+
+            showMusicalRelation();
+
+        }
+
+    },
+    8500
+);
+
+
+// ============================================================
+// AUDIO DIAGNOSTIC
+// ============================================================
+
+function audioStatus() {
+
+    if (!audio) {
+
+        console.log(
+            "[AUDIO] context absent"
+        );
+
+        return;
+
+    }
+
+
+    console.log(
+        "[AUDIO]",
+        {
+            state:
+                audio.state,
+
+            currentTime:
+                audio.currentTime
+                    .toFixed(2),
+
+            master:
+                master?.gain.value
+                    ?.toFixed(4),
+
+            output:
+                output?.gain.value
+                    ?.toFixed(4),
+
+            bass:
+                bassGain?.gain.value
+                    ?.toFixed(4),
+
+            midBass:
+                midBassGain?.gain.value
+                    ?.toFixed(4),
+
+            pad:
+                padGain?.gain.value
+                    ?.toFixed(4),
+
+            air:
+                airGain?.gain.value
+                    ?.toFixed(4),
+
+            silence:
+                currentSilence
+
+        }
+    );
+
+}
+
+
+setInterval(
+    audioStatus,
+    4000
 );
