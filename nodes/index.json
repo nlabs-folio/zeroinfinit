@@ -5,12 +5,12 @@
             "entry": "nodes/2'n'groove/main.js"
         },
         {
-            "id": "node∅",
+            "id": "nodeN",
             "entry": "nodes/nodeN/main.js"
         },
         {
-            "id": "nodeN",
-            "entry": "nodes/node∅ /main.js"
+            "id": "node ∅",
+            "entry": "nodes/nodeO/main.js"
         }
     ]
 }
