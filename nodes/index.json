@@ -5,6 +5,10 @@
             "entry": "nodes/2'n'groove/main.js"
         },
         {
+            "id": "conway",
+            "entry": "nodes/Conway Synth./main.js"
+        },
+        {
             "id": "nodeN",
             "entry": "nodes/nodeN/main.js"
         },
