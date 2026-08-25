@@ -45,8 +45,6 @@ body {
 
     color: #000000;
 
-    
-
     background:
 
         radial-gradient(
@@ -57,7 +55,7 @@ body {
 
         radial-gradient(
             circle at 15% 20%,
-            rgba(218, 101, 241, 0.18),
+            rgba(218,101,241,.18),
             transparent 30%
         ),
 
@@ -98,8 +96,6 @@ body {
 
     border-radius:
         clamp(18px, 2vw, 30px);
-
-    
 
     background:
 
@@ -179,7 +175,7 @@ header p {
         clamp(1px, .2vw, 3px);
 
     color:
-         #117d9b;
+        #117d9b;
 }
 
 
@@ -207,8 +203,6 @@ header p {
     overflow:
         hidden;
 
-    /* NO GRID LAYOUT HERE */
-
     display:
         block;
 
@@ -216,9 +210,9 @@ header p {
 
         linear-gradient(
             145deg,
-             #38b7da,
-             #57ced7 55%,
-             #38b7da
+            #38b7da,
+            #57ced7 55%,
+            #38b7da
         );
 
     border:
@@ -354,7 +348,7 @@ header p {
     box-shadow:
 
         inset 0 0 14px
-        rgba(25, 153, 123, 0.522);
+        rgba(25,153,123,.522);
 }
 
 
@@ -459,7 +453,6 @@ header p {
 
 /* =========================================================
    MODULE
-   NO BOX / FLAT HARDWARE
    ========================================================= */
 
 .module {
@@ -496,6 +489,10 @@ header p {
 }
 
 
+/* =========================================================
+   MODULE TITLES
+   ========================================================= */
+
 .module h2 {
 
     margin:
@@ -516,6 +513,56 @@ header p {
     text-shadow:
         0 1px 0
         rgba(255,255,255,.35);
+}
+
+
+/* =========================================================
+   OSCILLATOR WAVE SYMBOLS
+   ========================================================= */
+
+/*
+ * Els OSC A / OSC B ja no necessiten títol.
+ * El símbol identifica visualment l'oscil·lador.
+ */
+
+.wave-symbol {
+
+    width:
+        100%;
+
+    height:
+        30px;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        center;
+
+    margin:
+        0 0 1px;
+
+    font-size:
+        25px;
+
+    line-height:
+        1;
+
+    font-weight:
+        300;
+
+    color:
+        #8fcfff;
+
+    opacity:
+        .88;
+
+    text-shadow:
+        0 0 6px
+        rgba(143,207,255,.35);
 }
 
 
@@ -551,8 +598,8 @@ header p {
 
         linear-gradient(
             145deg,
-             #38b7da,
-             #38b7da
+            #38b7da,
+            #38b7da
         );
 
     border:
@@ -599,45 +646,77 @@ label {
 
 
 /* =========================================================
+   WAVE SELECTORS
+   ========================================================= */
+
+#oscA-wave,
+#oscB-wave {
+
+    width:
+        78%;
+
+    max-width:
+        100px;
+
+    padding:
+        2px 5px;
+
+    margin:
+        2px auto 0;
+
+    font-family:
+        "Segoe UI",
+        sans-serif;
+
+    font-size:
+        10px;
+
+    line-height:
+        1.2;
+
+    text-align:
+        center;
+
+    color:
+        #21384a;
+
+    background:
+        rgba(255,255,255,.35);
+
+    border:
+        1px solid
+        rgba(91,61,100,.30);
+
+    border-radius:
+        5px;
+
+    outline:
+        none;
+
+    cursor:
+        pointer;
+}
+
+
+#oscA-wave:focus,
+#oscB-wave:focus {
+
+    border-color:
+        rgba(17,125,155,.65);
+
+    box-shadow:
+        0 0 5px
+        rgba(17,125,155,.25);
+}
+
+
+/* =========================================================
    ORIGINAL SLIDERS HIDDEN
    ========================================================= */
 
 input[type="range"] {
     display:
         none;
-}
-
-
-/* =========================================================
-   OSCILLATOR WAVE SELECTORS
-   ========================================================= */
-
-select {
-
-    width:
-        65px;
-
-    margin-top:
-        2px;
-
-    padding:
-        2px 3px;
-
-    border:
-        1px solid
-        rgba(255,255,255,.40);
-
-    border-radius:
-        5px;
-
-    background:
-        rgba(246,202,219,.65);
-
-    color:
-        #632b4b;
-
-    font-size:
-        7px;
 }
 
 
@@ -666,7 +745,11 @@ select {
    TRANSPORT
    ========================================================= */
 
-.rack > footer {
+/*
+ * Només el primer footer és el dels botons.
+ */
+
+.rack > footer:first-of-type {
 
     flex:
         0 0 auto;
@@ -683,10 +766,20 @@ select {
     gap:
         5px;
 
-    margin-top:
-        5px;
+    width:
+        100%;
+
+    margin:
+        5px 0 0;
+
+    padding:
+        8px 0 0;
 }
 
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
 
 button {
 
@@ -712,7 +805,7 @@ button {
         );
 
     color:
-        rgb(33, 24, 58);
+        rgb(33,24,58);
 
     font-weight:
         bold;
@@ -732,7 +825,7 @@ button {
         rgba(65,15,40,.24),
 
         inset 0 1px 0
-        rgba(255, 4, 209, 0.574);
+        rgba(255,4,209,.574);
 }
 
 
@@ -744,7 +837,78 @@ button:hover {
 
 
 /* =========================================================
-   PAGE FOOTER
+   SIGNATURE FOOTER
+   ========================================================= */
+
+/*
+ * Aquest footer NO participa en el layout dels botons.
+ * És una línia pròpia sota el transport.
+ */
+
+.rack > footer:last-of-type {
+
+    display:
+        block !important;
+
+    flex:
+        0 0 auto !important;
+
+    width:
+        %;
+
+    min-height:
+        0;
+
+    height:
+        auto;
+
+    margin:
+        0 !important;
+
+    padding:
+        2px 0 7px !important;
+
+    text-align:
+        center !important;
+}
+
+
+.rack > footer:last-of-type p {
+
+    display:
+        block;
+
+    width:
+        100%;
+
+    margin:
+        0 !important;
+
+    padding:
+        0 !important;
+
+    text-align:
+        center !important;
+
+    color:
+        #277478;
+
+    font-size:
+        9px;
+
+    line-height:
+        1.2;
+
+    letter-spacing:
+        .08em;
+
+    opacity:
+        .72;
+}
+
+
+/* =========================================================
+   BODY FOOTER
    ========================================================= */
 
 body > footer {
@@ -764,12 +928,15 @@ body > footer {
             8px;
     }
 
+
     .modules {
         gap:
             3px;
     }
 
+
     .module {
+
         min-width:
             45px;
 
@@ -777,12 +944,35 @@ body > footer {
             2px;
     }
 
+
     .knob {
+
         width:
             30px;
 
         height:
             30px;
+    }
+
+
+    .wave-symbol {
+
+        height:
+            27px;
+
+        font-size:
+            23px;
+    }
+
+
+    #oscA-wave,
+    #oscB-wave {
+
+        max-width:
+            90px;
+
+        font-size:
+            9px;
     }
 }
 
@@ -791,34 +981,40 @@ body > footer {
    RESPONSIVE — SHORT SCREEN
    ========================================================= */
 
-@media (max-height: 700px) {
+@media (max-height:700px) {
 
     body {
         padding:
             6px 10px;
     }
 
+
     .rack {
         padding:
             7px 10px;
     }
+
 
     header {
         padding:
             1px 0 3px;
     }
 
+
     header h1 {
         font-size:
             17px;
     }
+
 
     header p {
         margin-top:
             2px;
     }
 
+
     .screen {
+
         margin:
             4px 0;
 
@@ -826,12 +1022,15 @@ body > footer {
             6px;
     }
 
+
     #spectrum {
         height:
             46px;
     }
 
+
     .knob {
+
         width:
             27px;
 
@@ -842,14 +1041,48 @@ body > footer {
             2px auto;
     }
 
+
     .module {
         padding:
             2px 4px;
     }
 
+
+    .wave-symbol {
+
+        height:
+            25px;
+
+        font-size:
+            21px;
+    }
+
+
+    #oscA-wave,
+    #oscB-wave {
+
+        max-width:
+            85px;
+
+        padding:
+            2px 4px;
+
+        font-size:
+            8px;
+    }
+
+
     button {
+
         padding:
             4px 10px;
+    }
+
+
+    .rack > footer:last-of-type p {
+
+        font-size:
+            5px;
     }
 }
 
@@ -858,14 +1091,16 @@ body > footer {
    VERY SHORT SCREEN
    ========================================================= */
 
-@media (max-height: 560px) {
+@media (max-height:560px) {
 
     header p {
         display:
             none;
     }
 
+
     .screen {
+
         padding:
             5px;
 
@@ -873,17 +1108,21 @@ body > footer {
             2px 0;
     }
 
+
     .monitor {
         display:
             none;
     }
+
 
     #spectrum {
         height:
             38px;
     }
 
+
     .knob {
+
         width:
             23px;
 
@@ -891,14 +1130,55 @@ body > footer {
             23px;
     }
 
+
     .module h2 {
         font-size:
             6px;
     }
 
+
+    .wave-symbol {
+
+        height:
+            21px;
+
+        font-size:
+            18px;
+    }
+
+
+    #oscA-wave,
+    #oscB-wave {
+
+        max-width:
+            75px;
+
+        font-size:
+            7px;
+
+        padding:
+            1px 3px;
+    }
+
+
     button {
+
         padding:
             3px 8px;
+
+        font-size:
+            7px;
+    }
+
+
+    .rack > footer:last-of-type {
+
+        padding:
+            3px 0 5px !important;
+    }
+
+
+    .rack > footer:last-of-type p {
 
         font-size:
             7px;
