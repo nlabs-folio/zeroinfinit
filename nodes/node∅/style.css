@@ -1,0 +1,244 @@
+
+/* ============================================================
+   ZERO INFINIT — nodeN
+   CINEMATIC PARTICLE OBSERVER
+   ============================================================ */
+
+:root {
+    color-scheme: dark;
+
+    --void:
+        #010109;
+
+    --blue:
+        #273b9e;
+
+    --lilac:
+        #8f72d9;
+
+    --pink:
+        #e85cae;
+
+    --cyan:
+        #9bcfff;
+
+    --white:
+        #dce8ff;
+}
+
+
+/* ============================================================
+   RESET
+   ============================================================ */
+
+* {
+    box-sizing: border-box;
+}
+
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+
+    overflow: hidden;
+
+    background:
+        var(--void);
+
+    cursor: crosshair;
+}
+
+
+/* ============================================================
+   BODY
+   ============================================================ */
+
+body {
+    position: relative;
+
+    min-width: 320px;
+    min-height: 240px;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    user-select: none;
+    -webkit-user-select: none;
+
+    -webkit-tap-highlight-color:
+        transparent;
+}
+
+
+/* ============================================================
+   CANVAS
+   ============================================================ */
+
+#cosmos {
+    position: fixed;
+
+    inset: 0;
+
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    background:
+        #010109;
+
+    cursor: crosshair;
+
+    touch-action: none;
+}
+
+
+/* ============================================================
+   CINEMATIC VIGNETTE
+   ============================================================ */
+
+body::before {
+    content: "";
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 2;
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            ellipse at center,
+            transparent 42%,
+            rgba(1, 1, 12, 0.12) 68%,
+            rgba(0, 0, 8, 0.58) 100%
+        );
+}
+
+
+/* ============================================================
+   VERY SUBTLE FILM / DEPTH LAYER
+   ============================================================ */
+
+body::after {
+    content: "";
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 3;
+
+    pointer-events: none;
+
+    opacity: 0.055;
+
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            rgba(255,255,255,0.025) 0px,
+            rgba(255,255,255,0.025) 1px,
+            transparent 1px,
+            transparent 4px
+        );
+}
+
+
+/* ============================================================
+   CORE / ZERO
+   ============================================================ */
+
+.core {
+    position: fixed;
+
+    left: 50%;
+    top: 50%;
+
+    transform:
+        translate(
+            -50%,
+            -50%
+        );
+
+    z-index: 5;
+
+    pointer-events: none;
+
+    color:
+        rgba(
+            190,
+            215,
+            255,
+            0.16
+        );
+
+    font-family:
+        Georgia,
+        "Times New Roman",
+        serif;
+
+    font-size:
+        clamp(
+            18px,
+            1.8vw,
+            30px
+        );
+
+    font-weight:
+        300;
+
+    line-height: 1;
+
+    text-shadow:
+        0 0 18px
+        rgba(
+            120,
+            170,
+            255,
+            0.14
+        );
+}
+
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (
+    max-width: 700px
+) {
+
+    .core {
+        font-size:
+            17px;
+
+        color:
+            rgba(
+                190,
+                215,
+                255,
+                0.11
+            );
+    }
+}
+
+
+/* ============================================================
+   REDUCE MOTION
+   ============================================================ */
+
+@media (
+    prefers-reduced-motion: reduce
+) {
+
+    body::after {
+        display: none;
+    }
+}
