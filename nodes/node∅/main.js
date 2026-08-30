@@ -1,37 +1,58 @@
+// ============================================================
+// ZERO INFINIT — node∅
+//
+// FIELD / EVENT / WAVE / MATTER / SOUND
+//
+// F# MINOR
+//
+// EARTH
+//   F# 185 Hz
+//
+// BODY
+//   F# 370 Hz
+//
+// SKY
+//   F# 740 Hz
+//
+// RESONANCE
+//   741 Hz
+//
+// The field exists before the observer.
+// Movement introduces energy into the field.
+// ============================================================
+
+
+"use strict";
+
 
 // ============================================================
-// ZERO INFINIT — nodeN
-//
-// MATÈRIA → ESDEVENIMENT → ONA → DISPERSIÓ → MÚSICA
-//
-// El camp existeix abans que l'observador.
-// El punter no observa una partícula concreta.
-// El moviment introdueix esdeveniments en el camp.
-//
-// Cada gest pot produir:
-//   · una ona local
-//   · una multiplicació temporal de la matèria
-//   · una dispersió de partícules
-//   · un esdeveniment sonor
-//
-// L'àudio s'activa amb el primer clic.
-// El moviment només és actiu dins del canvas.
-// Sense llibreries externes.
+// CANVAS
 // ============================================================
-
 
 const canvas =
-    document.getElementById("cosmos");
+    document.getElementById(
+        "cosmos"
+    );
+
 
 const gl =
-    canvas.getContext("webgl", {
-        antialias: false,
-        alpha: false,
-        powerPreference: "high-performance"
-    });
+    canvas.getContext(
+        "webgl",
+        {
+            antialias: false,
+            alpha: false,
+            powerPreference:
+                "high-performance"
+        }
+    );
+
 
 if (!gl) {
-    throw new Error("WebGL no disponible");
+
+    throw new Error(
+        "WebGL unavailable"
+    );
+
 }
 
 
@@ -40,15 +61,25 @@ if (!gl) {
 // ============================================================
 
 const vertexShaderSource = `
+
 attribute vec2 position;
 
 void main() {
-    gl_Position = vec4(position, 0.0, 1.0);
+
+    gl_Position =
+        vec4(
+            position,
+            0.0,
+            1.0
+        );
+
 }
+
 `;
 
 
 const fragmentShaderSource = `
+
 precision highp float;
 
 uniform vec2 resolution;
@@ -64,7 +95,7 @@ uniform float eventSeed[MAX_EVENTS];
 
 
 // ============================================================
-// HASH / NOISE
+// HASH
 // ============================================================
 
 float hash(vec2 p) {
@@ -73,72 +104,121 @@ float hash(vec2 p) {
         sin(
             dot(
                 p,
-                vec2(127.1, 311.7)
+                vec2(
+                    127.1,
+                    311.7
+                )
             )
-        ) *
+        )
+        *
         43758.5453
     );
+
 }
 
 
-float hash1(float n) {
-
-    return fract(
-        sin(n * 127.1) *
-        43758.5453
-    );
-}
-
+// ============================================================
+// NOISE
+// ============================================================
 
 float noise(vec2 p) {
 
-    vec2 i = floor(p);
-    vec2 f = fract(p);
+    vec2 i =
+        floor(p);
+
+    vec2 f =
+        fract(p);
 
     f =
         f *
         f *
-        (3.0 - 2.0 * f);
+        (
+            3.0 -
+            2.0 * f
+        );
 
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
+    float a =
+        hash(i);
+
+    float b =
+        hash(
+            i +
+            vec2(
+                1.0,
+                0.0
+            )
+        );
+
+    float c =
+        hash(
+            i +
+            vec2(
+                0.0,
+                1.0
+            )
+        );
+
+    float d =
+        hash(
+            i +
+            vec2(
+                1.0,
+                1.0
+            )
+        );
 
     return mix(
         mix(a, b, f.x),
         mix(c, d, f.x),
         f.y
     );
+
 }
 
 
+// ============================================================
+// FBM
+// ============================================================
+
 float fbm(vec2 p) {
 
-    float value = 0.0;
-    float amplitude = 0.5;
+    float value =
+        0.0;
 
-    for (int i = 0; i < 6; i++) {
+    float amplitude =
+        0.5;
+
+    for (
+        int i = 0;
+        i < 6;
+        i++
+    ) {
 
         value +=
             amplitude *
             noise(p);
 
-        p *= 2.0;
-        amplitude *= 0.5;
+        p *=
+            2.0;
+
+        amplitude *=
+            0.5;
+
     }
 
     return value;
+
 }
 
 
 // ============================================================
-// ORGANIC FLOW
+// FLOW
 // ============================================================
 
 vec2 flowField(vec2 p) {
 
-    float e = 0.003;
+    float e =
+        0.003;
 
     vec2 drift =
         vec2(
@@ -156,31 +236,40 @@ vec2 flowField(vec2 p) {
         fbm(
             p * 2.4 +
             drift +
-            vec2(e, 0.0)
+            vec2(
+                e,
+                0.0
+            )
         );
 
     float ny =
         fbm(
             p * 2.4 +
             drift +
-            vec2(0.0, e)
+            vec2(
+                0.0,
+                e
+            )
         );
 
     vec2 gradient =
         vec2(
             nx - n,
             ny - n
-        ) / e;
+        )
+        /
+        e;
 
     return vec2(
         -gradient.y,
         gradient.x
     );
+
 }
 
 
 // ============================================================
-// MAIN
+// MAIN SHADER
 // ============================================================
 
 void main() {
@@ -194,13 +283,15 @@ void main() {
         resolution.y;
 
     vec2 p =
-        uv - 0.5;
+        uv -
+        0.5;
 
-    p.x *= aspect;
+    p.x *=
+        aspect;
 
 
     // --------------------------------------------------------
-    // BASE MATTER
+    // BASE FIELD
     // --------------------------------------------------------
 
     vec2 flow =
@@ -208,7 +299,8 @@ void main() {
 
     vec2 field =
         p +
-        flow * 0.075;
+        flow *
+        0.075;
 
     field +=
         vec2(
@@ -220,7 +312,8 @@ void main() {
                 time * 0.13 +
                 p.x * 2.4
             )
-        ) *
+        )
+        *
         0.014;
 
 
@@ -233,6 +326,7 @@ void main() {
             )
         );
 
+
     float cloudB =
         fbm(
             field * 5.0 -
@@ -242,38 +336,52 @@ void main() {
             )
         );
 
+
     float matter =
         cloudA * 0.72 +
         cloudB * 0.28;
 
+
     matter =
         smoothstep(
-            0.27,
-            0.76,
+            0.25,
+            0.74,
             matter
         );
 
 
     // --------------------------------------------------------
-    // EVENT FIELD
-    //
-    // Cada esdeveniment és una petita pertorbació.
-    // Les ones s'expandeixen i desapareixen.
+    // EVENTS
     // --------------------------------------------------------
 
-    float waveField = 0.0;
-    float eventMatter = 0.0;
-    float eventScatter = 0.0;
-    float eventGlow = 0.0;
+    float waveField =
+        0.0;
+
+    float eventMatter =
+        0.0;
+
+    float eventScatter =
+        0.0;
+
+    float eventGlow =
+        0.0;
 
 
-    for (int i = 0; i < MAX_EVENTS; i++) {
+    for (
+        int i = 0;
+        i < MAX_EVENTS;
+        i++
+    ) {
 
         float age =
             time -
             eventTime[i];
 
-        if (age > 0.0 && age < 8.0) {
+
+        if (
+            age > 0.0 &&
+            age < 9.0
+        ) {
 
             vec2 delta =
                 p -
@@ -288,9 +396,10 @@ void main() {
             float size =
                 eventSize[i];
 
-            // --------------------------------------------
-            // ONA EXPANSIVA
-            // --------------------------------------------
+
+            // ------------------------------------------------
+            // WAVE
+            // ------------------------------------------------
 
             float radius =
                 age *
@@ -299,9 +408,11 @@ void main() {
                     size * 0.075
                 );
 
+
             float width =
-                0.012 +
-                size * 0.012;
+                0.010 +
+                size * 0.014;
+
 
             float wave =
                 1.0 -
@@ -314,84 +425,99 @@ void main() {
                     )
                 );
 
+
             float fade =
                 exp(
-                    -age * 0.72
+                    -age * 0.62
                 );
+
 
             wave *=
                 strength *
                 fade;
 
+
             waveField +=
                 wave;
 
 
-            // --------------------------------------------
-            // CENTRE DE L'ESDEVENIMENT
-            // --------------------------------------------
+            // ------------------------------------------------
+            // MATTER CORE
+            // ------------------------------------------------
 
             float centre =
                 1.0 -
                 smoothstep(
-                    size * 0.18,
+                    size * 0.16,
                     size,
                     distance
                 );
 
+
             eventMatter +=
                 centre *
                 strength *
-                exp(-age * 1.5);
+                exp(
+                    -age * 1.35
+                );
 
 
-            // --------------------------------------------
-            // DISPERSIÓ
-            //
-            // L'ona arrossega la matèria cap enfora.
-            // --------------------------------------------
+            // ------------------------------------------------
+            // DISPERSION
+            // ------------------------------------------------
 
             float scatter =
                 smoothstep(
-                    size * 1.8,
+                    size * 1.9,
                     0.0,
                     distance
                 );
 
+
             scatter *=
                 strength *
-                exp(-age * 0.95);
+                exp(
+                    -age * 0.82
+                );
+
 
             eventScatter +=
                 scatter;
 
 
-            // --------------------------------------------
-            // HALO
-            // --------------------------------------------
+            // ------------------------------------------------
+            // LIGHT
+            // ------------------------------------------------
 
             eventGlow +=
                 centre *
                 strength *
-                exp(-age * 0.9);
+                exp(
+                    -age * 0.72
+                );
+
         }
+
     }
 
 
     // --------------------------------------------------------
-    // MATTER MULTIPLICATION
+    // MULTIPLICATION
     // --------------------------------------------------------
 
     float multiplication =
         eventMatter *
         (
-            0.25 +
-            0.75 * waveField
+            0.22 +
+            0.78 *
+            waveField
         );
+
 
     matter +=
         multiplication *
-        0.38;
+        0.42;
+
 
     matter =
         clamp(
@@ -409,54 +535,65 @@ void main() {
         fbm(
             (
                 field +
-                flow * eventScatter * 0.15
-            ) *
+                flow *
+                eventScatter *
+                0.16
+            )
+            *
             (
-                3.0 +
-                eventScatter * 2.8
-            ) +
+                2.8 +
+                eventScatter * 3.0
+            )
+            +
             vec2(
                 time * 0.05,
                 -time * 0.031
             )
         );
 
+
     fractal =
         smoothstep(
-            0.38,
-            0.78,
+            0.34,
+            0.76,
             fractal
         );
 
 
     // --------------------------------------------------------
-    // PARTICLE FIELD
+    // PARTICLES
     // --------------------------------------------------------
 
     vec2 particleSpace =
         field *
         (
-            105.0 +
-            eventScatter * 34.0
+            100.0 +
+            eventScatter * 38.0
         );
+
 
     vec2 cell =
         floor(
             particleSpace
         );
 
+
     vec2 local =
         fract(
             particleSpace
-        ) -
+        )
+        -
         0.5;
+
 
     float randomCell =
         hash(cell);
 
+
     float particleRadius =
-        0.028 +
-        randomCell * 0.035;
+        0.025 +
+        randomCell * 0.038;
+
 
     float particle =
         smoothstep(
@@ -466,15 +603,13 @@ void main() {
         );
 
 
-    // Només una petita fracció de les cel·les conté partícules.
     particle *=
         step(
-            0.995,
+            0.9945,
             randomCell
         );
 
 
-    // Pulsació temporal subtil.
     particle *=
         0.25 +
         0.75 *
@@ -488,18 +623,20 @@ void main() {
         );
 
 
-    // La matèria alimenta les partícules.
     particle *=
         0.15 +
-        matter * 1.65;
+        matter * 1.75;
 
 
-    // Els esdeveniments fan aparèixer partícules addicionals.
+    // --------------------------------------------------------
+    // EVENT PARTICLES
+    // --------------------------------------------------------
+
     float eventParticles =
         eventScatter *
         (
-            0.3 +
-            0.7 *
+            0.25 +
+            0.75 *
             fractal
         );
 
@@ -507,208 +644,261 @@ void main() {
     particle +=
         eventParticles *
         step(
-            0.997,
+            0.9965,
             hash(
                 cell +
                 vec2(
                     eventScatter * 7.0
                 )
             )
-        ) *
-        0.75;
+        )
+        *
+        0.90;
 
 
     // --------------------------------------------------------
-    // DUST / WAVE FILAMENTS
+    // FILAMENTS
     // --------------------------------------------------------
 
     float filament =
         sin(
             length(p) *
             (
-                25.0 +
-                eventScatter * 38.0
+                22.0 +
+                eventScatter * 42.0
             )
             -
-            time * 0.65
+            time * 0.62
         );
+
 
     filament =
         0.5 +
-        0.5 * filament;
+        0.5 *
+        filament;
+
 
     filament =
         smoothstep(
-            0.76,
-            0.96,
+            0.78,
+            0.97,
             filament
         );
 
+
     filament *=
         eventScatter *
-        0.30;
+        0.34;
 
 
     // --------------------------------------------------------
     // CENTRAL VOID
-    //
-    // Manté una zona de profunditat, però ja no és una lent.
     // --------------------------------------------------------
 
     float r =
         length(p);
 
+
     float voidMask =
         smoothstep(
-            0.12,
-            0.025,
+            0.105,
+            0.020,
             r
         );
 
-    matter *=
-        1.0 -
-        voidMask * 0.88;
 
-    particle *=
+    matter *=
         1.0 -
         voidMask * 0.82;
 
 
+    particle *=
+        1.0 -
+        voidMask * 0.75;
+
+
     // --------------------------------------------------------
     // COLOR
-    //
-    // Blau profund → lila → violeta → rosa → blau clar
     // --------------------------------------------------------
 
     vec3 color =
         vec3(
+            0.0015,
             0.002,
-            0.003,
-            0.012
+            0.009
         );
 
 
     vec3 deepBlue =
         vec3(
-            0.025,
-            0.035,
-            0.15
+            0.030,
+            0.045,
+            0.19
         );
 
 
     vec3 violet =
         vec3(
-            0.24,
-            0.075,
-            0.48
+            0.25,
+            0.065,
+            0.50
         );
 
 
     vec3 lilac =
         vec3(
-            0.52,
-            0.30,
-            0.82
+            0.58,
+            0.34,
+            0.88
         );
 
 
     vec3 pink =
         vec3(
-            0.92,
-            0.30,
-            0.70
+            0.95,
+            0.32,
+            0.72
         );
 
 
     vec3 cyan =
         vec3(
-            0.45,
-            0.78,
+            0.46,
+            0.80,
             1.0
         );
 
 
-    // Massa base.
+    vec3 whiteBlue =
+        vec3(
+            0.78,
+            0.90,
+            1.0
+        );
+
+
     color +=
         deepBlue *
         matter *
-        1.55;
+        1.70;
+
 
     color +=
         violet *
         matter *
         matter *
-        1.20;
+        1.30;
 
 
-    // Fractal.
     color +=
         lilac *
         fractal *
-        0.22;
+        0.28;
 
 
-    // Ones.
     color +=
         cyan *
         waveField *
-        0.65;
+        0.72;
 
 
-    // Multiplicació de matèria.
     color +=
         pink *
         eventMatter *
-        0.35;
+        0.42;
 
 
-    // Partícules.
     color +=
         lilac *
         particle *
-        1.15;
+        1.35;
 
 
-    // Filaments.
     color +=
         cyan *
         filament *
-        0.55;
+        0.62;
 
 
-    // Halo d'esdeveniment.
     color +=
         pink *
+        eventGlow *
+        0.20;
+
+
+    color +=
+        whiteBlue *
+        eventGlow *
         eventGlow *
         0.16;
 
 
     // --------------------------------------------------------
-    // CINEMATIC BLOOM
+    // CENTRAL DEPTH
     // --------------------------------------------------------
 
-    float cinematic =
+    float centralGlow =
+        exp(
+            -r * 12.0
+        );
+
+
+    color +=
+        vec3(
+            0.12,
+            0.16,
+            0.34
+        )
+        *
+        centralGlow
+        *
+        0.08;
+
+
+    // --------------------------------------------------------
+    // BLOOM
+    // --------------------------------------------------------
+
+    float bloom =
         smoothstep(
-            1.55,
-            0.25,
+            1.65,
+            0.12,
             r
         );
 
+
     color *=
-        cinematic;
+        bloom;
 
 
-    // Lleugera separació de llum.
+    // --------------------------------------------------------
+    // OUTER LIGHT
+    // --------------------------------------------------------
+
+    float outerGlow =
+        smoothstep(
+            1.35,
+            0.42,
+            r
+        );
+
+
     color +=
-        cyan *
-        eventGlow *
-        0.045;
+        deepBlue *
+        outerGlow *
+        0.055;
 
+
+    // --------------------------------------------------------
+    // FINAL
+    // --------------------------------------------------------
 
     color =
         pow(
             color,
-            vec3(0.92)
+            vec3(
+                0.90
+            )
         );
 
 
@@ -717,7 +907,9 @@ void main() {
             color,
             1.0
         );
+
 }
+
 `;
 
 
@@ -725,19 +917,27 @@ void main() {
 // SHADER COMPILATION
 // ============================================================
 
-function compileShader(type, source) {
+function compileShader(
+    type,
+    source
+) {
 
     const shader =
-        gl.createShader(type);
+        gl.createShader(
+            type
+        );
+
 
     gl.shaderSource(
         shader,
         source
     );
 
+
     gl.compileShader(
         shader
     );
+
 
     if (
         !gl.getShaderParameter(
@@ -747,15 +947,20 @@ function compileShader(type, source) {
     ) {
 
         console.error(
-            gl.getShaderInfoLog(shader)
+            gl.getShaderInfoLog(
+                shader
+            )
         );
 
         throw new Error(
-            "Zero Infinit: shader compilation failed"
+            "node∅ shader compilation failed"
         );
+
     }
 
+
     return shader;
+
 }
 
 
@@ -782,10 +987,12 @@ gl.attachShader(
     vertexShader
 );
 
+
 gl.attachShader(
     program,
     fragmentShader
 );
+
 
 gl.linkProgram(
     program
@@ -800,8 +1007,9 @@ if (
 ) {
 
     throw new Error(
-        "Zero Infinit: WebGL link failed"
+        "node∅ WebGL link failed"
     );
+
 }
 
 
@@ -817,6 +1025,7 @@ gl.useProgram(
 const buffer =
     gl.createBuffer();
 
+
 gl.bindBuffer(
     gl.ARRAY_BUFFER,
     buffer
@@ -826,6 +1035,7 @@ gl.bindBuffer(
 gl.bufferData(
     gl.ARRAY_BUFFER,
     new Float32Array([
+
         -1, -1,
          1, -1,
         -1,  1,
@@ -833,6 +1043,7 @@ gl.bufferData(
         -1,  1,
          1, -1,
          1,  1
+
     ]),
     gl.STATIC_DRAW
 );
@@ -907,6 +1118,7 @@ const U = {
             program,
             "eventSeed"
         )
+
 };
 
 
@@ -914,11 +1126,18 @@ const U = {
 // EVENT SYSTEM
 // ============================================================
 
-const MAX_EVENTS = 20;
+const MAX_EVENTS =
+    20;
 
-const events = [];
 
-let eventCursor = 0;
+const events =
+    new Array(
+        MAX_EVENTS
+    );
+
+
+let eventCursor =
+    0;
 
 
 function createEvent(
@@ -933,7 +1152,8 @@ function createEvent(
         x,
         y,
 
-        time: 0,
+        time:
+            0,
 
         strength,
 
@@ -941,6 +1161,7 @@ function createEvent(
 
         seed:
             Math.random()
+
     };
 
 
@@ -951,13 +1172,19 @@ function createEvent(
     eventCursor =
         (
             eventCursor + 1
-        ) %
+        )
+        %
         MAX_EVENTS;
 
 
     return event;
+
 }
 
+
+// ============================================================
+// POINTER POSITION
+// ============================================================
 
 function eventPositionFromPointer(
     event
@@ -966,18 +1193,22 @@ function eventPositionFromPointer(
     const rect =
         canvas.getBoundingClientRect();
 
+
     const x =
         (
             event.clientX -
             rect.left
-        ) /
+        )
+        /
         rect.width;
+
 
     const y =
         (
             event.clientY -
             rect.top
-        ) /
+        )
+        /
         rect.height;
 
 
@@ -990,13 +1221,18 @@ function eventPositionFromPointer(
 
         x:
             (
-                x - 0.5
-            ) *
+                x -
+                0.5
+            )
+            *
             aspect,
 
         y:
-            0.5 - y
+            0.5 -
+            y
+
     };
+
 }
 
 
@@ -1004,147 +1240,424 @@ function eventPositionFromPointer(
 // POINTER STATE
 // ============================================================
 
-let pointerInside = false;
-
-let pointerActive = false;
-
-let pointerX = 0;
-let pointerY = 0;
-
-let previousPointerX = 0;
-let previousPointerY = 0;
-
-let pointerSpeed = 0;
-
-let movementAccumulator = 0;
-
-let lastEventTime = 0;
+let pointerInside =
+    false;
 
 
-// ============================================================
-// AUDIO STATE
-// ============================================================
+let pointerActive =
+    false;
 
-let audio = null;
 
-let audioStarted = false;
+let pointerX =
+    0;
 
-let master = null;
 
-let compressor = null;
+let pointerY =
+    0;
 
-let ambienceFilter = null;
 
-let ambienceGain = null;
+let previousPointerX =
+    0;
 
-let pulseGain = null;
 
-let melodyGain = null;
+let previousPointerY =
+    0;
 
-let noiseGain = null;
 
-let droneOsc = null;
+let pointerSpeed =
+    0;
 
-let droneGain = null;
 
-let ambienceOsc = null;
+let movementAccumulator =
+    0;
 
-let ambienceOscGain = null;
 
-let audioEventCooldown = 0;
+let lastEventTime =
+    0;
 
 
 // ============================================================
-// TONAL SYSTEM
+// AUDIO
+//
+// 44.1 kHz requested explicitly.
+//
+// Web Audio's signal path uses floating point processing.
+// AudioBuffer/sample data is Float32.
 // ============================================================
 
-const tonalCenters = [
+let audio =
+    null;
+
+
+let audioStarted =
+    false;
+
+
+let master =
+    null;
+
+
+let compressor =
+    null;
+
+
+let lowpass =
+    null;
+
+
+let highpass =
+    null;
+
+
+let earthGain =
+    null;
+
+
+let bodyGain =
+    null;
+
+
+let skyGain =
+    null;
+
+
+let resonanceGain =
+    null;
+
+
+let earthOsc =
+    null;
+
+
+let bodyOsc =
+    null;
+
+
+let skyOsc =
+    null;
+
+
+let resonanceOsc =
+    null;
+
+
+let earthPan =
+    null;
+
+
+let bodyPan =
+    null;
+
+
+let skyPan =
+    null;
+
+
+let resonancePan =
+    null;
+
+
+let eventBus =
+    null;
+
+
+let eventReverb =
+    null;
+
+
+let eventReverbGain =
+    null;
+
+
+let spatialDelayL =
+    null;
+
+
+let spatialDelayR =
+    null;
+
+
+let spatialGainL =
+    null;
+
+
+let spatialGainR =
+    null;
+
+
+let harmonicBus =
+    null;
+
+
+let tonalRoot =
+    185.00;
+
+
+const SAMPLE_RATE =
+    44100;
+
+
+// ============================================================
+// TONAL WORLD
+// ============================================================
+//
+// F# minor:
+//
+// F#  G#  A  B  C#  D  E
+// 0   2   3  5   7  8 10
+//
+// Chord material:
+//
+// i  = F#m
+// VI = D
+// III= A
+// VII= E
+// V  = C#
+//
+// The system never leaves F# minor.
+// ============================================================
+
+const SCALE =
+    [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+    ];
+
+
+const HARMONIES = [
 
     {
-        name: "A minor",
-        root: 220.00,
-        scale: [0, 2, 3, 5, 7, 8, 10]
+        name:
+            "F#m",
+
+        degrees:
+            [0, 2, 4],
+
+        weight:
+            0.42
     },
 
     {
-        name: "C major",
-        root: 261.63,
-        scale: [0, 2, 4, 5, 7, 9, 11]
+        name:
+            "D",
+
+        degrees:
+            [5, 0, 2],
+
+        weight:
+            0.20
     },
 
     {
-        name: "E minor",
-        root: 164.81,
-        scale: [0, 2, 3, 5, 7, 8, 10]
+        name:
+            "A",
+
+        degrees:
+            [2, 4, 6],
+
+        weight:
+            0.18
     },
 
     {
-        name: "D major",
-        root: 293.66,
-        scale: [0, 2, 4, 5, 7, 9, 11]
+        name:
+            "E",
+
+        degrees:
+            [6, 1, 3],
+
+        weight:
+            0.13
     },
 
     {
-        name: "F# minor",
-        root: 185.00,
-        scale: [0, 2, 3, 5, 7, 9, 10]
+        name:
+            "C#",
+
+        degrees:
+            [4, 6, 1],
+
+        weight:
+            0.07
     }
+
 ];
 
 
-let tonalIndex = 0;
+let harmonicIndex =
+    0;
 
-let tonalPressure = 0;
 
-let lastTonalChange = 0;
+let harmonicPressure =
+    0;
+
+
+let lastHarmonyChange =
+    0;
+
+
+let lastHarmonyEvent =
+    0;
 
 
 // ============================================================
-// SCALE NOTE
+// FREQUENCY FROM SCALE
 // ============================================================
 
-function getFractalFrequency(
-    intensity = 0.5
+function scaleFrequency(
+    degree,
+    octave = 0
 ) {
 
-    const tonal =
-        tonalCenters[
-            tonalIndex
-        ];
-
-    const scale =
-        tonal.scale;
-
-
-    const degree =
-        Math.floor(
-            Math.random() *
-            scale.length
-        );
-
-
-    const octave =
-        intensity > 0.72
-            ? (
-                Math.random() > 0.55
-                    ? 2
-                    : 1
-            )
-            : 1;
+    const wrapped =
+        (
+            degree %
+            SCALE.length +
+            SCALE.length
+        )
+        %
+        SCALE.length;
 
 
     const semitone =
-        scale[degree] +
+        SCALE[wrapped] +
         octave * 12;
 
 
     return (
-        tonal.root *
+        tonalRoot *
         Math.pow(
             2,
             semitone / 12
         )
     );
+
+}
+
+
+// ============================================================
+// RANDOM TONAL FREQUENCY
+// ============================================================
+
+function fieldFrequency(
+    intensity
+) {
+
+    const degree =
+        Math.floor(
+            Math.random() *
+            SCALE.length
+        );
+
+
+    let octave =
+        0;
+
+
+    if (
+        intensity > 0.70 &&
+        Math.random() > 0.42
+    ) {
+
+        octave =
+            1;
+
+    }
+
+
+    return scaleFrequency(
+        degree,
+        octave
+    );
+
+}
+
+
+// ============================================================
+// REVERB
+// ============================================================
+
+function createReverbImpulse(
+    context,
+    duration = 4.8,
+    decay = 3.4
+) {
+
+    const length =
+        Math.floor(
+            context.sampleRate *
+            duration
+        );
+
+
+    const impulse =
+        context.createBuffer(
+            2,
+            length,
+            context.sampleRate
+        );
+
+
+    for (
+        let channel = 0;
+        channel < 2;
+        channel++
+    ) {
+
+        const data =
+            impulse.getChannelData(
+                channel
+            );
+
+
+        for (
+            let i = 0;
+            i < length;
+            i++
+        ) {
+
+            const t =
+                i /
+                length;
+
+
+            const early =
+                Math.exp(
+                    -t * 10
+                );
+
+
+            const diffuse =
+                (
+                    Math.random() * 2 -
+                    1
+                );
+
+
+            data[i] =
+                diffuse *
+                Math.pow(
+                    1 - t,
+                    decay
+                )
+                *
+                (
+                    0.72 +
+                    early * 0.28
+                );
+
+        }
+
+    }
+
+
+    return impulse;
+
 }
 
 
@@ -1164,10 +1677,25 @@ async function startAudio() {
             "suspended"
         ) {
 
-            await audio.resume();
+            try {
+
+                await audio.resume();
+
+            } catch (
+                error
+            ) {
+
+                console.warn(
+                    "Audio resume:",
+                    error
+                );
+
+            }
+
         }
 
         return;
+
     }
 
 
@@ -1179,219 +1707,492 @@ async function startAudio() {
     if (!AudioContext) {
 
         console.warn(
-            "Web Audio API no disponible"
+            "Web Audio API unavailable"
         );
 
         return;
+
     }
 
 
     try {
 
         audio =
-            new AudioContext();
+            new AudioContext(
+                {
+                    sampleRate:
+                        SAMPLE_RATE,
+
+                    latencyHint:
+                        "interactive"
+                }
+            );
+
 
         await audio.resume();
 
-    } catch (error) {
+    } catch (
+        error
+    ) {
 
         console.warn(
-            "Zero Infinit audio:",
+            "node∅ audio:",
             error
         );
 
-        audio = null;
+        audio =
+            null;
 
         return;
+
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // MASTER
-    // --------------------------------------------------------
+    // ========================================================
 
     master =
         audio.createGain();
+
 
     master.gain.value =
         0.0001;
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // COMPRESSOR
-    // --------------------------------------------------------
+    // ========================================================
 
     compressor =
         audio.createDynamicsCompressor();
 
+
     compressor.threshold.value =
         -24;
 
+
     compressor.knee.value =
-        18;
+        20;
+
 
     compressor.ratio.value =
         2.2;
 
+
     compressor.attack.value =
-        0.015;
-
-    compressor.release.value =
-        0.35;
-
-
-    // --------------------------------------------------------
-    // AMBIENCE FILTER
-    // --------------------------------------------------------
-
-    ambienceFilter =
-        audio.createBiquadFilter();
-
-    ambienceFilter.type =
-        "lowpass";
-
-    ambienceFilter.frequency.value =
-        1250;
-
-    ambienceFilter.Q.value =
-        0.35;
-
-
-    // --------------------------------------------------------
-    // AMBIENCE
-    // --------------------------------------------------------
-
-    ambienceGain =
-        audio.createGain();
-
-    ambienceGain.gain.value =
-        0.035;
-
-
-    // --------------------------------------------------------
-    // DRONE
-    // --------------------------------------------------------
-
-    droneOsc =
-        audio.createOscillator();
-
-    droneOsc.type =
-        "sine";
-
-    droneOsc.frequency.value =
-        tonalCenters[
-            tonalIndex
-        ].root / 2;
-
-
-    droneGain =
-        audio.createGain();
-
-    droneGain.gain.value =
-        0.028;
-
-
-    droneOsc
-        .connect(droneGain)
-        .connect(ambienceFilter);
-
-
-    // --------------------------------------------------------
-    // SECOND AMBIENT OSCILLATOR
-    // --------------------------------------------------------
-
-    ambienceOsc =
-        audio.createOscillator();
-
-    ambienceOsc.type =
-        "triangle";
-
-    ambienceOsc.frequency.value =
-        tonalCenters[
-            tonalIndex
-        ].root;
-
-
-    ambienceOscGain =
-        audio.createGain();
-
-    ambienceOscGain.gain.value =
-        0.006;
-
-
-    ambienceOsc
-        .connect(ambienceOscGain)
-        .connect(ambienceFilter);
-
-
-    // --------------------------------------------------------
-    // EVENT BUS
-    // --------------------------------------------------------
-
-    pulseGain =
-        audio.createGain();
-
-    pulseGain.gain.value =
-        0.0;
-
-
-    melodyGain =
-        audio.createGain();
-
-    melodyGain.gain.value =
-        0.65;
-
-
-    noiseGain =
-        audio.createGain();
-
-    noiseGain.gain.value =
         0.018;
 
 
-    // --------------------------------------------------------
+    compressor.release.value =
+        0.55;
+
+
+    // ========================================================
+    // FILTER ARCHITECTURE
+    // ========================================================
+
+    lowpass =
+        audio.createBiquadFilter();
+
+
+    lowpass.type =
+        "lowpass";
+
+
+    lowpass.frequency.value =
+        2600;
+
+
+    lowpass.Q.value =
+        0.30;
+
+
+    highpass =
+        audio.createBiquadFilter();
+
+
+    highpass.type =
+        "highpass";
+
+
+    highpass.frequency.value =
+        28;
+
+
+    highpass.Q.value =
+        0.20;
+
+
+    // ========================================================
+    // EARTH
+    // ========================================================
+
+    earthOsc =
+        audio.createOscillator();
+
+
+    earthOsc.type =
+        "sine";
+
+
+    earthOsc.frequency.value =
+        185.0;
+
+
+    earthGain =
+        audio.createGain();
+
+
+    earthGain.gain.value =
+        0.040;
+
+
+    earthPan =
+        audio.createStereoPanner();
+
+
+    earthPan.pan.value =
+        -0.04;
+
+
+    // ========================================================
+    // BODY
+    // ========================================================
+
+    bodyOsc =
+        audio.createOscillator();
+
+
+    bodyOsc.type =
+        "triangle";
+
+
+    bodyOsc.frequency.value =
+        370.0;
+
+
+    bodyGain =
+        audio.createGain();
+
+
+    bodyGain.gain.value =
+        0.012;
+
+
+    bodyPan =
+        audio.createStereoPanner();
+
+
+    bodyPan.pan.value =
+        0.04;
+
+
+    // ========================================================
+    // SKY
+    // ========================================================
+
+    skyOsc =
+        audio.createOscillator();
+
+
+    skyOsc.type =
+        "sine";
+
+
+    skyOsc.frequency.value =
+        740.0;
+
+
+    skyGain =
+        audio.createGain();
+
+
+    skyGain.gain.value =
+        0.004;
+
+
+    skyPan =
+        audio.createStereoPanner();
+
+
+    skyPan.pan.value =
+        0.0;
+
+
+    // ========================================================
+    // 741 Hz RESONANCE
+    // ========================================================
+
+    resonanceOsc =
+        audio.createOscillator();
+
+
+    resonanceOsc.type =
+        "sine";
+
+
+    resonanceOsc.frequency.value =
+        741.0;
+
+
+    resonanceGain =
+        audio.createGain();
+
+
+    resonanceGain.gain.value =
+        0.0012;
+
+
+    resonancePan =
+        audio.createStereoPanner();
+
+
+    resonancePan.pan.value =
+        0.0;
+
+
+    // ========================================================
+    // CONNECT TONAL LAYERS
+    // ========================================================
+
+    earthOsc
+        .connect(
+            earthGain
+        )
+        .connect(
+            earthPan
+        )
+        .connect(
+            highpass
+        );
+
+
+    bodyOsc
+        .connect(
+            bodyGain
+        )
+        .connect(
+            bodyPan
+        )
+        .connect(
+            highpass
+        );
+
+
+    skyOsc
+        .connect(
+            skyGain
+        )
+        .connect(
+            skyPan
+        )
+        .connect(
+            lowpass
+        );
+
+
+    resonanceOsc
+        .connect(
+            resonanceGain
+        )
+        .connect(
+            resonancePan
+        )
+        .connect(
+            lowpass
+        );
+
+
+    // ========================================================
+    // EVENT BUS
+    // ========================================================
+
+    eventBus =
+        audio.createGain();
+
+
+    eventBus.gain.value =
+        1.0;
+
+
+    harmonicBus =
+        audio.createGain();
+
+
+    harmonicBus.gain.value =
+        0.58;
+
+
+    // ========================================================
+    // REVERB
+    // ========================================================
+
+    eventReverb =
+        audio.createConvolver();
+
+
+    eventReverb.buffer =
+        createReverbImpulse(
+            audio
+        );
+
+
+    eventReverbGain =
+        audio.createGain();
+
+
+    eventReverbGain.gain.value =
+        0.16;
+
+
+    // ========================================================
+    // SUBTLE SPATIAL DELAY
+    // ========================================================
+    //
+    // This is deliberately slow and small.
+    //
+    // It is not an obvious echo.
+    // It creates a tiny difference between
+    // left and right spatial fields.
+    // ========================================================
+
+    spatialDelayL =
+        audio.createDelay(
+            0.05
+        );
+
+
+    spatialDelayR =
+        audio.createDelay(
+            0.05
+        );
+
+
+    spatialDelayL.delayTime.value =
+        0.009;
+
+
+    spatialDelayR.delayTime.value =
+        0.013;
+
+
+    spatialGainL =
+        audio.createGain();
+
+
+    spatialGainR =
+        audio.createGain();
+
+
+    spatialGainL.gain.value =
+        0.18;
+
+
+    spatialGainR.gain.value =
+        0.18;
+
+
+    // ========================================================
     // ROUTING
-    // --------------------------------------------------------
+    // ========================================================
 
-    ambienceFilter
-        .connect(ambienceGain)
-        .connect(compressor);
-
-
-    pulseGain.connect(
-        compressor
-    );
-
-    melodyGain.connect(
-        compressor
-    );
-
-    noiseGain.connect(
-        compressor
-    );
+    highpass
+        .connect(
+            lowpass
+        );
 
 
-    compressor.connect(
-        master
-    );
+    lowpass
+        .connect(
+            compressor
+        );
 
 
-    master.connect(
-        audio.destination
-    );
+    eventBus
+        .connect(
+            compressor
+        );
 
 
-    // --------------------------------------------------------
+    eventBus
+        .connect(
+            eventReverb
+        );
+
+
+    eventReverb
+        .connect(
+            eventReverbGain
+        )
+        .connect(
+            compressor
+        );
+
+
+    // spatial return
+    eventBus
+        .connect(
+            spatialDelayL
+        )
+        .connect(
+            spatialGainL
+        )
+        .connect(
+            compressor
+        );
+
+
+    eventBus
+        .connect(
+            spatialDelayR
+        )
+        .connect(
+            spatialGainR
+        )
+        .connect(
+            compressor
+        );
+
+
+    compressor
+        .connect(
+            master
+        );
+
+
+    master
+        .connect(
+            audio.destination
+        );
+
+
+    // ========================================================
     // START
-    // --------------------------------------------------------
+    // ========================================================
 
     const now =
         audio.currentTime;
 
 
-    droneOsc.start(now);
+    earthOsc.start(
+        now
+    );
 
-    ambienceOsc.start(now);
+
+    bodyOsc.start(
+        now
+    );
+
+
+    skyOsc.start(
+        now
+    );
+
+
+    resonanceOsc.start(
+        now
+    );
 
 
     master.gain.setValueAtTime(
@@ -1401,28 +2202,23 @@ async function startAudio() {
 
 
     master.gain.exponentialRampToValueAtTime(
-        0.055,
-        now + 4
+        0.072,
+        now + 5.5
     );
 
 
-    audioStarted = true;
+    audioStarted =
+        true;
+
 }
 
 
 // ============================================================
-// AUDIO EVENT
-//
-// Cada esdeveniment visual pot convertir-se en:
-// · un atac curt
-// · una nota
-// · una petita component inharmònica
-//
-// No hi ha un loop musical obligatori.
+// SPATIAL MODULATION
 // ============================================================
 
-function triggerAudioEvent(
-    strength,
+function updateSpatialField(
+    x,
     speed
 ) {
 
@@ -1438,25 +2234,100 @@ function triggerAudioEvent(
         audio.currentTime;
 
 
-    const frequency =
-        getFractalFrequency(
-            strength
+    const normalized =
+        Math.max(
+            -1,
+            Math.min(
+                1,
+                x
+            )
         );
 
 
-    // --------------------------------------------------------
-    // MAIN PULSE
-    // --------------------------------------------------------
+    const width =
+        Math.min(
+            1,
+            speed
+        );
+
+
+    const slow =
+        Math.sin(
+            now * 0.11
+        );
+
+
+    earthPan.pan.linearRampToValueAtTime(
+        normalized * 0.10 +
+        slow * 0.035,
+        now + 0.35
+    );
+
+
+    bodyPan.pan.linearRampToValueAtTime(
+        normalized * 0.20 -
+        slow * 0.055,
+        now + 0.45
+    );
+
+
+    skyPan.pan.linearRampToValueAtTime(
+        normalized * 0.42 +
+        slow * 0.10 * width,
+        now + 0.65
+    );
+
+
+    resonancePan.pan.linearRampToValueAtTime(
+        normalized * 0.56 -
+        slow * 0.14 * width,
+        now + 0.80
+    );
+
+}
+
+
+// ============================================================
+// PLAY NOTE
+// ============================================================
+
+function playNote(
+    frequency,
+    intensity,
+    panValue = 0,
+    durationScale = 1
+) {
+
+    if (
+        !audioStarted ||
+        !audio
+    ) {
+        return;
+    }
+
+
+    const now =
+        audio.currentTime;
+
 
     const osc =
         audio.createOscillator();
+
 
     const gain =
         audio.createGain();
 
 
+    const pan =
+        audio.createStereoPanner();
+
+
+    // --------------------------------------------------------
+    // TIMBRE
+    // --------------------------------------------------------
+
     osc.type =
-        strength > 0.72
+        intensity > 0.68
             ? "triangle"
             : "sine";
 
@@ -1469,30 +2340,38 @@ function triggerAudioEvent(
 
     osc.detune.setValueAtTime(
         (
-            Math.random() - 0.5
-        ) *
-        (
-            8 +
-            speed * 14
-        ),
+            Math.random() -
+            0.5
+        )
+        *
+        5,
         now
     );
 
 
+    // --------------------------------------------------------
+    // ENVELOPE
+    // --------------------------------------------------------
+
     const attack =
-        0.015 +
-        Math.random() * 0.035;
+        0.035 +
+        Math.random() *
+        0.055;
 
 
     const duration =
-        0.55 +
-        strength * 1.35 +
-        Math.random() * 0.8;
+        (
+            1.6 +
+            intensity * 2.2 +
+            Math.random() * 1.0
+        )
+        *
+        durationScale;
 
 
     const level =
         0.010 +
-        strength * 0.026;
+        intensity * 0.026;
 
 
     gain.gain.setValueAtTime(
@@ -1513,200 +2392,371 @@ function triggerAudioEvent(
     );
 
 
-    osc
-        .connect(gain)
-        .connect(melodyGain);
-
-
-    osc.start(now);
-
-    osc.stop(
-        now +
-        duration +
-        0.08
+    pan.pan.setValueAtTime(
+        Math.max(
+            -0.80,
+            Math.min(
+                0.80,
+                panValue
+            )
+        ),
+        now
     );
 
 
     // --------------------------------------------------------
-    // LOWER ATOMIC IMPULSE
+    // ROUTE
     // --------------------------------------------------------
 
-    if (
-        strength > 0.55
-    ) {
-
-        const subOsc =
-            audio.createOscillator();
-
-        const subGain =
-            audio.createGain();
-
-
-        subOsc.type =
-            "sine";
-
-
-        subOsc.frequency.setValueAtTime(
-            frequency * 0.5,
-            now
+    osc
+        .connect(
+            gain
+        )
+        .connect(
+            pan
+        )
+        .connect(
+            eventBus
         );
 
 
-        subGain.gain.setValueAtTime(
-            0.0001,
-            now
-        );
+    osc.start(
+        now
+    );
 
 
-        subGain.gain.exponentialRampToValueAtTime(
-            0.008 +
-            strength * 0.012,
-            now + 0.025
-        );
+    osc.stop(
+        now +
+        duration +
+        0.15
+    );
 
-
-        subGain.gain.exponentialRampToValueAtTime(
-            0.0001,
-            now + 0.9
-        );
-
-
-        subOsc
-            .connect(subGain)
-            .connect(pulseGain);
-
-
-        subOsc.start(now);
-
-        subOsc.stop(
-            now + 1.0
-        );
-    }
-
-
-    // --------------------------------------------------------
-    // SMALL AIR COMPONENT
-    // --------------------------------------------------------
-
-    if (
-        speed > 0.35
-    ) {
-
-        const air =
-            audio.createOscillator();
-
-        const airGain =
-            audio.createGain();
-
-
-        air.type =
-            "sine";
-
-
-        air.frequency.setValueAtTime(
-            frequency * 2,
-            now
-        );
-
-
-        airGain.gain.setValueAtTime(
-            0.0001,
-            now
-        );
-
-
-        airGain.gain.exponentialRampToValueAtTime(
-            0.002 +
-            speed * 0.004,
-            now + 0.025
-        );
-
-
-        airGain.gain.exponentialRampToValueAtTime(
-            0.0001,
-            now + 0.35
-        );
-
-
-        air
-            .connect(airGain)
-            .connect(noiseGain);
-
-
-        air.start(now);
-
-        air.stop(
-            now + 0.4
-        );
-    }
 }
 
 
 // ============================================================
-// TONAL MIGRATION
+// HARMONIC CHORD
 // ============================================================
 
-function updateTonalCenter(
-    elapsed
+function playHarmony(
+    intensity,
+    panValue
 ) {
 
     if (
-        !audioStarted
+        !audioStarted ||
+        !audio
     ) {
         return;
     }
 
 
-    tonalPressure +=
-        pointerSpeed *
-        0.002;
+    const harmony =
+        HARMONIES[
+            harmonicIndex
+        ];
 
 
-    tonalPressure *=
-        0.996;
+    const frequencies =
+        harmony.degrees.map(
+            degree =>
+                scaleFrequency(
+                    degree,
+                    0
+                )
+        );
 
 
-    if (
-        elapsed -
-        lastTonalChange <
-        22
-    ) {
-        return;
-    }
+    // root / third / fifth
+    frequencies.forEach(
+        (
+            frequency,
+            index
+        ) => {
+
+            const delay =
+                index *
+                0.085;
 
 
-    if (
-        tonalPressure >
-        0.18
-    ) {
+            window.setTimeout(
+                () => {
 
-        const direction =
-            Math.random() > 0.5
-                ? 1
-                : -1;
-
-
-        tonalIndex =
-            (
-                tonalIndex +
-                direction +
-                tonalCenters.length
-            ) %
-            tonalCenters.length;
+                    if (
+                        !audioStarted
+                    ) {
+                        return;
+                    }
 
 
-        tonalPressure =
-            0;
+                    playNote(
+                        frequency,
+                        intensity *
+                        (
+                            0.48 +
+                            index *
+                            0.08
+                        ),
+                        panValue +
+                        (
+                            index -
+                            1
+                        )
+                        *
+                        0.09,
+                        1.15
+                    );
 
+                },
+                delay * 1000
+            );
 
-        lastTonalChange =
-            elapsed;
-    }
+        }
+    );
+
 }
 
 
 // ============================================================
-// UPDATE AUDIO ENVIRONMENT
+// HARMONIC SELECTION
+// ============================================================
+
+function selectHarmony(
+    strength
+) {
+
+    harmonicPressure +=
+        strength *
+        0.11;
+
+
+    if (
+        strength < 0.40
+    ) {
+        return;
+    }
+
+
+    if (
+        harmonicPressure < 0.62
+    ) {
+        return;
+    }
+
+
+    const now =
+        performance.now()
+        /
+        1000;
+
+
+    if (
+        now -
+        lastHarmonyChange
+        <
+        11
+    ) {
+        return;
+    }
+
+
+    const current =
+        harmonicIndex;
+
+
+    const random =
+        Math.random();
+
+
+    if (
+        random < 0.50
+    ) {
+
+        harmonicIndex =
+            0;
+
+    } else if (
+        random < 0.68
+    ) {
+
+        harmonicIndex =
+            1;
+
+    } else if (
+        random < 0.84
+    ) {
+
+        harmonicIndex =
+            2;
+
+    } else if (
+        random < 0.94
+    ) {
+
+        harmonicIndex =
+            3;
+
+    } else {
+
+        harmonicIndex =
+            4;
+
+    }
+
+
+    if (
+        harmonicIndex !==
+        current
+    ) {
+
+        lastHarmonyChange =
+            now;
+
+    }
+
+
+    harmonicPressure *=
+        0.22;
+
+}
+
+
+// ============================================================
+// AUDIO EVENT
+// ============================================================
+
+function triggerAudioEvent(
+    strength,
+    speed
+) {
+
+    if (
+        !audioStarted ||
+        !audio
+    ) {
+        return;
+    }
+
+
+    const normalizedX =
+        (
+            pointerX /
+            canvas.clientWidth
+        )
+        *
+        2 -
+        1;
+
+
+    const frequency =
+        fieldFrequency(
+            strength
+        );
+
+
+    // --------------------------------------------------------
+    // MAIN TONAL EVENT
+    // --------------------------------------------------------
+
+    playNote(
+        frequency,
+        strength,
+        normalizedX,
+        0.90 +
+        speed * 0.50
+    );
+
+
+    // --------------------------------------------------------
+    // IMPORTANT EVENTS OPEN HARMONY
+    // --------------------------------------------------------
+
+    const now =
+        performance.now()
+        /
+        1000;
+
+
+    if (
+        strength > 0.58 &&
+        now -
+        lastHarmonyEvent >
+        1.4
+    ) {
+
+        if (
+            Math.random() <
+            0.32
+        ) {
+
+            playHarmony(
+                strength,
+                normalizedX
+            );
+
+
+            lastHarmonyEvent =
+                now;
+
+        }
+
+    }
+
+
+    // --------------------------------------------------------
+    // REVERB
+    // --------------------------------------------------------
+
+    const audioNow =
+        audio.currentTime;
+
+
+    const amount =
+        0.13 +
+        strength * 0.28;
+
+
+    eventReverbGain.gain.cancelScheduledValues(
+        audioNow
+    );
+
+
+    eventReverbGain.gain.linearRampToValueAtTime(
+        amount,
+        audioNow + 0.05
+    );
+
+
+    eventReverbGain.gain.exponentialRampToValueAtTime(
+        0.105,
+        audioNow +
+        2.2 +
+        strength * 2.0
+    );
+
+
+    // --------------------------------------------------------
+    // SPATIAL DELAY
+    // --------------------------------------------------------
+
+    spatialGainL.gain.setValueAtTime(
+        0.12 +
+        strength * 0.10,
+        audioNow
+    );
+
+
+    spatialGainR.gain.setValueAtTime(
+        0.12 +
+        strength * 0.10,
+        audioNow
+    );
+
+}
+
+
+// ============================================================
+// CONTINUOUS AUDIO FIELD
 // ============================================================
 
 function updateAudio(
@@ -1725,52 +2775,109 @@ function updateAudio(
         audio.currentTime;
 
 
-    const tonal =
-        tonalCenters[
-            tonalIndex
-        ];
-
-
     const activity =
         Math.min(
             1,
-            pointerSpeed * 0.65 +
-            events.length * 0.012
+            pointerSpeed * 0.85
         );
 
 
-    droneOsc.frequency.linearRampToValueAtTime(
-        tonal.root * 0.5,
-        now + 2.5
+    const breathing =
+        0.5 +
+        0.5 *
+        Math.sin(
+            elapsed * 0.17
+        );
+
+
+    // --------------------------------------------------------
+    // EARTH
+    // --------------------------------------------------------
+
+    earthGain.gain.linearRampToValueAtTime(
+        0.034 +
+        activity * 0.015 +
+        breathing * 0.004,
+        now + 1.2
     );
 
 
-    ambienceOsc.frequency.linearRampToValueAtTime(
-        tonal.root,
-        now + 3.0
+    // --------------------------------------------------------
+    // BODY
+    // --------------------------------------------------------
+
+    bodyGain.gain.linearRampToValueAtTime(
+        0.009 +
+        activity * 0.015 +
+        breathing * 0.003,
+        now + 1.0
     );
 
 
-    ambienceFilter.frequency.linearRampToValueAtTime(
-        850 +
-        activity * 1500,
-        now + 0.8
+    // --------------------------------------------------------
+    // SKY
+    // --------------------------------------------------------
+
+    skyGain.gain.linearRampToValueAtTime(
+        0.0025 +
+        activity * 0.010 +
+        breathing * 0.0025,
+        now + 1.4
     );
 
 
-    ambienceGain.gain.linearRampToValueAtTime(
-        0.030 +
-        activity * 0.025,
-        now + 0.7
+    // --------------------------------------------------------
+    // 741 RESONANCE
+    //
+    // Almost inaudible.
+    // More felt as spectral presence than pitch.
+    // --------------------------------------------------------
+
+    resonanceGain.gain.linearRampToValueAtTime(
+        0.0007 +
+        activity * 0.0032 +
+        breathing * 0.0008,
+        now + 1.8
     );
+
+
+    // --------------------------------------------------------
+    // FILTER
+    // --------------------------------------------------------
+
+    lowpass.frequency.linearRampToValueAtTime(
+        1500 +
+        activity * 2200 +
+        breathing * 250,
+        now + 1.1
+    );
+
+
+    // --------------------------------------------------------
+    // SPATIAL FIELD
+    // --------------------------------------------------------
+
+    const normalizedX =
+        pointerX /
+        Math.max(
+            1,
+            canvas.clientWidth
+        )
+        *
+        2 -
+        1;
+
+
+    updateSpatialField(
+        normalizedX,
+        pointerSpeed
+    );
+
 }
 
 
 // ============================================================
 // POINTER DOWN
-//
-// Primer clic = activa l'àudio.
-// També pot crear un primer esdeveniment.
 // ============================================================
 
 canvas.addEventListener(
@@ -1780,9 +2887,28 @@ canvas.addEventListener(
         await startAudio();
 
 
-        pointerInside = true;
+        pointerInside =
+            true;
 
-        pointerActive = true;
+
+        pointerActive =
+            true;
+
+
+        pointerX =
+            event.clientX;
+
+
+        pointerY =
+            event.clientY;
+
+
+        previousPointerX =
+            pointerX;
+
+
+        previousPointerY =
+            pointerY;
 
 
         const point =
@@ -1791,41 +2917,31 @@ canvas.addEventListener(
             );
 
 
-        pointerX =
-            event.clientX;
-
-        pointerY =
-            event.clientY;
-
-        previousPointerX =
-            pointerX;
-
-        previousPointerY =
-            pointerY;
-
-
         const initial =
             createEvent(
                 point.x,
                 point.y,
-                0.72,
-                0.75
+                0.76,
+                0.82
             );
 
 
         initial.time =
-            performance.now() / 1000;
+            performance.now()
+            /
+            1000;
 
 
         triggerAudioEvent(
-            0.72,
-            0.25
+            0.76,
+            0.30
         );
 
 
         canvas.setPointerCapture?.(
             event.pointerId
         );
+
     },
     {
         passive: true
@@ -1835,10 +2951,6 @@ canvas.addEventListener(
 
 // ============================================================
 // POINTER MOVE
-//
-// Només respon mentre el punter és físicament dins del canvas.
-// El moviment no és una coordenada contínua de la visualització:
-// és energia que entra al sistema.
 // ============================================================
 
 canvas.addEventListener(
@@ -1879,12 +2991,14 @@ canvas.addEventListener(
         pointerX =
             event.clientX;
 
+
         pointerY =
             event.clientY;
 
 
         previousPointerX =
             event.clientX;
+
 
         previousPointerY =
             event.clientY;
@@ -1895,14 +3009,16 @@ canvas.addEventListener(
 
 
         const now =
-            performance.now() / 1000;
+            performance.now()
+            /
+            1000;
 
 
         // ----------------------------------------------------
-        // GENERACIÓ D'ESDEVENIMENTS
+        // MOVEMENT THRESHOLD
         //
-        // No creem una ona per frame.
-        // Esperem que el moviment acumuli prou energia.
+        // The mechanical selection of the pointer remains
+        // the physical trigger of the field.
         // ----------------------------------------------------
 
         const threshold =
@@ -1961,28 +3077,25 @@ canvas.addEventListener(
 
 
             // ------------------------------------------------
-            // TRADUCCIÓ SONORA
+            // SOUND
             // ------------------------------------------------
 
-            if (
-                now >
-                audioEventCooldown
-            ) {
-
-                triggerAudioEvent(
-                    strength,
-                    pointerSpeed
-                );
+            triggerAudioEvent(
+                strength,
+                pointerSpeed
+            );
 
 
-                audioEventCooldown =
-                    now +
-                    (
-                        0.16 +
-                        Math.random() * 0.20
-                    );
-            }
+            // ------------------------------------------------
+            // HARMONIC PRESSURE
+            // ------------------------------------------------
+
+            selectHarmony(
+                strength
+            );
+
         }
+
     },
     {
         passive: true
@@ -1998,21 +3111,29 @@ canvas.addEventListener(
     "pointerenter",
     event => {
 
-        pointerInside = true;
+        pointerInside =
+            true;
 
-        pointerActive = true;
+
+        pointerActive =
+            true;
+
 
         pointerX =
             event.clientX;
 
+
         pointerY =
             event.clientY;
+
 
         previousPointerX =
             event.clientX;
 
+
         previousPointerY =
             event.clientY;
+
     },
     {
         passive: true
@@ -2022,21 +3143,27 @@ canvas.addEventListener(
 
 // ============================================================
 // POINTER LEAVE
-//
-// Important: fora de pantalla no hi ha activitat.
 // ============================================================
 
 canvas.addEventListener(
     "pointerleave",
     () => {
 
-        pointerInside = false;
+        pointerInside =
+            false;
 
-        pointerActive = false;
 
-        pointerSpeed = 0;
+        pointerActive =
+            false;
 
-        movementAccumulator = 0;
+
+        pointerSpeed =
+            0;
+
+
+        movementAccumulator =
+            0;
+
     },
     {
         passive: true
@@ -2052,11 +3179,17 @@ canvas.addEventListener(
     "pointercancel",
     () => {
 
-        pointerInside = false;
+        pointerInside =
+            false;
 
-        pointerActive = false;
 
-        pointerSpeed = 0;
+        pointerActive =
+            false;
+
+
+        pointerSpeed =
+            0;
+
     },
     {
         passive: true
@@ -2072,7 +3205,8 @@ function resize() {
 
     const dpr =
         Math.min(
-            window.devicePixelRatio || 1,
+            window.devicePixelRatio ||
+            1,
             2
         );
 
@@ -2087,13 +3221,15 @@ function resize() {
 
     canvas.width =
         Math.floor(
-            width * dpr
+            width *
+            dpr
         );
 
 
     canvas.height =
         Math.floor(
-            height * dpr
+            height *
+            dpr
         );
 
 
@@ -2110,6 +3246,7 @@ function resize() {
         canvas.width,
         canvas.height
     );
+
 }
 
 
@@ -2123,11 +3260,154 @@ resize();
 
 
 // ============================================================
+// UI
+// ============================================================
+
+const coordinateX =
+    document.getElementById(
+        "coordX"
+    );
+
+
+const coordinateY =
+    document.getElementById(
+        "coordY"
+    );
+
+
+const frequencyDisplay =
+    document.getElementById(
+        "frequency"
+    );
+
+
+const statusDisplay =
+    document.getElementById(
+        "status"
+    );
+
+
+// ============================================================
+// UI UPDATE
+// ============================================================
+
+function updateInterface() {
+
+    if (!pointerInside) {
+
+        statusDisplay.textContent =
+            "FIELD";
+
+
+        frequencyDisplay.textContent =
+            "F# · 185 Hz";
+
+
+        return;
+
+    }
+
+
+    const x =
+        (
+            pointerX /
+            canvas.clientWidth
+        )
+        *
+        2 -
+        1;
+
+
+    const y =
+        1 -
+        (
+            pointerY /
+            canvas.clientHeight
+        )
+        *
+        2;
+
+
+    coordinateX.textContent =
+        x.toFixed(3);
+
+
+    coordinateY.textContent =
+        y.toFixed(3);
+
+
+    if (
+        pointerSpeed < 0.12
+    ) {
+
+        frequencyDisplay.textContent =
+            "F# · 185 Hz";
+
+
+        statusDisplay.textContent =
+            "EARTH";
+
+    } else if (
+        pointerSpeed < 0.45
+    ) {
+
+        frequencyDisplay.textContent =
+            "F# · 370 Hz";
+
+
+        statusDisplay.textContent =
+            "MATTER";
+
+    } else {
+
+        frequencyDisplay.textContent =
+            "F# · 740 / 741 Hz";
+
+
+        statusDisplay.textContent =
+            "SKY";
+
+    }
+
+}
+
+
+// ============================================================
 // RENDER
 // ============================================================
 
 const start =
     performance.now();
+
+
+const positionData =
+    new Float32Array(
+        MAX_EVENTS * 2
+    );
+
+
+const timeData =
+    new Float32Array(
+        MAX_EVENTS
+    );
+
+
+const strengthData =
+    new Float32Array(
+        MAX_EVENTS
+    );
+
+
+const sizeData =
+    new Float32Array(
+        MAX_EVENTS
+    );
+
+
+const seedData =
+    new Float32Array(
+        MAX_EVENTS
+    );
 
 
 function render(now) {
@@ -2136,16 +3416,13 @@ function render(now) {
         (
             now -
             start
-        ) / 1000;
+        )
+        /
+        1000;
 
 
     pointerSpeed *=
         0.91;
-
-
-    updateTonalCenter(
-        elapsed
-    );
 
 
     updateAudio(
@@ -2153,34 +3430,7 @@ function render(now) {
     );
 
 
-    const positionData =
-        new Float32Array(
-            MAX_EVENTS * 2
-        );
-
-
-    const timeData =
-        new Float32Array(
-            MAX_EVENTS
-        );
-
-
-    const strengthData =
-        new Float32Array(
-            MAX_EVENTS
-        );
-
-
-    const sizeData =
-        new Float32Array(
-            MAX_EVENTS
-        );
-
-
-    const seedData =
-        new Float32Array(
-            MAX_EVENTS
-        );
+    updateInterface();
 
 
     for (
@@ -2228,12 +3478,14 @@ function render(now) {
 
             positionData[
                 i * 2
-            ] = 0;
+            ] =
+                0;
 
 
             positionData[
                 i * 2 + 1
-            ] = 0;
+            ] =
+                0;
 
 
             timeData[i] =
@@ -2250,7 +3502,9 @@ function render(now) {
 
             seedData[i] =
                 0;
+
         }
+
     }
 
 
@@ -2300,6 +3554,7 @@ function render(now) {
     requestAnimationFrame(
         render
     );
+
 }
 
 
