@@ -2202,7 +2202,7 @@ async function startAudio() {
 
 
     master.gain.exponentialRampToValueAtTime(
-        0.072,
+        0.67,
         now + 5.5
     );
 
