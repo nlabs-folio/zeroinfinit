@@ -3365,7 +3365,7 @@ function updateInterface() {
 
 
         statusDisplay.textContent =
-            "CEL";
+            "SKY";
 
     }
 
