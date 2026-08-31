@@ -1,34 +1,33 @@
 // ============================================================
 // ZERO INFINIT — node∅
 //
-// MATÈRIA → ESDEVENIMENT → ONA → DISPERSIÓ → MÚSICA
+// FIELD / EVENT / WAVE / MATTER / SOUND
 //
 // F# MINOR
 //
-// TERRA:
-//     F#2 ≈ 92.50 Hz
+// EARTH
+//   F# 185 Hz
 //
-// COS:
-//     F#3 ≈ 185 Hz
+// BODY
+//   F# 370 Hz
 //
-// PRESÈNCIA:
-//     F#4 ≈ 370 Hz
+// SKY
+//   F# 740 Hz
 //
-// CEL:
-//     F#5 ≈ 740 Hz
+// RESONANCE
+//   741 Hz
 //
-// RESSONÀNCIA:
-//     741 Hz
-//
-// El 741 no és una "nota màgica".
-// És una ressonància gairebé coincident
-// amb F#5 i apareix només com una presència subtil.
-//
-// El moviment mecànic del punter continua sent
-// el motor dels esdeveniments.
-//
+// The field exists before the observer.
+// Movement introduces energy into the field.
 // ============================================================
 
+
+"use strict";
+
+
+// ============================================================
+// CANVAS
+// ============================================================
 
 const canvas =
     document.getElementById(
@@ -42,7 +41,8 @@ const gl =
         {
             antialias: false,
             alpha: false,
-            powerPreference: "high-performance"
+            powerPreference:
+                "high-performance"
         }
     );
 
@@ -50,8 +50,9 @@ const gl =
 if (!gl) {
 
     throw new Error(
-        "WebGL no disponible"
+        "WebGL unavailable"
     );
+
 }
 
 
@@ -71,6 +72,7 @@ void main() {
             0.0,
             1.0
         );
+
 }
 
 `;
@@ -107,9 +109,11 @@ float hash(vec2 p) {
                     311.7
                 )
             )
-        ) *
+        )
+        *
         43758.5453
     );
+
 }
 
 
@@ -164,23 +168,16 @@ float noise(vec2 p) {
         );
 
     return mix(
-        mix(
-            a,
-            b,
-            f.x
-        ),
-        mix(
-            c,
-            d,
-            f.x
-        ),
+        mix(a, b, f.x),
+        mix(c, d, f.x),
         f.y
     );
+
 }
 
 
 // ============================================================
-// FRACTAL BROWNIAN MOTION
+// FBM
 // ============================================================
 
 float fbm(vec2 p) {
@@ -206,14 +203,16 @@ float fbm(vec2 p) {
 
         amplitude *=
             0.5;
+
     }
 
     return value;
+
 }
 
 
 // ============================================================
-// ORGANIC FLOW
+// FLOW
 // ============================================================
 
 vec2 flowField(vec2 p) {
@@ -257,17 +256,20 @@ vec2 flowField(vec2 p) {
         vec2(
             nx - n,
             ny - n
-        ) / e;
+        )
+        /
+        e;
 
     return vec2(
         -gradient.y,
         gradient.x
     );
+
 }
 
 
 // ============================================================
-// MAIN
+// MAIN SHADER
 // ============================================================
 
 void main() {
@@ -297,7 +299,8 @@ void main() {
 
     vec2 field =
         p +
-        flow * 0.075;
+        flow *
+        0.075;
 
     field +=
         vec2(
@@ -309,7 +312,8 @@ void main() {
                 time * 0.13 +
                 p.x * 2.4
             )
-        ) *
+        )
+        *
         0.014;
 
 
@@ -347,7 +351,7 @@ void main() {
 
 
     // --------------------------------------------------------
-    // EVENT FIELD
+    // EVENTS
     // --------------------------------------------------------
 
     float waveField =
@@ -394,7 +398,7 @@ void main() {
 
 
             // ------------------------------------------------
-            // EXPANDING WAVE
+            // WAVE
             // ------------------------------------------------
 
             float radius =
@@ -438,7 +442,7 @@ void main() {
 
 
             // ------------------------------------------------
-            // EVENT CORE
+            // MATTER CORE
             // ------------------------------------------------
 
             float centre =
@@ -459,7 +463,7 @@ void main() {
 
 
             // ------------------------------------------------
-            // OUTWARD DISPERSION
+            // DISPERSION
             // ------------------------------------------------
 
             float scatter =
@@ -491,12 +495,14 @@ void main() {
                 exp(
                     -age * 0.72
                 );
+
         }
+
     }
 
 
     // --------------------------------------------------------
-    // MATTER MULTIPLICATION
+    // MULTIPLICATION
     // --------------------------------------------------------
 
     float multiplication =
@@ -555,7 +561,7 @@ void main() {
 
 
     // --------------------------------------------------------
-    // PARTICLE FIELD
+    // PARTICLES
     // --------------------------------------------------------
 
     vec2 particleSpace =
@@ -575,7 +581,8 @@ void main() {
     vec2 local =
         fract(
             particleSpace
-        ) -
+        )
+        -
         0.5;
 
 
@@ -618,8 +625,7 @@ void main() {
 
     particle *=
         0.15 +
-        0.75 *
-        matter;
+        matter * 1.75;
 
 
     // --------------------------------------------------------
@@ -645,12 +651,13 @@ void main() {
                     eventScatter * 7.0
                 )
             )
-        ) *
-        0.70;
+        )
+        *
+        0.90;
 
 
     // --------------------------------------------------------
-    // WAVE FILAMENTS
+    // FILAMENTS
     // --------------------------------------------------------
 
     float filament =
@@ -681,11 +688,11 @@ void main() {
 
     filament *=
         eventScatter *
-        0.24;
+        0.34;
 
 
     // --------------------------------------------------------
-    // CENTRAL DEPTH
+    // CENTRAL VOID
     // --------------------------------------------------------
 
     float r =
@@ -711,7 +718,7 @@ void main() {
 
 
     // --------------------------------------------------------
-    // COLOR FIELD
+    // COLOR
     // --------------------------------------------------------
 
     vec3 color =
@@ -770,92 +777,64 @@ void main() {
         );
 
 
-    // --------------------------------------------------------
-    // MATTER
-    // --------------------------------------------------------
-
     color +=
         deepBlue *
         matter *
-        1.58;
+        1.70;
 
 
     color +=
         violet *
         matter *
         matter *
-        1.12;
+        1.30;
 
-
-    // --------------------------------------------------------
-    // FRACTAL
-    // --------------------------------------------------------
 
     color +=
         lilac *
         fractal *
-        0.22;
+        0.28;
 
-
-    // --------------------------------------------------------
-    // WAVES
-    // --------------------------------------------------------
 
     color +=
         cyan *
         waveField *
-        0.52;
+        0.72;
 
-
-    // --------------------------------------------------------
-    // EVENT MATTER
-    // --------------------------------------------------------
 
     color +=
         pink *
         eventMatter *
-        0.30;
+        0.42;
 
-
-    // --------------------------------------------------------
-    // PARTICLES
-    // --------------------------------------------------------
 
     color +=
         lilac *
         particle *
-        1.05;
+        1.35;
 
-
-    // --------------------------------------------------------
-    // FILAMENTS
-    // --------------------------------------------------------
 
     color +=
         cyan *
         filament *
-        0.42;
+        0.62;
 
-
-    // --------------------------------------------------------
-    // EVENT GLOW
-    // --------------------------------------------------------
 
     color +=
         pink *
         eventGlow *
-        0.13;
+        0.20;
 
 
     color +=
         whiteBlue *
         eventGlow *
         eventGlow *
-        0.08;
+        0.16;
 
 
     // --------------------------------------------------------
-    // CENTRAL SOFT LIGHT
+    // CENTRAL DEPTH
     // --------------------------------------------------------
 
     float centralGlow =
@@ -873,11 +852,11 @@ void main() {
         *
         centralGlow
         *
-        0.055;
+        0.08;
 
 
     // --------------------------------------------------------
-    // LARGE-SCALE BLOOM
+    // BLOOM
     // --------------------------------------------------------
 
     float bloom =
@@ -907,17 +886,19 @@ void main() {
     color +=
         deepBlue *
         outerGlow *
-        0.045;
+        0.055;
 
 
     // --------------------------------------------------------
-    // FINAL RESPONSE
+    // FINAL
     // --------------------------------------------------------
 
     color =
         pow(
             color,
-            vec3(0.94)
+            vec3(
+                0.90
+            )
         );
 
 
@@ -926,6 +907,7 @@ void main() {
             color,
             1.0
         );
+
 }
 
 `;
@@ -941,7 +923,9 @@ function compileShader(
 ) {
 
     const shader =
-        gl.createShader(type);
+        gl.createShader(
+            type
+        );
 
 
     gl.shaderSource(
@@ -969,12 +953,14 @@ function compileShader(
         );
 
         throw new Error(
-            "Zero Infinit: shader compilation failed"
+            "node∅ shader compilation failed"
         );
+
     }
 
 
     return shader;
+
 }
 
 
@@ -1021,8 +1007,9 @@ if (
 ) {
 
     throw new Error(
-        "Zero Infinit: WebGL link failed"
+        "node∅ WebGL link failed"
     );
+
 }
 
 
@@ -1131,6 +1118,7 @@ const U = {
             program,
             "eventSeed"
         )
+
 };
 
 
@@ -1173,6 +1161,7 @@ function createEvent(
 
         seed:
             Math.random()
+
     };
 
 
@@ -1183,13 +1172,19 @@ function createEvent(
     eventCursor =
         (
             eventCursor + 1
-        ) %
+        )
+        %
         MAX_EVENTS;
 
 
     return event;
+
 }
 
+
+// ============================================================
+// POINTER POSITION
+// ============================================================
 
 function eventPositionFromPointer(
     event
@@ -1203,7 +1198,8 @@ function eventPositionFromPointer(
         (
             event.clientX -
             rect.left
-        ) /
+        )
+        /
         rect.width;
 
 
@@ -1211,7 +1207,8 @@ function eventPositionFromPointer(
         (
             event.clientY -
             rect.top
-        ) /
+        )
+        /
         rect.height;
 
 
@@ -1226,18 +1223,21 @@ function eventPositionFromPointer(
             (
                 x -
                 0.5
-            ) *
+            )
+            *
             aspect,
 
         y:
             0.5 -
             y
+
     };
+
 }
 
 
 // ============================================================
-// POINTER
+// POINTER STATE
 // ============================================================
 
 let pointerInside =
@@ -1278,6 +1278,11 @@ let lastEventTime =
 
 // ============================================================
 // AUDIO
+//
+// 44.1 kHz requested explicitly.
+//
+// Web Audio's signal path uses floating point processing.
+// AudioBuffer/sample data is Float32.
 // ============================================================
 
 let audio =
@@ -1296,39 +1301,23 @@ let compressor =
     null;
 
 
-let ambienceFilter =
+let lowpass =
     null;
 
 
-let ambienceGain =
+let highpass =
     null;
 
 
-let droneOsc =
+let earthGain =
     null;
 
 
-let droneGain =
+let bodyGain =
     null;
 
 
-let ambienceOsc =
-    null;
-
-
-let ambienceOscGain =
-    null;
-
-
-let harmonicOsc =
-    null;
-
-
-let harmonicGain =
-    null;
-
-
-let resonanceOsc =
+let skyGain =
     null;
 
 
@@ -1336,11 +1325,35 @@ let resonanceGain =
     null;
 
 
-let reverb =
+let earthOsc =
     null;
 
 
-let reverbGain =
+let bodyOsc =
+    null;
+
+
+let skyOsc =
+    null;
+
+
+let resonanceOsc =
+    null;
+
+
+let earthPan =
+    null;
+
+
+let bodyPan =
+    null;
+
+
+let skyPan =
+    null;
+
+
+let resonancePan =
     null;
 
 
@@ -1348,84 +1361,135 @@ let eventBus =
     null;
 
 
-let melodyGain =
+let eventReverb =
     null;
 
 
-let chordGain =
+let eventReverbGain =
     null;
 
 
-let audioEventCooldown =
-    0;
+let spatialDelayL =
+    null;
+
+
+let spatialDelayR =
+    null;
+
+
+let spatialGainL =
+    null;
+
+
+let spatialGainR =
+    null;
+
+
+let harmonicBus =
+    null;
+
+
+let tonalRoot =
+    185.00;
+
+
+const SAMPLE_RATE =
+    44100;
 
 
 // ============================================================
-// F# MINOR
+// TONAL WORLD
+// ============================================================
+//
+// F# minor:
+//
+// F#  G#  A  B  C#  D  E
+// 0   2   3  5   7  8 10
+//
+// Chord material:
+//
+// i  = F#m
+// VI = D
+// III= A
+// VII= E
+// V  = C#
+//
+// The system never leaves F# minor.
 // ============================================================
 
-const tonalCenter = {
-
-    name:
-        "F# minor",
-
-    root:
-        185.00,
-
-    scale:
-        [
-            0,
-            2,
-            3,
-            5,
-            7,
-            8,
-            10
-        ]
-};
+const SCALE =
+    [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+    ];
 
 
-// ============================================================
-// HARMONIC PROGRESSIONS
-//
-// The harmony remains inside F# minor.
-//
-// We do not travel through many tonal worlds.
-// We deepen the same place.
-//
-// i     = F#m
-// VI    = D
-// III   = A
-// VII   = E
-// iv    = Bm
-//
-// The progression is selected slowly and probabilistically.
-// ============================================================
+const HARMONIES = [
 
-const harmonicProgressions = [
+    {
+        name:
+            "F#m",
 
-    [0, 5, 2, 6],
+        degrees:
+            [0, 2, 4],
 
-    [0, 3, 5, 4],
+        weight:
+            0.42
+    },
 
-    [0, 5, 6, 0],
+    {
+        name:
+            "D",
 
-    [0, 2, 5, 4],
+        degrees:
+            [5, 0, 2],
 
-    [0, 4, 5, 0]
+        weight:
+            0.20
+    },
+
+    {
+        name:
+            "A",
+
+        degrees:
+            [2, 4, 6],
+
+        weight:
+            0.18
+    },
+
+    {
+        name:
+            "E",
+
+        degrees:
+            [6, 1, 3],
+
+        weight:
+            0.13
+    },
+
+    {
+        name:
+            "C#",
+
+        degrees:
+            [4, 6, 1],
+
+        weight:
+            0.07
+    }
 
 ];
 
 
-let progressionIndex =
-    0;
-
-
-let progressionStep =
-    0;
-
-
-let lastChordTime =
+let harmonicIndex =
     0;
 
 
@@ -1433,94 +1497,95 @@ let harmonicPressure =
     0;
 
 
+let lastHarmonyChange =
+    0;
+
+
+let lastHarmonyEvent =
+    0;
+
+
 // ============================================================
-// NOTE FROM F# MINOR
+// FREQUENCY FROM SCALE
 // ============================================================
 
-function getScaleFrequency(
+function scaleFrequency(
     degree,
     octave = 0
 ) {
 
-    const scale =
-        tonalCenter.scale;
-
-
-    const length =
-        scale.length;
-
-
-    const normalized =
+    const wrapped =
         (
             degree %
-            length +
-            length
-        ) %
-        length;
+            SCALE.length +
+            SCALE.length
+        )
+        %
+        SCALE.length;
 
 
     const semitone =
-        scale[
-            normalized
-        ] +
+        SCALE[wrapped] +
         octave * 12;
 
 
     return (
-        tonalCenter.root *
+        tonalRoot *
         Math.pow(
             2,
             semitone / 12
         )
     );
+
 }
 
 
 // ============================================================
-// FRACTAL FREQUENCY
+// RANDOM TONAL FREQUENCY
 // ============================================================
 
-function getFractalFrequency(
-    intensity = 0.5
+function fieldFrequency(
+    intensity
 ) {
 
     const degree =
         Math.floor(
             Math.random() *
-            tonalCenter.scale.length
+            SCALE.length
         );
 
 
     let octave =
-        1;
+        0;
 
 
     if (
-        intensity > 0.72
+        intensity > 0.70 &&
+        Math.random() > 0.42
     ) {
 
         octave =
-            Math.random() > 0.58
-                ? 2
-                : 1;
+            1;
+
     }
 
 
-    return getScaleFrequency(
+    return scaleFrequency(
         degree,
         octave
     );
+
 }
 
 
 // ============================================================
-// REVERB IMPULSE
+// REVERB
 // ============================================================
 
 function createReverbImpulse(
     context,
     duration = 4.8,
-    decay = 2.9
+    decay = 3.4
 ) {
 
     const length =
@@ -1557,23 +1622,42 @@ function createReverbImpulse(
         ) {
 
             const t =
-                i / length;
+                i /
+                length;
 
 
-            data[i] =
+            const early =
+                Math.exp(
+                    -t * 10
+                );
+
+
+            const diffuse =
                 (
                     Math.random() * 2 -
                     1
-                ) *
+                );
+
+
+            data[i] =
+                diffuse *
                 Math.pow(
                     1 - t,
                     decay
+                )
+                *
+                (
+                    0.72 +
+                    early * 0.28
                 );
+
         }
+
     }
 
 
     return impulse;
+
 }
 
 
@@ -1597,16 +1681,21 @@ async function startAudio() {
 
                 await audio.resume();
 
-            } catch (error) {
+            } catch (
+                error
+            ) {
 
                 console.warn(
                     "Audio resume:",
                     error
                 );
+
             }
+
         }
 
         return;
+
     }
 
 
@@ -1618,25 +1707,36 @@ async function startAudio() {
     if (!AudioContext) {
 
         console.warn(
-            "Web Audio API no disponible"
+            "Web Audio API unavailable"
         );
 
         return;
+
     }
 
 
     try {
 
         audio =
-            new AudioContext();
+            new AudioContext(
+                {
+                    sampleRate:
+                        SAMPLE_RATE,
+
+                    latencyHint:
+                        "interactive"
+                }
+            );
 
 
         await audio.resume();
 
-    } catch (error) {
+    } catch (
+        error
+    ) {
 
         console.warn(
-            "Zero Infinit audio:",
+            "node∅ audio:",
             error
         );
 
@@ -1644,14 +1744,12 @@ async function startAudio() {
             null;
 
         return;
+
     }
 
 
     // ========================================================
     // MASTER
-    //
-    // User-selected working level:
-    // 0.15
     // ========================================================
 
     master =
@@ -1659,7 +1757,7 @@ async function startAudio() {
 
 
     master.gain.value =
-        0.10;
+        0.0001;
 
 
     // ========================================================
@@ -1671,7 +1769,7 @@ async function startAudio() {
 
 
     compressor.threshold.value =
-        -22;
+        -24;
 
 
     compressor.knee.value =
@@ -1683,7 +1781,7 @@ async function startAudio() {
 
 
     compressor.attack.value =
-        0.035;
+        0.018;
 
 
     compressor.release.value =
@@ -1691,136 +1789,139 @@ async function startAudio() {
 
 
     // ========================================================
-    // AMBIENCE FILTER
+    // FILTER ARCHITECTURE
     // ========================================================
 
-    ambienceFilter =
+    lowpass =
         audio.createBiquadFilter();
 
 
-    ambienceFilter.type =
+    lowpass.type =
         "lowpass";
 
 
-    ambienceFilter.frequency.value =
-        1050;
+    lowpass.frequency.value =
+        2600;
 
 
-    ambienceFilter.Q.value =
-        0.28;
+    lowpass.Q.value =
+        0.30;
+
+
+    highpass =
+        audio.createBiquadFilter();
+
+
+    highpass.type =
+        "highpass";
+
+
+    highpass.frequency.value =
+        28;
+
+
+    highpass.Q.value =
+        0.20;
 
 
     // ========================================================
-    // AMBIENCE
+    // EARTH
     // ========================================================
 
-    ambienceGain =
-        audio.createGain();
-
-
-    ambienceGain.gain.value =
-        0.032;
-
-
-    // ========================================================
-    // TERRA — F#2
-    //
-    // No és una nota constant.
-    // Respira lentament.
-    // ========================================================
-
-    droneOsc =
+    earthOsc =
         audio.createOscillator();
 
 
-    droneOsc.type =
+    earthOsc.type =
         "sine";
 
 
-    droneOsc.frequency.value =
-        tonalCenter.root / 2;
+    earthOsc.frequency.value =
+        185.0;
 
 
-    droneGain =
+    earthGain =
         audio.createGain();
 
 
-    droneGain.gain.value =
-        0.0;
+    earthGain.gain.value =
+        0.040;
 
 
-    droneOsc
-        .connect(droneGain)
-        .connect(ambienceFilter);
+    earthPan =
+        audio.createStereoPanner();
+
+
+    earthPan.pan.value =
+        -0.04;
 
 
     // ========================================================
-    // COS — F#3
+    // BODY
     // ========================================================
 
-    ambienceOsc =
+    bodyOsc =
         audio.createOscillator();
 
 
-    ambienceOsc.type =
+    bodyOsc.type =
         "triangle";
 
 
-    ambienceOsc.frequency.value =
-        tonalCenter.root;
+    bodyOsc.frequency.value =
+        370.0;
 
 
-    ambienceOscGain =
+    bodyGain =
         audio.createGain();
 
 
-    ambienceOscGain.gain.value =
-        0.0;
+    bodyGain.gain.value =
+        0.012;
 
 
-    ambienceOsc
-        .connect(ambienceOscGain)
-        .connect(ambienceFilter);
+    bodyPan =
+        audio.createStereoPanner();
+
+
+    bodyPan.pan.value =
+        0.04;
 
 
     // ========================================================
-    // F#4 — AIR / UPPER BODY
+    // SKY
     // ========================================================
 
-    harmonicOsc =
+    skyOsc =
         audio.createOscillator();
 
 
-    harmonicOsc.type =
+    skyOsc.type =
         "sine";
 
 
-    harmonicOsc.frequency.value =
-        tonalCenter.root * 2;
+    skyOsc.frequency.value =
+        740.0;
 
 
-    harmonicGain =
+    skyGain =
         audio.createGain();
 
 
-    harmonicGain.gain.value =
+    skyGain.gain.value =
+        0.004;
+
+
+    skyPan =
+        audio.createStereoPanner();
+
+
+    skyPan.pan.value =
         0.0;
-
-
-    harmonicOsc
-        .connect(harmonicGain)
-        .connect(ambienceFilter);
 
 
     // ========================================================
     // 741 Hz RESONANCE
-    //
-    // Extremely restrained.
-    //
-    // 740 Hz = F#5
-    // 741 Hz = almost identical pitch
-    //
-    // It acts more like an upper resonance than a note.
     // ========================================================
 
     resonanceOsc =
@@ -1840,12 +1941,67 @@ async function startAudio() {
 
 
     resonanceGain.gain.value =
+        0.0012;
+
+
+    resonancePan =
+        audio.createStereoPanner();
+
+
+    resonancePan.pan.value =
         0.0;
 
 
+    // ========================================================
+    // CONNECT TONAL LAYERS
+    // ========================================================
+
+    earthOsc
+        .connect(
+            earthGain
+        )
+        .connect(
+            earthPan
+        )
+        .connect(
+            highpass
+        );
+
+
+    bodyOsc
+        .connect(
+            bodyGain
+        )
+        .connect(
+            bodyPan
+        )
+        .connect(
+            highpass
+        );
+
+
+    skyOsc
+        .connect(
+            skyGain
+        )
+        .connect(
+            skyPan
+        )
+        .connect(
+            lowpass
+        );
+
+
     resonanceOsc
-        .connect(resonanceGain)
-        .connect(ambienceFilter);
+        .connect(
+            resonanceGain
+        )
+        .connect(
+            resonancePan
+        )
+        .connect(
+            lowpass
+        );
 
 
     // ========================================================
@@ -1860,126 +2016,176 @@ async function startAudio() {
         1.0;
 
 
-    // ========================================================
-    // MELODY
-    // ========================================================
-
-    melodyGain =
+    harmonicBus =
         audio.createGain();
 
 
-    melodyGain.gain.value =
-        0.72;
-
-
-    // ========================================================
-    // CHORD BUS
-    // ========================================================
-
-    chordGain =
-        audio.createGain();
-
-
-    chordGain.gain.value =
-        0.42;
+    harmonicBus.gain.value =
+        0.58;
 
 
     // ========================================================
     // REVERB
     // ========================================================
 
-    reverb =
+    eventReverb =
         audio.createConvolver();
 
 
-    reverb.buffer =
+    eventReverb.buffer =
         createReverbImpulse(
-            audio,
-            4.8,
-            2.9
+            audio
         );
 
 
-    reverbGain =
+    eventReverbGain =
         audio.createGain();
 
 
-    reverbGain.gain.value =
-        0.10;
+    eventReverbGain.gain.value =
+        0.16;
+
+
+    // ========================================================
+    // SUBTLE SPATIAL DELAY
+    // ========================================================
+    //
+    // This is deliberately slow and small.
+    //
+    // It is not an obvious echo.
+    // It creates a tiny difference between
+    // left and right spatial fields.
+    // ========================================================
+
+    spatialDelayL =
+        audio.createDelay(
+            0.05
+        );
+
+
+    spatialDelayR =
+        audio.createDelay(
+            0.05
+        );
+
+
+    spatialDelayL.delayTime.value =
+        0.009;
+
+
+    spatialDelayR.delayTime.value =
+        0.013;
+
+
+    spatialGainL =
+        audio.createGain();
+
+
+    spatialGainR =
+        audio.createGain();
+
+
+    spatialGainL.gain.value =
+        0.18;
+
+
+    spatialGainR.gain.value =
+        0.18;
 
 
     // ========================================================
     // ROUTING
     // ========================================================
 
-    ambienceFilter
+    highpass
         .connect(
-            ambienceGain
+            lowpass
+        );
+
+
+    lowpass
+        .connect(
+            compressor
+        );
+
+
+    eventBus
+        .connect(
+            compressor
+        );
+
+
+    eventBus
+        .connect(
+            eventReverb
+        );
+
+
+    eventReverb
+        .connect(
+            eventReverbGain
         )
         .connect(
             compressor
         );
 
 
-    melodyGain.connect(
-        compressor
-    );
+    // spatial return
+    eventBus
+        .connect(
+            spatialDelayL
+        )
+        .connect(
+            spatialGainL
+        )
+        .connect(
+            compressor
+        );
 
 
-    chordGain.connect(
-        compressor
-    );
+    eventBus
+        .connect(
+            spatialDelayR
+        )
+        .connect(
+            spatialGainR
+        )
+        .connect(
+            compressor
+        );
 
 
-    eventBus.connect(
-        melodyGain
-    );
+    compressor
+        .connect(
+            master
+        );
 
 
-    eventBus.connect(
-        reverb
-    );
-
-
-    reverb.connect(
-        reverbGain
-    );
-
-
-    reverbGain.connect(
-        compressor
-    );
-
-
-    compressor.connect(
-        master
-    );
-
-
-    master.connect(
-        audio.destination
-    );
+    master
+        .connect(
+            audio.destination
+        );
 
 
     // ========================================================
-    // START OSCILLATORS
+    // START
     // ========================================================
 
     const now =
         audio.currentTime;
 
 
-    droneOsc.start(
+    earthOsc.start(
         now
     );
 
 
-    ambienceOsc.start(
+    bodyOsc.start(
         now
     );
 
 
-    harmonicOsc.start(
+    skyOsc.start(
         now
     );
 
@@ -2003,24 +2209,99 @@ async function startAudio() {
 
     audioStarted =
         true;
+
 }
 
 
 // ============================================================
-// PLAY SINGLE NOTE
+// SPATIAL MODULATION
 // ============================================================
 
-function playNote(
-    frequency,
-    intensity,
-    panValue = 0
+function updateSpatialField(
+    x,
+    speed
 ) {
 
     if (
         !audioStarted ||
         !audio
     ) {
+        return;
+    }
 
+
+    const now =
+        audio.currentTime;
+
+
+    const normalized =
+        Math.max(
+            -1,
+            Math.min(
+                1,
+                x
+            )
+        );
+
+
+    const width =
+        Math.min(
+            1,
+            speed
+        );
+
+
+    const slow =
+        Math.sin(
+            now * 0.11
+        );
+
+
+    earthPan.pan.linearRampToValueAtTime(
+        normalized * 0.10 +
+        slow * 0.035,
+        now + 0.35
+    );
+
+
+    bodyPan.pan.linearRampToValueAtTime(
+        normalized * 0.20 -
+        slow * 0.055,
+        now + 0.45
+    );
+
+
+    skyPan.pan.linearRampToValueAtTime(
+        normalized * 0.42 +
+        slow * 0.10 * width,
+        now + 0.65
+    );
+
+
+    resonancePan.pan.linearRampToValueAtTime(
+        normalized * 0.56 -
+        slow * 0.14 * width,
+        now + 0.80
+    );
+
+}
+
+
+// ============================================================
+// PLAY NOTE
+// ============================================================
+
+function playNote(
+    frequency,
+    intensity,
+    panValue = 0,
+    durationScale = 1
+) {
+
+    if (
+        !audioStarted ||
+        !audio
+    ) {
         return;
     }
 
@@ -2037,14 +2318,16 @@ function playNote(
         audio.createGain();
 
 
-    const notePan =
-        audio.createStereoPanner
-            ? audio.createStereoPanner()
-            : null;
+    const pan =
+        audio.createStereoPanner();
 
+
+    // --------------------------------------------------------
+    // TIMBRE
+    // --------------------------------------------------------
 
     osc.type =
-        intensity > 0.72
+        intensity > 0.68
             ? "triangle"
             : "sine";
 
@@ -2059,27 +2342,36 @@ function playNote(
         (
             Math.random() -
             0.5
-        ) *
-        6,
+        )
+        *
+        5,
         now
     );
 
 
+    // --------------------------------------------------------
+    // ENVELOPE
+    // --------------------------------------------------------
+
     const attack =
         0.035 +
         Math.random() *
-        0.050;
+        0.055;
 
 
     const duration =
-        1.3 +
-        intensity * 1.8 +
-        Math.random() * 0.9;
+        (
+            1.6 +
+            intensity * 2.2 +
+            Math.random() * 1.0
+        )
+        *
+        durationScale;
 
 
     const level =
-        0.009 +
-        intensity * 0.021;
+        0.010 +
+        intensity * 0.026;
 
 
     gain.gain.setValueAtTime(
@@ -2100,29 +2392,32 @@ function playNote(
     );
 
 
-    if (notePan) {
+    pan.pan.setValueAtTime(
+        Math.max(
+            -0.80,
+            Math.min(
+                0.80,
+                panValue
+            )
+        ),
+        now
+    );
 
-        notePan.pan.value =
-            Math.max(
-                -0.62,
-                Math.min(
-                    0.62,
-                    panValue
-                )
-            );
 
+    // --------------------------------------------------------
+    // ROUTE
+    // --------------------------------------------------------
 
-        osc
-            .connect(gain)
-            .connect(notePan)
-            .connect(eventBus);
-
-    } else {
-
-        osc
-            .connect(gain)
-            .connect(eventBus);
-    }
+    osc
+        .connect(
+            gain
+        )
+        .connect(
+            pan
+        )
+        .connect(
+            eventBus
+        );
 
 
     osc.start(
@@ -2133,19 +2428,17 @@ function playNote(
     osc.stop(
         now +
         duration +
-        0.1
+        0.15
     );
+
 }
 
 
 // ============================================================
-// PLAY HARMONIC CHORD
-//
-// The harmony stays inside F# minor.
-// No tonal wandering.
+// HARMONIC CHORD
 // ============================================================
 
-function playChord(
+function playHarmony(
     intensity,
     panValue
 ) {
@@ -2154,68 +2447,27 @@ function playChord(
         !audioStarted ||
         !audio
     ) {
-
         return;
     }
 
 
-    const progression =
-        harmonicProgressions[
-            progressionIndex
+    const harmony =
+        HARMONIES[
+            harmonicIndex
         ];
 
 
-    const degree =
-        progression[
-            progressionStep
-        ];
-
-
-    progressionStep =
-        (
-            progressionStep + 1
-        ) %
-        progression.length;
-
-
-    const root =
-        getScaleFrequency(
-            degree,
-            0
+    const frequencies =
+        harmony.degrees.map(
+            degree =>
+                scaleFrequency(
+                    degree,
+                    0
+                )
         );
 
 
-    const third =
-        getScaleFrequency(
-            degree + 2,
-            0
-        );
-
-
-    const fifth =
-        getScaleFrequency(
-            degree + 4,
-            0
-        );
-
-
-    const octave =
-        getScaleFrequency(
-            degree,
-            1
-        );
-
-
-    const frequencies = [
-
-        root,
-        third,
-        fifth,
-        octave
-
-    ];
-
-
+    // root / third / fifth
     frequencies.forEach(
         (
             frequency,
@@ -2224,7 +2476,7 @@ function playChord(
 
             const delay =
                 index *
-                0.055;
+                0.085;
 
 
             window.setTimeout(
@@ -2241,49 +2493,131 @@ function playChord(
                         frequency,
                         intensity *
                         (
-                            0.62 +
-                            index * 0.055
+                            0.48 +
+                            index *
+                            0.08
                         ),
                         panValue +
                         (
-                            index - 1.5
-                        ) *
-                        0.07
+                            index -
+                            1
+                        )
+                        *
+                        0.09,
+                        1.15
                     );
 
                 },
                 delay * 1000
             );
+
         }
     );
 
+}
 
-    // Slowly change the internal harmonic path.
-    // The tonal center itself never changes.
+
+// ============================================================
+// HARMONIC SELECTION
+// ============================================================
+
+function selectHarmony(
+    strength
+) {
 
     harmonicPressure +=
-        intensity * 0.15;
+        strength *
+        0.11;
 
 
     if (
-        harmonicPressure > 0.75
+        strength < 0.40
+    ) {
+        return;
+    }
+
+
+    if (
+        harmonicPressure < 0.62
+    ) {
+        return;
+    }
+
+
+    const now =
+        performance.now()
+        /
+        1000;
+
+
+    if (
+        now -
+        lastHarmonyChange
+        <
+        11
+    ) {
+        return;
+    }
+
+
+    const current =
+        harmonicIndex;
+
+
+    const random =
+        Math.random();
+
+
+    if (
+        random < 0.50
     ) {
 
-        progressionIndex =
-            (
-                progressionIndex +
-                1
-            ) %
-            harmonicProgressions.length;
-
-
-        progressionStep =
+        harmonicIndex =
             0;
 
+    } else if (
+        random < 0.68
+    ) {
 
-        harmonicPressure =
-            0;
+        harmonicIndex =
+            1;
+
+    } else if (
+        random < 0.84
+    ) {
+
+        harmonicIndex =
+            2;
+
+    } else if (
+        random < 0.94
+    ) {
+
+        harmonicIndex =
+            3;
+
+    } else {
+
+        harmonicIndex =
+            4;
+
     }
+
+
+    if (
+        harmonicIndex !==
+        current
+    ) {
+
+        lastHarmonyChange =
+            now;
+
+    }
+
+
+    harmonicPressure *=
+        0.22;
+
 }
 
 
@@ -2300,50 +2634,72 @@ function triggerAudioEvent(
         !audioStarted ||
         !audio
     ) {
-
         return;
     }
 
 
-    const frequency =
-        getFractalFrequency(
-            strength
-        );
-
-
-    const panValue =
+    const normalizedX =
         (
             pointerX /
             canvas.clientWidth
-        ) *
+        )
+        *
         2 -
         1;
 
 
+    const frequency =
+        fieldFrequency(
+            strength
+        );
+
+
     // --------------------------------------------------------
-    // MAIN NOTE
+    // MAIN TONAL EVENT
     // --------------------------------------------------------
 
     playNote(
         frequency,
         strength,
-        panValue
+        normalizedX,
+        0.90 +
+        speed * 0.50
     );
 
 
     // --------------------------------------------------------
-    // OCCASIONAL HARMONY
+    // IMPORTANT EVENTS OPEN HARMONY
     // --------------------------------------------------------
 
+    const now =
+        performance.now()
+        /
+        1000;
+
+
     if (
-        strength > 0.48 &&
-        Math.random() < 0.30
+        strength > 0.58 &&
+        now -
+        lastHarmonyEvent >
+        1.4
     ) {
 
-        playChord(
-            strength,
-            panValue
-        );
+        if (
+            Math.random() <
+            0.32
+        ) {
+
+            playHarmony(
+                strength,
+                normalizedX
+            );
+
+
+            lastHarmonyEvent =
+                now;
+
+        }
+
     }
 
 
@@ -2351,46 +2707,56 @@ function triggerAudioEvent(
     // REVERB
     // --------------------------------------------------------
 
-    const now =
+    const audioNow =
         audio.currentTime;
 
 
-    const reverbAmount =
-        0.075 +
-        strength * 0.18;
+    const amount =
+        0.13 +
+        strength * 0.28;
 
 
-    reverbGain.gain.cancelScheduledValues(
-        now
+    eventReverbGain.gain.cancelScheduledValues(
+        audioNow
     );
 
 
-    reverbGain.gain.setValueAtTime(
-        0.08,
-        now
+    eventReverbGain.gain.linearRampToValueAtTime(
+        amount,
+        audioNow + 0.05
     );
 
 
-    reverbGain.gain.linearRampToValueAtTime(
-        reverbAmount,
-        now + 0.05
+    eventReverbGain.gain.exponentialRampToValueAtTime(
+        0.105,
+        audioNow +
+        2.2 +
+        strength * 2.0
     );
 
 
-    reverbGain.gain.exponentialRampToValueAtTime(
-        0.075,
-        now +
-        1.9 +
-        strength * 1.8
+    // --------------------------------------------------------
+    // SPATIAL DELAY
+    // --------------------------------------------------------
+
+    spatialGainL.gain.setValueAtTime(
+        0.12 +
+        strength * 0.10,
+        audioNow
     );
+
+
+    spatialGainR.gain.setValueAtTime(
+        0.12 +
+        strength * 0.10,
+        audioNow
+    );
+
 }
 
 
 // ============================================================
-// AUDIO ENVIRONMENT
-//
-// The low drone breathes.
-// It is not a static F#.
+// CONTINUOUS AUDIO FIELD
 // ============================================================
 
 function updateAudio(
@@ -2401,7 +2767,6 @@ function updateAudio(
         !audioStarted ||
         !audio
     ) {
-
         return;
     }
 
@@ -2413,21 +2778,11 @@ function updateAudio(
     const activity =
         Math.min(
             1,
-            pointerSpeed * 0.65 +
-            events.filter(
-                Boolean
-            ).length * 0.008
+            pointerSpeed * 0.85
         );
 
 
-    // --------------------------------------------------------
-    // SLOW BREATH
-    //
-    // Several very slow oscillations overlap.
-    // This creates organic movement instead of tremolo.
-    // --------------------------------------------------------
-
-    const breath =
+    const breathing =
         0.5 +
         0.5 *
         Math.sin(
@@ -2435,93 +2790,15 @@ function updateAudio(
         );
 
 
-    const deepBreath =
-        0.5 +
-        0.5 *
-        Math.sin(
-            elapsed * 0.071 +
-            1.8
-        );
-
-
-    const breathing =
-        (
-            breath * 0.58 +
-            deepBreath * 0.42
-        );
-
-
     // --------------------------------------------------------
-    // ACTIVITY
+    // EARTH
     // --------------------------------------------------------
 
-    const eventEnergy =
-        Math.min(
-            1,
-            activity +
-            harmonicPressure * 0.20
-        );
-
-
-    // --------------------------------------------------------
-    // SOFT SIDECHAIN
-    //
-    // Events gently move the ambient bed backwards.
-    // The space opens around the event.
-    // --------------------------------------------------------
-
-    const sidechain =
-        Math.max(
-            0.72,
-            1.0 -
-            eventEnergy * 0.20
-        );
-
-
-    const earthLevel =
-        (
-            0.025 +
-            breathing * 0.020
-        )
-        *
-        sidechain;
-
-
-    const bodyLevel =
-        (
-            0.010 +
-            breathing * 0.008
-        )
-        *
-        sidechain;
-
-
-    const airLevel =
-        (
-            0.0028 +
-            breathing * 0.0032
-        )
-        *
-        sidechain;
-
-
-    const resonanceLevel =
-        (
-            0.0008 +
-            breathing * 0.0015 +
-            eventEnergy * 0.0015
-        )
-        *
-        sidechain;
-
-
-    // --------------------------------------------------------
-    // TERRA
-    // --------------------------------------------------------
-
-    droneGain.gain.linearRampToValueAtTime(
-        earthLevel,
-        now + 1.8
+    earthGain.gain.linearRampToValueAtTime(
+        0.034 +
+        activity * 0.015 +
+        breathing * 0.004,
+        now + 1.2
     );
 
 
@@ -2529,29 +2806,38 @@ function updateAudio(
     // BODY
     // --------------------------------------------------------
 
-    ambienceOscGain.gain.linearRampToValueAtTime(
-        bodyLevel,
+    bodyGain.gain.linearRampToValueAtTime(
+        0.009 +
+        activity * 0.015 +
+        breathing * 0.003,
+        now + 1.0
+    );
+
+
+    // --------------------------------------------------------
+    // SKY
+    // --------------------------------------------------------
+
+    skyGain.gain.linearRampToValueAtTime(
+        0.0025 +
+        activity * 0.010 +
+        breathing * 0.0025,
         now + 1.4
     );
 
 
     // --------------------------------------------------------
-    // AIR
-    // --------------------------------------------------------
-
-    harmonicGain.gain.linearRampToValueAtTime(
-        airLevel,
-        now + 1.8
-    );
-
-
-    // --------------------------------------------------------
     // 741 RESONANCE
+    //
+    // Almost inaudible.
+    // More felt as spectral presence than pitch.
     // --------------------------------------------------------
 
     resonanceGain.gain.linearRampToValueAtTime(
-        resonanceLevel,
-        now + 2.2
+        0.0007 +
+        activity * 0.0032 +
+        breathing * 0.0008,
+        now + 1.8
     );
 
 
@@ -2559,28 +2845,34 @@ function updateAudio(
     // FILTER
     // --------------------------------------------------------
 
-    ambienceFilter.frequency.linearRampToValueAtTime(
-        760 +
-        breathing * 280 +
-        eventEnergy * 650,
-        now + 1.4
+    lowpass.frequency.linearRampToValueAtTime(
+        1500 +
+        activity * 2200 +
+        breathing * 250,
+        now + 1.1
     );
 
 
     // --------------------------------------------------------
-    // AMBIENT FIELD
+    // SPATIAL FIELD
     // --------------------------------------------------------
 
-    ambienceGain.gain.linearRampToValueAtTime(
-        (
-            0.026 +
-            breathing * 0.018 +
-            eventEnergy * 0.006
+    const normalizedX =
+        pointerX /
+        Math.max(
+            1,
+            canvas.clientWidth
         )
         *
-        sidechain,
-        now + 1.2
+        2 -
+        1;
+
+
+    updateSpatialField(
+        normalizedX,
+        pointerSpeed
     );
+
 }
 
 
@@ -2635,7 +2927,8 @@ canvas.addEventListener(
 
 
         initial.time =
-            performance.now() /
+            performance.now()
+            /
             1000;
 
 
@@ -2648,6 +2941,7 @@ canvas.addEventListener(
         canvas.setPointerCapture?.(
             event.pointerId
         );
+
     },
     {
         passive: true
@@ -2666,7 +2960,6 @@ canvas.addEventListener(
         if (
             !pointerInside
         ) {
-
             return;
         }
 
@@ -2716,9 +3009,17 @@ canvas.addEventListener(
 
 
         const now =
-            performance.now() /
+            performance.now()
+            /
             1000;
 
+
+        // ----------------------------------------------------
+        // MOVEMENT THRESHOLD
+        //
+        // The mechanical selection of the pointer remains
+        // the physical trigger of the field.
+        // ----------------------------------------------------
 
         const threshold =
             24 -
@@ -2779,24 +3080,22 @@ canvas.addEventListener(
             // SOUND
             // ------------------------------------------------
 
-            if (
-                now >
-                audioEventCooldown
-            ) {
-
-                triggerAudioEvent(
-                    strength,
-                    pointerSpeed
-                );
+            triggerAudioEvent(
+                strength,
+                pointerSpeed
+            );
 
 
-                audioEventCooldown =
-                    now +
-                    0.14 +
-                    Math.random() *
-                    0.20;
-            }
+            // ------------------------------------------------
+            // HARMONIC PRESSURE
+            // ------------------------------------------------
+
+            selectHarmony(
+                strength
+            );
+
         }
+
     },
     {
         passive: true
@@ -2834,6 +3133,7 @@ canvas.addEventListener(
 
         previousPointerY =
             event.clientY;
+
     },
     {
         passive: true
@@ -2863,6 +3163,7 @@ canvas.addEventListener(
 
         movementAccumulator =
             0;
+
     },
     {
         passive: true
@@ -2888,6 +3189,7 @@ canvas.addEventListener(
 
         pointerSpeed =
             0;
+
     },
     {
         passive: true
@@ -2944,6 +3246,7 @@ function resize() {
         canvas.width,
         canvas.height
     );
+
 }
 
 
@@ -2957,11 +3260,154 @@ resize();
 
 
 // ============================================================
+// UI
+// ============================================================
+
+const coordinateX =
+    document.getElementById(
+        "coordX"
+    );
+
+
+const coordinateY =
+    document.getElementById(
+        "coordY"
+    );
+
+
+const frequencyDisplay =
+    document.getElementById(
+        "frequency"
+    );
+
+
+const statusDisplay =
+    document.getElementById(
+        "status"
+    );
+
+
+// ============================================================
+// UI UPDATE
+// ============================================================
+
+function updateInterface() {
+
+    if (!pointerInside) {
+
+        statusDisplay.textContent =
+            "FIELD";
+
+
+        frequencyDisplay.textContent =
+            "F# · 185 Hz";
+
+
+        return;
+
+    }
+
+
+    const x =
+        (
+            pointerX /
+            canvas.clientWidth
+        )
+        *
+        2 -
+        1;
+
+
+    const y =
+        1 -
+        (
+            pointerY /
+            canvas.clientHeight
+        )
+        *
+        2;
+
+
+    coordinateX.textContent =
+        x.toFixed(3);
+
+
+    coordinateY.textContent =
+        y.toFixed(3);
+
+
+    if (
+        pointerSpeed < 0.12
+    ) {
+
+        frequencyDisplay.textContent =
+            "F# · 185 Hz";
+
+
+        statusDisplay.textContent =
+            "EARTH";
+
+    } else if (
+        pointerSpeed < 0.45
+    ) {
+
+        frequencyDisplay.textContent =
+            "F# · 370 Hz";
+
+
+        statusDisplay.textContent =
+            "MATTER";
+
+    } else {
+
+        frequencyDisplay.textContent =
+            "F# · 740 / 741 Hz";
+
+
+        statusDisplay.textContent =
+            "SKY";
+
+    }
+
+}
+
+
+// ============================================================
 // RENDER
 // ============================================================
 
 const start =
     performance.now();
+
+
+const positionData =
+    new Float32Array(
+        MAX_EVENTS * 2
+    );
+
+
+const timeData =
+    new Float32Array(
+        MAX_EVENTS
+    );
+
+
+const strengthData =
+    new Float32Array(
+        MAX_EVENTS
+    );
+
+
+const sizeData =
+    new Float32Array(
+        MAX_EVENTS
+    );
+
+
+const seedData =
+    new Float32Array(
+        MAX_EVENTS
+    );
 
 
 function render(now) {
@@ -2970,7 +3416,9 @@ function render(now) {
         (
             now -
             start
-        ) / 1000;
+        )
+        /
+        1000;
 
 
     pointerSpeed *=
@@ -2982,34 +3430,7 @@ function render(now) {
     );
 
 
-    const positionData =
-        new Float32Array(
-            MAX_EVENTS * 2
-        );
-
-
-    const timeData =
-        new Float32Array(
-            MAX_EVENTS
-        );
-
-
-    const strengthData =
-        new Float32Array(
-            MAX_EVENTS
-        );
-
-
-    const sizeData =
-        new Float32Array(
-            MAX_EVENTS
-        );
-
-
-    const seedData =
-        new Float32Array(
-            MAX_EVENTS
-        );
+    updateInterface();
 
 
     for (
@@ -3081,7 +3502,9 @@ function render(now) {
 
             seedData[i] =
                 0;
+
         }
+
     }
 
 
@@ -3131,6 +3554,7 @@ function render(now) {
     requestAnimationFrame(
         render
     );
+
 }
 
 
