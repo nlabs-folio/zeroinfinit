@@ -3345,7 +3345,7 @@ function updateInterface() {
 
 
         statusDisplay.textContent =
-            "EARTH";
+            "TERRA";
 
     } else if (
         pointerSpeed < 0.45
@@ -3356,7 +3356,7 @@ function updateInterface() {
 
 
         statusDisplay.textContent =
-            "MATTER";
+            "MATÈRIA";
 
     } else {
 
@@ -3365,7 +3365,7 @@ function updateInterface() {
 
 
         statusDisplay.textContent =
-            "SKY";
+            "CEL";
 
     }
 
