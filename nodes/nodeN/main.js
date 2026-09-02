@@ -1,5 +1,5 @@
 // ============================================================
-// ZERO INFINIT · NODE 3 · MATÈRIA
+// ZERO INFINIT · NODEN · MATÈRIA
 //
 // MOTOR MUSICAL + MATÈRIA MICROSCÒPICA + FOTONS
 //
@@ -2217,7 +2217,16 @@ async function startAudio() {
 
     try {
 
-        await ctx.resume();
+        ctx.resume().catch(
+    error => {
+
+        console.warn(
+            "Audio resume failed",
+            error
+        );
+
+    }
+);
 
 
         // ----------------------------------------------------
@@ -2229,7 +2238,7 @@ async function startAudio() {
 
 
         newOutput.gain.value =
-            1.0;
+            1.30;
 
 
         // ----------------------------------------------------
@@ -2621,7 +2630,7 @@ async function startAudio() {
 
         newMaster.gain
             .exponentialRampToValueAtTime(
-                0.82,
+                0.90,
                 now + 4.5
             );
 
@@ -5641,7 +5650,3 @@ function audioStatus() {
 }
 
 
-setInterval(
-    audioStatus,
-    4000
-);
