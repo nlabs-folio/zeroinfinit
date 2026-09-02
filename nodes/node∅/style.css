@@ -1,758 +1,659 @@
-/* ============================================================
-   ZERO INFINIT — node∅
-   FIELD / EVENT / WAVE / MATTER
-   ============================================================ */
-
 
 :root {
+color-scheme: dark;
 
-    color-scheme: dark;
+--void: #08070b;
+--deep: #12101a;
 
-    --void:
-        #010109;
+--interface: rgba(255, 238, 218, 0.38);
+--interface-soft: rgba(255, 226, 198, 0.19);
+--interface-faint: rgba(255, 218, 190, 0.09);
 
-    --deep:
-        #11164a;
+--field-warm: rgba(255, 190, 160, 0.18);
+--field-cool: rgba(178, 160, 255, 0.08);
 
-    --violet:
-        #6840b8;
-
-    --lilac:
-        #a88ae8;
-
-    --pink:
-        #e76bb8;
-
-    --cyan:
-        #9edcff;
-
-    --white:
-        #e8f2ff;
-
-    --interface:
-        rgba(
-            210,
-            230,
-            255,
-            0.62
-        );
-
-    --interface-soft:
-        rgba(
-            190,
-            215,
-            255,
-            0.28
-        );
 }
-
-
-/* ============================================================
-   RESET
-   ============================================================ */
 
 * {
-
-    box-sizing:
-        border-box;
-
-}
-
+  box-sizing: border-box;
+  }
 
 html,
 body {
+width: 100%;
+height: 100%;
 
-    width:
-        100%;
 
-    height:
-        100%;
+margin: 0;
+padding: 0;
 
-    margin:
-        0;
+overflow: hidden;
 
-    padding:
-        0;
+background: var(--void);
 
-    overflow:
-        hidden;
-
-    background:
-        var(--void);
 
 }
-
-
-/* ============================================================
-   BODY
-   ============================================================ */
 
 body {
+position: relative;
 
-    position:
-        relative;
 
-    min-width:
-        320px;
+min-width: 320px;
+min-height: 240px;
 
-    min-height:
-        240px;
+font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
 
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
+user-select: none;
+-webkit-user-select: none;
 
-    user-select:
-        none;
+-webkit-tap-highlight-color: transparent;
 
-    -webkit-user-select:
-        none;
+cursor: crosshair;
 
-    -webkit-tap-highlight-color:
-        transparent;
+/*
+ * Prevent browser-level interaction from competing
+ * with the node field.
+ */
+overscroll-behavior: none;
 
-    cursor:
-        crosshair;
 
 }
 
-
 /* ============================================================
-   CANVAS
-   ============================================================ */
+CANVAS
+============================================================ */
 
 #cosmos {
+position: fixed;
 
-    position:
-        fixed;
 
-    inset:
-        0;
+inset: 0;
 
-    display:
-        block;
+display: block;
 
-    width:
-        100%;
+width: 100%;
+height: 100%;
 
-    height:
-        100%;
+background:
+    radial-gradient(
+        ellipse at center,
+        #181421 0%,
+        #0d0b14 48%,
+        #08070b 100%
+    );
 
-    background:
-        radial-gradient(
-            ellipse at center,
-            #080a24 0%,
-            #02020d 48%,
-            #010109 100%
-        );
+cursor: crosshair;
 
-    cursor:
-        crosshair;
+touch-action: none;
 
-    touch-action:
-        none;
+contain: strict;
+
+/*
+ * One visual surface.
+ * No DOM particles / overlays inside the field.
+ */
+overscroll-behavior: none;
+
 
 }
 
-
 /* ============================================================
-   ATMOSPHERIC LIGHT
-   ============================================================ */
+SOFT ATMOSPHERE
+============================================================ */
 
 body::before {
+content: "";
 
-    content:
-        "";
 
-    position:
-        fixed;
+position: fixed;
 
-    inset:
-        -10%;
+inset: -15%;
 
-    z-index:
-        2;
+z-index: 2;
 
-    pointer-events:
-        none;
+pointer-events: none;
 
-    background:
-        radial-gradient(
-            ellipse at center,
-            transparent 28%,
-            rgba(
-                20,
-                18,
-                65,
-                0.10
-            ) 52%,
-            rgba(
-                1,
-                1,
-                10,
-                0.32
-            ) 78%,
-            rgba(
-                0,
-                0,
-                5,
-                0.70
-            ) 100%
-        );
+background:
+    radial-gradient(
+        ellipse at center,
+        transparent 18%,
+        rgba(108, 70, 74, 0.035) 42%,
+        rgba(24, 15, 24, 0.18) 72%,
+        rgba(4, 3, 7, 0.72) 100%
+    );
+
+/*
+ * Keeps the atmosphere independent from WebGL.
+ */
+transform: translateZ(0);
+
 
 }
 
-
 /* ============================================================
-   OPTICAL GRAIN
-   ============================================================ */
+VERY LIGHT FILM
+============================================================ */
 
 body::after {
+content: "";
 
-    content:
-        "";
 
-    position:
-        fixed;
+position: fixed;
 
-    inset:
-        0;
+inset: 0;
 
-    z-index:
-        3;
+z-index: 3;
 
-    pointer-events:
-        none;
+pointer-events: none;
 
-    opacity:
-        0.035;
+opacity: 0.018;
 
-    background-image:
-        repeating-linear-gradient(
-            0deg,
-            rgba(
-                255,
-                255,
-                255,
-                0.035
-            ) 0px,
-            rgba(
-                255,
-                255,
-                255,
-                0.035
-            ) 1px,
-            transparent 1px,
-            transparent 5px
-        );
+background-image:
+    repeating-linear-gradient(
+        0deg,
+        rgba(255, 242, 226, 0.035) 0px,
+        rgba(255, 242, 226, 0.035) 1px,
+        transparent 1px,
+        transparent 7px
+    );
 
-    mix-blend-mode:
-        screen;
+mix-blend-mode: screen;
+
 
 }
 
-
 /* ============================================================
-   INTERFACE
-   ============================================================ */
+INTERFACE
+============================================================ */
 
 .interface {
+position: fixed;
 
-    position:
-        fixed;
 
-    inset:
-        0;
+inset: 0;
 
-    z-index:
-        5;
+z-index: 5;
 
-    pointer-events:
-        none;
+pointer-events: none;
 
-    color:
-        var(--interface);
+color: var(--interface);
 
-    letter-spacing:
-        0.16em;
+letter-spacing: 0.14em;
 
-    text-transform:
-        uppercase;
+text-transform: uppercase;
+
 
 }
-
 
 /* ============================================================
-   IDENTITY
-   ============================================================ */
+IDENTITY
+============================================================ */
 
 .identity {
+position: absolute;
 
-    position:
-        absolute;
 
-    left:
-        clamp(
-            18px,
-            3vw,
-            42px
-        );
+left: clamp(18px, 3vw, 42px);
+top: clamp(18px, 3vw, 42px);
 
-    top:
-        clamp(
-            18px,
-            3vw,
-            42px
-        );
+opacity: 0.68;
+
 
 }
+
+.title {
+font-size:
+clamp(
+9px,
+0.72vw,
+12px
+);
+
+
+font-weight: 400;
+
+letter-spacing: 0.30em;
+
+color:
+    rgba(
+        255,
+        232,
+        210,
+        0.32
+    );
+
+
+}
+
+.node {
+margin-top: 8px;
+
+
+font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+font-size:
+    clamp(
+        21px,
+        2vw,
+        31px
+    );
+
+line-height: 1;
+
+letter-spacing: 0.01em;
+
+text-transform: none;
+
+color:
+    rgba(
+        255,
+        228,
+        210,
+        0.58
+    );
+
+text-shadow:
+    0 0 26px
+    rgba(
+        255,
+        184,
+        164,
+        0.10
+    );
+
+
+}
+
+/* ============================================================
+FIELD STATUS
+============================================================ */
+
+.field-status {
+position: absolute;
+
+
+right: clamp(18px, 3vw, 42px);
+top: clamp(22px, 3vw, 42px);
+
+display: flex;
+
+align-items: center;
+
+gap: 9px;
+
+font-size: 8px;
+
+letter-spacing: 0.22em;
+
+color:
+    rgba(
+        255,
+        224,
+        204,
+        0.22
+    );
+
+transition:
+    opacity 1.4s ease,
+    color 1.4s ease;
+
+
+}
+
+.status-dot {
+width: 4px;
+height: 4px;
+
+
+flex: 0 0 auto;
+
+border-radius: 50%;
+
+background:
+    rgba(
+        255,
+        193,
+        163,
+        0.44
+    );
+
+box-shadow:
+    0 0 10px
+    rgba(
+        255,
+        165,
+        140,
+        0.20
+    );
+
+transition:
+    opacity 1.2s ease,
+    transform 1.2s ease,
+    box-shadow 1.2s ease;
+
+
+}
+
+/* ============================================================
+COORDINATES
+============================================================ */
+
+.coordinates {
+position: absolute;
+
+
+right: clamp(18px, 3vw, 42px);
+
+bottom: clamp(54px, 6vw, 78px);
+
+font-family:
+    "Courier New",
+    monospace;
+
+font-size: 8px;
+
+letter-spacing: 0.08em;
+
+color:
+    rgba(
+        255,
+        220,
+        201,
+        0.16
+    );
+
+
+}
+
+/* ============================================================
+FREQUENCY / HARMONIC FIELD
+============================================================ */
+
+.frequency {
+position: absolute;
+
+
+left: 50%;
+top: clamp(24px, 3vw, 42px);
+
+transform:
+    translateX(-50%);
+
+font-family:
+    "Courier New",
+    monospace;
+
+font-size: 8px;
+
+letter-spacing: 0.16em;
+
+color:
+    rgba(
+        255,
+        226,
+        207,
+        0.19
+    );
+
+white-space: nowrap;
+
+transition:
+    opacity 1.2s ease,
+    letter-spacing 1.2s ease;
+
+
+}
+
+/*
+
+* The frequency display remains intentionally quiet.
+* Harmony should be perceived before it is read.
+  */
+  #frequency {
+  display: inline-block;
+
+  min-width: 92px;
+
+  text-align: center;
+  }
+
+/* ============================================================
+INSTRUCTION
+============================================================ */
+
+.instruction {
+position: absolute;
+
+
+left: 50%;
+
+bottom: clamp(24px, 4vw, 48px);
+
+transform:
+    translateX(-50%);
+
+text-align: center;
+
+white-space: nowrap;
+
+opacity: 0.66;
+
+transition:
+    opacity 1.4s ease;
+
+
+}
+
+.instruction-main {
+display: block;
+
+
+font-size: 8px;
+
+letter-spacing: 0.24em;
+
+color:
+    rgba(
+        255,
+        229,
+        211,
+        0.19
+    );
+
+transition:
+    opacity 1.2s ease;
+
+
+}
+
+.instruction-sub {
+display: block;
+
+
+margin-top: 7px;
+
+font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+font-size: 10px;
+
+letter-spacing: 0.06em;
+
+text-transform: lowercase;
+
+color:
+    rgba(
+        255,
+        215,
+        198,
+        0.12
+    );
+
+transition:
+    opacity 1.2s ease;
+
+
+}
+
+/* ============================================================
+FOOTER
+============================================================ */
+
+.footer {
+position: absolute;
+
+
+left: clamp(18px, 3vw, 42px);
+right: clamp(18px, 3vw, 42px);
+
+bottom: clamp(18px, 2.5vw, 34px);
+
+display: flex;
+
+justify-content: space-between;
+
+font-family:
+    "Courier New",
+    monospace;
+
+font-size: 7px;
+
+letter-spacing: 0.12em;
+
+color:
+    rgba(
+        255,
+        218,
+        198,
+        0.22
+    );
+
+transition:
+    opacity 1.5s ease;
+
+
+}
+
+/* ============================================================
+MOBILE
+============================================================ */
+
+@media (max-width: 700px) {
+
+
+.identity {
+    left: 18px;
+    top: 18px;
+}
+
+.field-status {
+    right: 18px;
+    top: 21px;
+}
+
+.frequency {
+    top: 62px;
+
+    font-size: 7px;
+}
+
+.coordinates {
+    display: none;
+}
+
+.instruction {
+    bottom: 62px;
+}
+
+.instruction-main {
+    font-size: 7px;
+
+    letter-spacing: 0.18em;
+}
+
+.instruction-sub {
+    font-size: 9px;
+}
+
+.footer {
+    left: 18px;
+    right: 18px;
+
+    bottom: 18px;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+
+    justify-content: center;
+
+    line-height: 1.6;
+
+    font-size: 6px;
+}
+
+
+}
+
+/* ============================================================
+VERY SMALL SCREENS
+============================================================ */
+
+@media (max-width: 420px) {
 
 
 .title {
-
-    font-size:
-        clamp(
-            10px,
-            0.8vw,
-            13px
-        );
-
-    font-weight:
-        400;
-
-    letter-spacing:
-        0.30em;
-
-    color:
-        rgba(
-            215,
-            230,
-            255,
-            0.42
-        );
-
+    font-size: 8px;
 }
-
 
 .node {
-
-    margin-top:
-        7px;
-
-    font-family:
-        Georgia,
-        "Times New Roman",
-        serif;
-
-    font-size:
-        clamp(
-            20px,
-            2vw,
-            31px
-        );
-
-    line-height:
-        1;
-
-    letter-spacing:
-        0.02em;
-
-    text-transform:
-        none;
-
-    color:
-        rgba(
-            220,
-            235,
-            255,
-            0.72
-        );
-
-    text-shadow:
-        0 0 20px
-        rgba(
-            120,
-            160,
-            255,
-            0.18
-        );
-
+    font-size: 20px;
 }
-
-
-/* ============================================================
-   STATUS
-   ============================================================ */
 
 .field-status {
-
-    position:
-        absolute;
-
-    right:
-        clamp(
-            18px,
-            3vw,
-            42px
-        );
-
-    top:
-        clamp(
-            22px,
-            3vw,
-            42px
-        );
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    gap:
-        9px;
-
-    font-size:
-        9px;
-
-    letter-spacing:
-        0.24em;
-
-    color:
-        rgba(
-            190,
-            220,
-            255,
-            0.40
-        );
-
+    font-size: 7px;
 }
-
-
-.status-dot {
-
-    width:
-        5px;
-
-    height:
-        5px;
-
-    border-radius:
-        50%;
-
-    background:
-        rgba(
-            160,
-            210,
-            255,
-            0.70
-        );
-
-    box-shadow:
-        0 0 10px
-        rgba(
-            130,
-            190,
-            255,
-            0.42
-        );
-
-}
-
-
-/* ============================================================
-   COORDINATES
-   ============================================================ */
-
-.coordinates {
-
-    position:
-        absolute;
-
-    right:
-        clamp(
-            18px,
-            3vw,
-            42px
-        );
-
-    bottom:
-        clamp(
-            42px,
-            5vw,
-            68px
-        );
-
-    font-family:
-        "Courier New",
-        monospace;
-
-    font-size:
-        9px;
-
-    letter-spacing:
-        0.08em;
-
-    color:
-        rgba(
-            185,
-            210,
-            245,
-            0.30
-        );
-
-}
-
-
-/* ============================================================
-   FREQUENCY
-   ============================================================ */
 
 .frequency {
-
-    position:
-        absolute;
-
-    left:
-        50%;
-
-    top:
-        clamp(
-            22px,
-            3vw,
-            42px
-        );
-
-    transform:
-        translateX(-50%);
-
-    font-family:
-        "Courier New",
-        monospace;
-
-    font-size:
-        9px;
-
-    letter-spacing:
-        0.18em;
-
-    color:
-        rgba(
-            200,
-            220,
-            255,
-            0.28
-        );
-
+    display: none;
 }
-
-
-/* ============================================================
-   INSTRUCTION
-   ============================================================ */
 
 .instruction {
+    max-width: 90vw;
 
-    position:
-        absolute;
-
-    left:
-        50%;
-
-    bottom:
-        clamp(
-            24px,
-            4vw,
-            48px
-        );
-
-    transform:
-        translateX(-50%);
-
-    text-align:
-        center;
-
-    white-space:
-        nowrap;
-
+    white-space: normal;
 }
 
 
-.instruction-main {
-
-    display:
-        block;
-
-    font-size:
-        9px;
-
-    letter-spacing:
-        0.24em;
-
-    color:
-        rgba(
-            210,
-            225,
-            250,
-            0.28
-        );
-
 }
-
-
-.instruction-sub {
-
-    display:
-        block;
-
-    margin-top:
-        7px;
-
-    font-family:
-        Georgia,
-        "Times New Roman",
-        serif;
-
-    font-size:
-        11px;
-
-    letter-spacing:
-        0.08em;
-
-    text-transform:
-        lowercase;
-
-    color:
-        rgba(
-            190,
-            210,
-            240,
-            0.17
-        );
-
-}
-
 
 /* ============================================================
-   FOOTER
-   ============================================================ */
+REDUCED MOTION
+============================================================ */
 
+@media (prefers-reduced-motion: reduce) {
+
+
+body::after {
+    display: none;
+}
+
+.field-status,
+.status-dot,
+.frequency,
+.instruction,
+.instruction-main,
+.instruction-sub,
 .footer {
-
-    position:
-        absolute;
-
-    left:
-        clamp(
-            18px,
-            3vw,
-            42px
-        );
-
-    right:
-        clamp(
-            18px,
-            3vw,
-            42px
-        );
-
-    bottom:
-        clamp(
-            18px,
-            2.5vw,
-            34px
-        );
-
-    display:
-        flex;
-
-    justify-content:
-        space-between;
-
-    font-family:
-        "Courier New",
-        monospace;
-
-    font-size:
-        8px;
-
-    letter-spacing:
-        0.13em;
-
-    color:
-        rgba(
-            180,
-            205,
-            240,
-            0.40
-        );
-
+    transition: none;
 }
 
-
-/* ============================================================
-   MOBILE
-   ============================================================ */
-
-@media (
-    max-width: 700px
-) {
-
-    .frequency {
-
-        top:
-            64px;
-
-    }
-
-
-    .coordinates {
-
-        display:
-            none;
-
-    }
-
-
-    .instruction-main {
-
-        font-size:
-            8px;
-
-    }
-
-
-    .footer {
-
-        gap:
-            12px;
-
-        flex-wrap:
-            wrap;
-
-        justify-content:
-            center;
-
-    }
-
 }
-
-
-/* ============================================================
-   REDUCED MOTION
-   ============================================================ */
-
-@media (
-    prefers-reduced-motion: reduce
-) {
-
-    body::after {
-
-        display:
-            none;
-
-    }
-
-}
-
