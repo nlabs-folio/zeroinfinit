@@ -1,3905 +1,4194 @@
-// ============================================================
-// ZERO INFINIT · nodeK · Carícies
-//
-// BASE
-//
-// MEDUSA DIGITAL
-// HEXÀGON PROPIOCEPTIU
-// TEIXIT NEURONAL BIOTECNOLÒGIC
-//
-// percepció
-//      ↓
-// anticipació
-//      ↓
-// contacte
-//      ↓
-// propagació
-//      ↓
-// adaptació
-//      ↓
-// recuperació
-//
-// La persona no controla directament la matèria.
-// El pointer introdueix una pertorbació.
-// L'organisme decideix com respondre.
-//
-// Memòria:
-// local · lenta · imperfecta · efímera
-//
-// Àudio:
-// deriva de l'estat de l'organisme.
-// No és pointer → nota.
-//
-// WebGL 1
-// Sense raymarching
-// Sense textures de simulació pesades
-// Sense postprocessos
-// DPR limitat
-// ============================================================
+/* ============================================================
+   ZERO INFINIT · nodeK · Carícies
+   MEDUSA BIOTECNOLÒGICA · ORGANITZACIÓ · TEMPERATURA · FLUX
+   AUDIO: Bb / jazz orgànic
 
+   El sistema no anima posicions amb una seqüència tancada.
+   Manté energia, temperatura, activitat, memòria, coherència,
+   flux i dissipació. La forma visual és una conseqüència d'aquests
+   camps interns.
+   ============================================================ */
 
-// ============================================================
-// CONFIGURACIÓ INTERACTIVA
-// ============================================================
+(() => {
+    "use strict";
 
-const PARAMS = {
+    const canvas = document.getElementById("cosmos");
 
-    // --------------------------------------------------------
-    // POINTER
-    // --------------------------------------------------------
+    const gl = canvas.getContext("webgl", {
+        antialias: false,
+        alpha: false,
+        depth: true,
+        powerPreference: "high-performance"
+    });
 
-    perceptionRadius: 1.15,
+    if (!gl) {
+        document.body.textContent = "WebGL no disponible.";
+        return;
+    }
 
-    anticipationRadius: 0.72,
+    // ------------------------------------------------------------
+    // PARÀMETRES
+    // ------------------------------------------------------------
 
-    contactRadius: 0.30,
+    const P = {
+        maxDpr: 1.25,
 
-    anticipationGain: 0.34,
+        bodySides: 6,
+        bodyRings: 14,
+        bodyRadius: 1.28,
+        bodyDepth: 0.92,
+        bodyBreath: 0.055,
+        bodyDeform: 0.105,
 
-    contactGain: 1.00,
+        neuralCount: 86,
+        maxLinks: 220,
+        neuralRadius: 1.05,
+        neuralDepth: 0.72,
 
-    pointerEnergy: 1.0,
+        energyBase: 0.105,
+        energyInjection: 1.75,
+        energyDiffusion: 0.72,
+        energyDissipation: 0.21,
 
-    pointerSpeedInfluence: 0.42,
+        temperatureBase: 0.28,
+        heating: 0.22,
+        cooling: 0.075,
+        temperatureDiffusion: 0.22,
 
-    approachInfluence: 0.72,
+        memoryGain: 0.105,
+        memoryDecay: 0.011,
 
+        flowStrength: 0.46,
+        flowDamping: 0.74,
+        flowTemperature: 0.58,
 
-    // --------------------------------------------------------
-    // PROPAGACIÓ
-    // --------------------------------------------------------
+        luminescenceGain: 1.65,
+        luminescenceDecay: 0.42,
 
-    propagation: 0.23,
+        organizationGain: 0.36,
+        variationGain: 0.18,
 
-    propagationDistance: 0.55,
+        pointerPerceptionRadius: 0.95,
+        pointerContactRadius: 0.30,
+        pointerEnergy: 1.8,
+        pointerContinuity: 0.22,
 
-    neuralDecay: 0.965,
+        cameraOutside: 4.0,
+        cameraInside: 0.70,
+        cameraResponse: 0.55,
+        cameraDepthGain: 0.34,
 
-    recovery: 0.018,
+        bassHz: 58.27, // Bb1
 
-    adaptation: 0.014,
+        audioMaster: 0.075,
+        audioBass: 0.050,
+        audioPad: 0.022,
+        audioTexture: 0.008,
+        audioEvent: 0.030
+    };
 
+    // ------------------------------------------------------------
+    // MATEMÀTICA
+    // ------------------------------------------------------------
 
-    // --------------------------------------------------------
-    // MEMÒRIA
-    // --------------------------------------------------------
+    const TAU = Math.PI * 2;
 
-    memoryGain: 0.36,
+    const clamp = (
+        v,
+        a = 0,
+        b = 1
+    ) => Math.max(a, Math.min(b, v));
 
-    memoryRate: 0.006,
+    const lerp = (
+        a,
+        b,
+        t
+    ) => a + (b - a) * t;
 
-    memoryDecay: 0.0015,
+    const smooth = (
+        a,
+        b,
+        x
+    ) => {
+        const t = clamp(
+            (x - a) / (b - a)
+        );
 
-    memoryInfluence: 0.28,
+        return t * t * (3 - 2 * t);
+    };
 
+    const rand = (
+        a = 0,
+        b = 1
+    ) => a + Math.random() * (b - a);
 
-    // --------------------------------------------------------
-    // ORGANISME
-    // --------------------------------------------------------
+    const dist2 = (
+        ax,
+        ay,
+        bx,
+        by
+    ) => {
+        const dx = ax - bx;
+        const dy = ay - by;
 
-    spontaneousActivity: 0.004,
+        return dx * dx + dy * dy;
+    };
 
-    breathing: 0.018,
+    function dist3(a, b) {
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dz = a.z - b.z;
 
-    organicMotion: 0.028,
+        return Math.sqrt(
+            dx * dx +
+            dy * dy +
+            dz * dz
+        );
+    }
 
-    neuralMotion: 0.010,
+    function mat4Identity() {
+        return new Float32Array([
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1
+        ]);
+    }
 
+    function mat4Multiply(a, b) {
+        const out = new Float32Array(16);
 
-    // --------------------------------------------------------
-    // COS
-    // --------------------------------------------------------
+        for (let c = 0; c < 4; c++) {
+            for (let r = 0; r < 4; r++) {
 
-    bodyDeformation: 0.075,
-
-    bodyBreathing: 0.025,
-
-    bodySoftness: 0.72,
-
-
-    // --------------------------------------------------------
-    // VISUAL
-    // --------------------------------------------------------
-
-    shellFrontAlpha: 0.115,
-
-    shellBackAlpha: 0.055,
-
-    neuralAlpha: 0.72,
-
-    neuralPointSize: 2.8,
-
-    edgeAlpha: 0.42,
-
-
-    // --------------------------------------------------------
-    // RENDIMENT
-    // --------------------------------------------------------
-
-    maxDPR: 1.25,
-
-    neuralNodes: 54,
-
-    maxConnections: 150,
-
-
-    // --------------------------------------------------------
-    // ÀUDIO
-    // --------------------------------------------------------
-
-    audioMaster: 0.055,
-
-    audioAttack: 0.08,
-
-    audioRelease: 0.45,
-
-    baseFrequency: 110,
-
-    frequencyRange: 85,
-
-    filterMin: 420,
-
-    filterMax: 1900
-};
-
-
-// ============================================================
-// CANVAS
-// ============================================================
-
-const canvas = document.getElementById("cosmos");
-
-const gl =
-    canvas.getContext(
-        "webgl",
-        {
-            antialias: false,
-            alpha: false,
-            depth: true,
-            powerPreference: "high-performance"
+                out[c * 4 + r] =
+                    a[0 * 4 + r] * b[c * 4 + 0] +
+                    a[1 * 4 + r] * b[c * 4 + 1] +
+                    a[2 * 4 + r] * b[c * 4 + 2] +
+                    a[3 * 4 + r] * b[c * 4 + 3];
+            }
         }
-    );
 
-if (!gl) {
-    throw new Error("WebGL no disponible.");
-}
-
-
-// ============================================================
-// ESTAT GLOBAL
-// ============================================================
-
-let width = 1;
-let height = 1;
-let aspect = 1;
-let dpr = 1;
-
-let time = 0;
-let lastTime = performance.now();
-
-
-// ============================================================
-// POINTER
-// ============================================================
-
-const pointer = {
-
-    x: 0,
-    y: 0,
-
-    previousX: 0,
-    previousY: 0,
-
-    velocityX: 0,
-    velocityY: 0,
-
-    speed: 0,
-
-    inside: false,
-    down: false,
-
-    energy: 0,
-
-    lastTime: performance.now()
-};
-
-
-// ============================================================
-// ORGANISME
-// ============================================================
-
-let organism = {
-
-    activity: 0,
-    coherence: 0.7,
-    memory: 0,
-
-    calm: 1,
-
-    voltage: 0,
-
-    touch: 0,
-    anticipation: 0,
-    perception: 0,
-
-    localTouch: 0,
-
-    previousActivity: 0
-};
-
-
-// ============================================================
-// SHADERS
-// ============================================================
-
-const bodyVertex = `
-precision mediump float;
-
-attribute vec3 aPosition;
-attribute vec3 aNormal;
-
-uniform mat4 uProjection;
-uniform mat4 uView;
-uniform mat4 uModel;
-
-uniform float uTime;
-uniform float uActivity;
-uniform float uTouch;
-
-varying vec3 vNormal;
-varying vec3 vPosition;
-varying float vEnergy;
-
-void main() {
-
-    vec3 p = aPosition;
-
-    float angular =
-        atan(p.y, p.x);
-
-    float organic =
-        sin(
-            angular * 3.0 +
-            p.z * 4.0 +
-            uTime * 0.42
-        );
-
-    organic +=
-        sin(
-            angular * 5.0 -
-            p.z * 2.0 -
-            uTime * 0.27
-        ) * 0.35;
-
-    float radial =
-        smoothstep(
-            0.0,
-            1.0,
-            length(p.xy)
-        );
-
-    float breathing =
-        sin(uTime * 0.31) *
-        0.5 +
-        0.5;
-
-    float deformation =
-        organic *
-        0.010 *
-        (0.35 + uActivity * 1.8);
-
-    deformation +=
-        uTouch *
-        0.055 *
-        radial;
-
-    p.xy +=
-        normalize(
-            p.xy +
-            vec2(0.0001)
-        ) *
-        deformation;
-
-    p.xy *=
-        1.0 +
-        breathing *
-        0.010;
-
-    vNormal =
-        aNormal;
-
-    vPosition =
-        p;
-
-    vEnergy =
-        uActivity;
-
-    gl_Position =
-        uProjection *
-        uView *
-        uModel *
-        vec4(p, 1.0);
-}
-`;
-
-
-const bodyFragment = `
-precision mediump float;
-
-uniform float uActivity;
-uniform float uMemory;
-uniform float uCoherence;
-uniform float uTime;
-uniform float uAlpha;
-uniform float uPass;
-
-varying vec3 vNormal;
-varying vec3 vPosition;
-varying float vEnergy;
-
-void main() {
-
-    vec3 n =
-        normalize(vNormal);
-
-    vec3 light =
-        normalize(
-            vec3(
-                -0.35,
-                0.55,
-                0.80
-            )
-        );
-
-    float diffuse =
-        max(
-            dot(n, light),
-            0.0
-        );
-
-    float rim =
-        pow(
-            1.0 -
-            abs(n.z),
-            2.0
-        );
-
-    float internal =
-        0.5 +
-        0.5 *
-        sin(
-            uTime * 0.35 +
-            vPosition.z * 3.0 +
-            vPosition.x * 2.0
-        );
-
-    float voltage =
-        clamp(
-            uActivity * 1.8 +
-            uMemory * 0.35,
-            0.0,
-            1.0
-        );
-
-    vec3 quiet =
-        vec3(
-            0.22,
-            0.105,
-            0.31
-        );
-
-    vec3 warm =
-        vec3(
-            0.58,
-            0.20,
-            0.43
-        );
-
-    vec3 lightMatter =
-        vec3(
-            0.78,
-            0.55,
-            0.82
-        );
-
-    vec3 color =
-        mix(
-            quiet,
-            warm,
-            voltage
-        );
-
-    color =
-        mix(
-            color,
-            lightMatter,
-            diffuse * 0.34 +
-            rim * 0.16 +
-            internal * 0.08
-        );
-
-    float alpha =
-        uAlpha;
-
-    alpha *=
-        0.72 +
-        diffuse * 0.28;
-
-    alpha +=
-        rim * 0.035;
-
-    if (uPass < 0.5) {
-        alpha *= 0.72;
+        return out;
     }
 
-    gl_FragColor =
-        vec4(
-            color,
-            alpha
-        );
-}
-`;
-
-
-const neuralVertex = `
-precision mediump float;
-
-attribute vec3 aPosition;
-attribute float aActivity;
-
-uniform mat4 uProjection;
-uniform mat4 uView;
-uniform mat4 uModel;
-
-uniform float uTime;
-
-varying float vActivity;
-
-void main() {
-
-    vec3 p =
-        aPosition;
-
-    p.x +=
-        sin(
-            uTime * 0.21 +
-            p.z * 4.0 +
-            p.y * 3.0
-        ) *
-        0.006;
-
-    p.y +=
-        cos(
-            uTime * 0.17 +
-            p.x * 3.0
-        ) *
-        0.005;
-
-    vActivity =
-        aActivity;
-
-    gl_Position =
-        uProjection *
-        uView *
-        uModel *
-        vec4(
-            p,
-            1.0
-        );
-
-    float size =
-        ${PARAMS.neuralPointSize.toFixed(2)}
-        +
-        aActivity * 5.0;
-
-    gl_PointSize =
-        size;
-}
-`;
-
-
-const neuralFragment = `
-precision mediump float;
-
-varying float vActivity;
-
-void main() {
-
-    vec2 uv =
-        gl_PointCoord.xy -
-        0.5;
-
-    float d =
-        length(uv);
-
-    if (d > 0.5) {
-        discard;
-    }
-
-    float softness =
-        smoothstep(
-            0.5,
-            0.05,
-            d
-        );
-
-    vec3 quiet =
-        vec3(
-            0.48,
-            0.24,
-            0.55
-        );
-
-    vec3 active =
-        vec3(
-            0.92,
-            0.54,
-            0.72
-        );
-
-    vec3 color =
-        mix(
-            quiet,
-            active,
-            clamp(
-                vActivity * 1.4,
-                0.0,
-                1.0
-            )
-        );
-
-    float alpha =
-        softness *
-        (
-            0.25 +
-            vActivity * 0.72
-        );
-
-    gl_FragColor =
-        vec4(
-            color,
-            alpha
-        );
-}
-`;
-
-
-const lineVertex = `
-precision mediump float;
-
-attribute vec3 aPosition;
-attribute float aActivity;
-
-uniform mat4 uProjection;
-uniform mat4 uView;
-uniform mat4 uModel;
-
-varying float vActivity;
-
-void main() {
-
-    vActivity =
-        aActivity;
-
-    gl_Position =
-        uProjection *
-        uView *
-        uModel *
-        vec4(
-            aPosition,
-            1.0
-        );
-}
-`;
-
-
-const lineFragment = `
-precision mediump float;
-
-varying float vActivity;
-
-void main() {
-
-    vec3 quiet =
-        vec3(
-            0.30,
-            0.17,
-            0.40
-        );
-
-    vec3 active =
-        vec3(
-            0.84,
-            0.46,
-            0.66
-        );
-
-    vec3 color =
-        mix(
-            quiet,
-            active,
-            clamp(
-                vActivity * 1.5,
-                0.0,
-                1.0
-            )
-        );
-
-    float alpha =
-        0.045 +
-        vActivity * 0.55;
-
-    gl_FragColor =
-        vec4(
-            color,
-            alpha
-        );
-}
-`;
-
-
-// ============================================================
-// SHADER HELPERS
-// ============================================================
-
-function createShader(type, source) {
-
-    const shader =
-        gl.createShader(type);
-
-    gl.shaderSource(
-        shader,
-        source
-    );
-
-    gl.compileShader(
-        shader
-    );
-
-    if (
-        !gl.getShaderParameter(
-            shader,
-            gl.COMPILE_STATUS
-        )
+    function perspective(
+        fov,
+        aspect,
+        near,
+        far
     ) {
+        const f =
+            1 / Math.tan(fov / 2);
 
-        const info =
-            gl.getShaderInfoLog(
-                shader
-            );
+        const nf =
+            1 / (near - far);
 
-        gl.deleteShader(shader);
+        const out =
+            new Float32Array(16);
 
-        throw new Error(
-            info
-        );
+        out[0] =
+            f / aspect;
+
+        out[5] =
+            f;
+
+        out[10] =
+            (far + near) * nf;
+
+        out[11] =
+            -1;
+
+        out[14] =
+            2 * far * near * nf;
+
+        return out;
     }
 
-    return shader;
-}
-
-
-function createProgram(
-    vertexSource,
-    fragmentSource
-) {
-
-    const program =
-        gl.createProgram();
-
-    const vertex =
-        createShader(
-            gl.VERTEX_SHADER,
-            vertexSource
-        );
-
-    const fragment =
-        createShader(
-            gl.FRAGMENT_SHADER,
-            fragmentSource
-        );
-
-    gl.attachShader(
-        program,
-        vertex
-    );
-
-    gl.attachShader(
-        program,
-        fragment
-    );
-
-    gl.linkProgram(
-        program
-    );
-
-    if (
-        !gl.getProgramParameter(
-            program,
-            gl.LINK_STATUS
-        )
+    function translate(
+        x,
+        y,
+        z
     ) {
+        const out =
+            mat4Identity();
 
-        throw new Error(
-            gl.getProgramInfoLog(
-                program
-            )
-        );
+        out[12] = x;
+        out[13] = y;
+        out[14] = z;
+
+        return out;
     }
 
-    return program;
-}
+    function rotateX(a) {
+        const c = Math.cos(a);
+        const s = Math.sin(a);
 
-
-// ============================================================
-// PROGRAMS
-// ============================================================
-
-const bodyProgram =
-    createProgram(
-        bodyVertex,
-        bodyFragment
-    );
-
-const neuralProgram =
-    createProgram(
-        neuralVertex,
-        neuralFragment
-    );
-
-const lineProgram =
-    createProgram(
-        lineVertex,
-        lineFragment
-    );
-
-
-// ============================================================
-// UNIFORM / ATTRIBUTE LOCATIONS
-// ============================================================
-
-const bodyLocations = {
-
-    position:
-        gl.getAttribLocation(
-            bodyProgram,
-            "aPosition"
-        ),
-
-    normal:
-        gl.getAttribLocation(
-            bodyProgram,
-            "aNormal"
-        ),
-
-    projection:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uProjection"
-        ),
-
-    view:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uView"
-        ),
-
-    model:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uModel"
-        ),
-
-    time:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uTime"
-        ),
-
-    activity:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uActivity"
-        ),
-
-    touch:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uTouch"
-        ),
-
-    memory:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uMemory"
-        ),
-
-    coherence:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uCoherence"
-        ),
-
-    alpha:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uAlpha"
-        ),
-
-    pass:
-        gl.getUniformLocation(
-            bodyProgram,
-            "uPass"
-        )
-};
-
-
-const neuralLocations = {
-
-    position:
-        gl.getAttribLocation(
-            neuralProgram,
-            "aPosition"
-        ),
-
-    activity:
-        gl.getAttribLocation(
-            neuralProgram,
-            "aActivity"
-        ),
-
-    projection:
-        gl.getUniformLocation(
-            neuralProgram,
-            "uProjection"
-        ),
-
-    view:
-        gl.getUniformLocation(
-            neuralProgram,
-            "uView"
-        ),
-
-    model:
-        gl.getUniformLocation(
-            neuralProgram,
-            "uModel"
-        ),
-
-    time:
-        gl.getUniformLocation(
-            neuralProgram,
-            "uTime"
-        )
-};
-
-
-const lineLocations = {
-
-    position:
-        gl.getAttribLocation(
-            lineProgram,
-            "aPosition"
-        ),
-
-    activity:
-        gl.getAttribLocation(
-            lineProgram,
-            "aActivity"
-        ),
-
-    projection:
-        gl.getUniformLocation(
-            lineProgram,
-            "uProjection"
-        ),
-
-    view:
-        gl.getUniformLocation(
-            lineProgram,
-            "uView"
-        ),
-
-    model:
-        gl.getUniformLocation(
-            lineProgram,
-            "uModel"
-        )
-};
-
-
-// ============================================================
-// MAT4
-// COLUMN MAJOR
-// ============================================================
-
-function mat4Identity() {
-
-    return new Float32Array([
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    ]);
-}
-
-
-function mat4Multiply(a, b) {
-
-    const out =
-        new Float32Array(16);
-
-    for (let column = 0; column < 4; column++) {
-
-        const b0 = b[column * 4 + 0];
-        const b1 = b[column * 4 + 1];
-        const b2 = b[column * 4 + 2];
-        const b3 = b[column * 4 + 3];
-
-        out[column * 4 + 0] =
-            a[0] * b0 +
-            a[4] * b1 +
-            a[8] * b2 +
-            a[12] * b3;
-
-        out[column * 4 + 1] =
-            a[1] * b0 +
-            a[5] * b1 +
-            a[9] * b2 +
-            a[13] * b3;
-
-        out[column * 4 + 2] =
-            a[2] * b0 +
-            a[6] * b1 +
-            a[10] * b2 +
-            a[14] * b3;
-
-        out[column * 4 + 3] =
-            a[3] * b0 +
-            a[7] * b1 +
-            a[11] * b2 +
-            a[15] * b3;
+        return new Float32Array([
+            1,0,0,0,
+            0,c,s,0,
+            0,-s,c,0,
+            0,0,0,1
+        ]);
     }
 
-    return out;
-}
+    function rotateY(a) {
+        const c = Math.cos(a);
+        const s = Math.sin(a);
 
+        return new Float32Array([
+            c,0,-s,0,
+            0,1,0,0,
+            s,0,c,0,
+            0,0,0,1
+        ]);
+    }
 
-function mat4Perspective(
-    fov,
-    aspect,
-    near,
-    far
-) {
+    function rotateZ(a) {
+        const c = Math.cos(a);
+        const s = Math.sin(a);
 
-    const f =
-        1 /
-        Math.tan(
-            fov / 2
-        );
+        return new Float32Array([
+            c,s,0,0,
+            -s,c,0,0,
+            0,0,1,0,
+            0,0,0,1
+        ]);
+    }
 
-    const nf =
-        1 /
-        (near - far);
+    // ------------------------------------------------------------
+    // SHADERS
+    // ------------------------------------------------------------
 
-    const out =
-        new Float32Array(16);
+    const bodyVS = `
+        precision mediump float;
 
-    out[0] =
-        f / aspect;
+        attribute vec3 aPosition;
+        attribute float aDepth;
 
-    out[5] =
-        f;
+        uniform mat4 uMVP;
+        uniform float uTime;
+        uniform float uBreath;
+        uniform float uEnergy;
+        uniform float uTemperature;
+        uniform float uVariation;
 
-    out[10] =
-        (far + near) * nf;
+        varying float vDepth;
+        varying float vTemp;
+        varying float vEnergy;
 
-    out[11] =
-        -1;
+        void main() {
 
-    out[14] =
-        2 *
-        far *
-        near *
-        nf;
+            vec3 p = aPosition;
 
-    return out;
-}
+            float r = length(p.xy);
+            float a = atan(p.y, p.x);
 
+            float wave =
+                sin(
+                    a * 3.0 +
+                    uTime * 0.23 +
+                    p.z * 4.0
+                );
 
-function mat4Translate(
-    x,
-    y,
-    z
-) {
+            float micro =
+                sin(
+                    a * 11.0 -
+                    uTime * 0.31 +
+                    p.z * 7.0
+                ) * 0.5;
 
-    const out =
-        mat4Identity();
+            float organic =
+                wave * 0.45 +
+                micro * 0.55;
 
-    out[12] = x;
-    out[13] = y;
-    out[14] = z;
+            float scale =
+                1.0 +
+                uBreath *
+                sin(uTime * 0.19) +
+                organic *
+                0.025 *
+                (0.4 + uVariation);
 
-    return out;
-}
+            p.xy *= scale;
 
+            p.xy *=
+                1.0 +
+                organic *
+                0.035 *
+                uEnergy;
 
-function mat4RotateX(angle) {
-
-    const c =
-        Math.cos(angle);
-
-    const s =
-        Math.sin(angle);
-
-    return new Float32Array([
-        1, 0, 0, 0,
-        0, c, s, 0,
-        0, -s, c, 0,
-        0, 0, 0, 1
-    ]);
-}
-
-
-function mat4RotateY(angle) {
-
-    const c =
-        Math.cos(angle);
-
-    const s =
-        Math.sin(angle);
-
-    return new Float32Array([
-        c, 0, -s, 0,
-        0, 1, 0, 0,
-        s, 0, c, 0,
-        0, 0, 0, 1
-    ]);
-}
-
-
-function mat4RotateZ(angle) {
-
-    const c =
-        Math.cos(angle);
-
-    const s =
-        Math.sin(angle);
-
-    return new Float32Array([
-        c, s, 0, 0,
-        -s, c, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    ]);
-}
-
-
-// ============================================================
-// GEOMETRIA HEXAGONAL
-// ============================================================
-
-const BODY_SIDES = 6;
-const BODY_RINGS = 9;
-
-const BODY_RADIUS = 1.0;
-const BODY_DEPTH = 0.72;
-
-const bodyPositions = [];
-const bodyNormals = [];
-const bodyIndices = [];
-
-
-// ------------------------------------------------------------
-// RINGS
-// ------------------------------------------------------------
-
-for (
-    let ring = 0;
-    ring < BODY_RINGS;
-    ring++
-) {
-
-    const z =
-        -BODY_DEPTH * 0.5 +
-        BODY_DEPTH *
-        (
-            ring /
-            (BODY_RINGS - 1)
-        );
-
-    const zNorm =
-        ring /
-        (BODY_RINGS - 1);
-
-    for (
-        let side = 0;
-        side < BODY_SIDES;
-        side++
-    ) {
-
-        const angle =
-            side *
-            Math.PI *
-            2 /
-            BODY_SIDES +
-            Math.PI / 6;
-
-        const corner =
-            1.0 +
-            Math.sin(
-                side * 7.31
-            ) *
-            0.025;
-
-        const radius =
-            BODY_RADIUS *
-            corner *
-            (
-                1.0 -
-                Math.abs(
-                    zNorm - 0.5
+            p.z +=
+                sin(
+                    a * 2.0 +
+                    uTime * 0.17
                 ) *
-                0.055
+                0.035 *
+                uTemperature;
+
+            vDepth = aDepth;
+            vTemp = uTemperature;
+            vEnergy = uEnergy;
+
+            gl_Position =
+                uMVP *
+                vec4(p, 1.0);
+        }
+    `;
+
+    const bodyFS = `
+        precision mediump float;
+
+        varying float vDepth;
+        varying float vTemp;
+        varying float vEnergy;
+
+        void main() {
+
+            float edge =
+                smoothstep(
+                    0.15,
+                    1.0,
+                    abs(vDepth)
+                );
+
+            vec3 deep =
+                vec3(
+                    0.025,
+                    0.055,
+                    0.075
+                );
+
+            vec3 tissue =
+                vec3(
+                    0.18,
+                    0.34,
+                    0.38
+                );
+
+            vec3 warm =
+                vec3(
+                    0.63,
+                    0.40,
+                    0.18
+                );
+
+            vec3 c =
+                mix(
+                    deep,
+                    tissue,
+                    0.38 +
+                    vEnergy * 0.42
+                );
+
+            c =
+                mix(
+                    c,
+                    warm,
+                    smoothstep(
+                        0.62,
+                        1.0,
+                        vTemp
+                    ) * 0.20
+                );
+
+            float alpha =
+                0.045 +
+                vEnergy * 0.055 +
+                edge * 0.045;
+
+            gl_FragColor =
+                vec4(
+                    c,
+                    alpha
+                );
+        }
+    `;
+
+    const neuralVS = `
+        precision mediump float;
+
+        attribute vec3 aPosition;
+        attribute float aEnergy;
+        attribute float aTemp;
+        attribute float aLum;
+
+        uniform mat4 uMVP;
+        uniform float uTime;
+        uniform float uPointSize;
+
+        varying float vEnergy;
+        varying float vTemp;
+        varying float vLum;
+
+        void main() {
+
+            vec3 p =
+                aPosition;
+
+            float n =
+                sin(
+                    p.x * 8.1 +
+                    p.y * 5.7 +
+                    p.z * 11.3 +
+                    uTime * 0.19
+                );
+
+            p += vec3(
+                sin(
+                    uTime * 0.13 +
+                    p.z * 5.0
+                ),
+                cos(
+                    uTime * 0.11 +
+                    p.x * 4.0
+                ),
+                sin(
+                    uTime * 0.17 +
+                    p.y * 6.0
+                )
+            ) *
+            (
+                0.010 +
+                0.018 * aTemp
             );
 
-        const x =
-            Math.cos(angle) *
-            radius;
+            p +=
+                normalize(
+                    vec3(
+                        p.xy,
+                        0.25
+                    )
+                ) *
+                n *
+                0.010 *
+                aEnergy;
 
-        const y =
-            Math.sin(angle) *
-            radius;
+            gl_Position =
+                uMVP *
+                vec4(p, 1.0);
 
-        bodyPositions.push(
-            x,
-            y,
-            z
-        );
+            gl_PointSize =
+                uPointSize *
+                (
+                    0.65 +
+                    aEnergy * 1.4 +
+                    aLum * 1.1
+                );
 
-        const nx =
-            Math.cos(angle);
+            vEnergy = aEnergy;
+            vTemp = aTemp;
+            vLum = aLum;
+        }
+    `;
 
-        const ny =
-            Math.sin(angle);
+    const neuralFS = `
+        precision mediump float;
 
-        bodyNormals.push(
-            nx,
-            ny,
-            0
-        );
-    }
-}
+        varying float vEnergy;
+        varying float vTemp;
+        varying float vLum;
 
+        void main() {
 
-// ------------------------------------------------------------
-// LATERALS
-// ------------------------------------------------------------
+            vec2 p =
+                gl_PointCoord -
+                0.5;
 
-for (
-    let ring = 0;
-    ring < BODY_RINGS - 1;
-    ring++
-) {
+            float d =
+                length(p) * 2.0;
 
-    for (
-        let side = 0;
-        side < BODY_SIDES;
-        side++
+            float soft =
+                1.0 -
+                smoothstep(
+                    0.15,
+                    1.0,
+                    d
+                );
+
+            vec3 cold =
+                vec3(
+                    0.23,
+                    0.72,
+                    0.72
+                );
+
+            vec3 hot =
+                vec3(
+                    1.0,
+                    0.54,
+                    0.22
+                );
+
+            vec3 c =
+                mix(
+                    cold,
+                    hot,
+                    smoothstep(
+                        0.45,
+                        0.95,
+                        vTemp
+                    )
+                );
+
+            c +=
+                vec3(
+                    0.20,
+                    0.34,
+                    0.34
+                ) *
+                vEnergy;
+
+            float alpha =
+                soft *
+                (
+                    0.18 +
+                    vLum * 0.72
+                );
+
+            gl_FragColor =
+                vec4(
+                    c,
+                    alpha
+                );
+        }
+    `;
+
+    const lineVS = `
+        precision mediump float;
+
+        attribute vec3 aPosition;
+        attribute float aEnergy;
+        attribute float aTemp;
+
+        uniform mat4 uMVP;
+
+        varying float vEnergy;
+        varying float vTemp;
+
+        void main() {
+
+            gl_Position =
+                uMVP *
+                vec4(
+                    aPosition,
+                    1.0
+                );
+
+            vEnergy = aEnergy;
+            vTemp = aTemp;
+        }
+    `;
+
+    const lineFS = `
+        precision mediump float;
+
+        varying float vEnergy;
+        varying float vTemp;
+
+        void main() {
+
+            vec3 c0 =
+                vec3(
+                    0.07,
+                    0.26,
+                    0.29
+                );
+
+            vec3 c1 =
+                vec3(
+                    0.42,
+                    0.90,
+                    0.77
+                );
+
+            vec3 c2 =
+                vec3(
+                    1.0,
+                    0.48,
+                    0.18
+                );
+
+            vec3 c =
+                mix(
+                    c0,
+                    c1,
+                    clamp(
+                        vEnergy * 1.25,
+                        0.0,
+                        1.0
+                    )
+                );
+
+            c =
+                mix(
+                    c,
+                    c2,
+                    smoothstep(
+                        0.68,
+                        1.0,
+                        vTemp
+                    ) *
+                    0.55
+                );
+
+            gl_FragColor =
+                vec4(
+                    c,
+                    0.10 +
+                    vEnergy * 0.32
+                );
+        }
+    `;
+
+    const pointVS = `
+        precision mediump float;
+
+        attribute vec3 aPosition;
+        attribute float aIntensity;
+
+        uniform mat4 uMVP;
+        uniform float uSize;
+
+        varying float vIntensity;
+
+        void main() {
+
+            gl_Position =
+                uMVP *
+                vec4(
+                    aPosition,
+                    1.0
+                );
+
+            gl_PointSize =
+                uSize *
+                (
+                    0.5 +
+                    aIntensity * 2.0
+                );
+
+            vIntensity =
+                aIntensity;
+        }
+    `;
+
+    const pointFS = `
+        precision mediump float;
+
+        varying float vIntensity;
+
+        void main() {
+
+            vec2 p =
+                gl_PointCoord -
+                0.5;
+
+            float d =
+                length(p) * 2.0;
+
+            float a =
+                (
+                    1.0 -
+                    smoothstep(
+                        0.0,
+                        1.0,
+                        d
+                    )
+                ) *
+                vIntensity;
+
+            gl_FragColor =
+                vec4(
+                    0.60,
+                    0.86,
+                    0.72,
+                    a * 0.26
+                );
+        }
+    `;
+
+    function compile(
+        type,
+        source
     ) {
+        const s =
+            gl.createShader(type);
 
-        const next =
-            (side + 1) %
-            BODY_SIDES;
-
-        const a =
-            ring *
-            BODY_SIDES +
-            side;
-
-        const b =
-            ring *
-            BODY_SIDES +
-            next;
-
-        const c =
-            (ring + 1) *
-            BODY_SIDES +
-            side;
-
-        const d =
-            (ring + 1) *
-            BODY_SIDES +
-            next;
-
-        bodyIndices.push(
-            a, c, b,
-            b, c, d
-        );
-    }
-}
-
-
-// ------------------------------------------------------------
-// CAPS
-// ------------------------------------------------------------
-
-const frontCenter =
-    bodyPositions.length / 3;
-
-bodyPositions.push(
-    0,
-    0,
-    BODY_DEPTH * 0.5
-);
-
-bodyNormals.push(
-    0,
-    0,
-    1
-);
-
-
-const backCenter =
-    bodyPositions.length / 3;
-
-bodyPositions.push(
-    0,
-    0,
-    -BODY_DEPTH * 0.5
-);
-
-bodyNormals.push(
-    0,
-    0,
-    -1
-);
-
-
-for (
-    let side = 0;
-    side < BODY_SIDES;
-    side++
-) {
-
-    const next =
-        (side + 1) %
-        BODY_SIDES;
-
-    const front =
-        (BODY_RINGS - 1) *
-        BODY_SIDES +
-        side;
-
-    const frontNext =
-        (BODY_RINGS - 1) *
-        BODY_SIDES +
-        next;
-
-    bodyIndices.push(
-        frontCenter,
-        front,
-        frontNext
-    );
-
-
-    const back =
-        side;
-
-    const backNext =
-        next;
-
-    bodyIndices.push(
-        backCenter,
-        backNext,
-        back
-    );
-}
-
-
-// ============================================================
-// BODY BUFFERS
-// ============================================================
-
-const bodyPositionBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    bodyPositionBuffer
-);
-
-gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array(
-        bodyPositions
-    ),
-    gl.DYNAMIC_DRAW
-);
-
-
-const bodyNormalBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    bodyNormalBuffer
-);
-
-gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array(
-        bodyNormals
-    ),
-    gl.STATIC_DRAW
-);
-
-
-const bodyIndexBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ELEMENT_ARRAY_BUFFER,
-    bodyIndexBuffer
-);
-
-gl.bufferData(
-    gl.ELEMENT_ARRAY_BUFFER,
-    new Uint16Array(
-        bodyIndices
-    ),
-    gl.STATIC_DRAW
-);
-
-
-// ============================================================
-// NEURAL TISSUE
-// ============================================================
-
-const NODE_COUNT =
-    PARAMS.neuralNodes;
-
-const neuralPositions =
-    new Float32Array(
-        NODE_COUNT * 3
-    );
-
-const neuralActivity =
-    new Float32Array(
-        NODE_COUNT
-    );
-
-const neuralMemory =
-    new Float32Array(
-        NODE_COUNT
-    );
-
-const neuralNext =
-    new Float32Array(
-        NODE_COUNT
-    );
-
-const neuralMemoryNext =
-    new Float32Array(
-        NODE_COUNT
-    );
-
-
-// ------------------------------------------------------------
-// RANDOM DETERMINISTIC
-// ------------------------------------------------------------
-
-let randomSeed =
-    712367;
-
-function random() {
-
-    randomSeed =
-        (
-            randomSeed *
-            1664525 +
-            1013904223
-        ) >>> 0;
-
-    return (
-        randomSeed /
-        4294967296
-    );
-}
-
-
-// ------------------------------------------------------------
-// HEXAGON CONTAINMENT
-// ------------------------------------------------------------
-
-function insideHexagon(
-    x,
-    y,
-    radius
-) {
-
-    const apothem =
-        radius *
-        Math.cos(
-            Math.PI / 6
+        gl.shaderSource(
+            s,
+            source
         );
 
-    const ax =
-        Math.abs(x);
+        gl.compileShader(s);
 
-    const ay =
-        Math.abs(y);
+        if (
+            !gl.getShaderParameter(
+                s,
+                gl.COMPILE_STATUS
+            )
+        ) {
+            const log =
+                gl.getShaderInfoLog(s);
 
-    if (
-        ax > radius ||
-        ay > apothem
-    ) {
-        return false;
-    }
+            gl.deleteShader(s);
 
-    return (
-        Math.sqrt(3) * ax +
-        ay <=
-        Math.sqrt(3) *
-        radius
-    );
-}
-
-
-// ------------------------------------------------------------
-// NODE POSITIONS
-// ------------------------------------------------------------
-
-for (
-    let i = 0;
-    i < NODE_COUNT;
-    i++
-) {
-
-    let x = 0;
-    let y = 0;
-
-    do {
-
-        x =
-            (
-                random() *
-                2 -
-                1
-            ) *
-            0.78;
-
-        y =
-            (
-                random() *
-                2 -
-                1
-            ) *
-            0.68;
-
-    } while (
-        !insideHexagon(
-            x,
-            y,
-            0.82
-        )
-    );
-
-    const layer =
-        i % 3;
-
-    const z =
-        (
-            layer - 1
-        ) *
-        0.24 +
-        (
-            random() *
-            2 -
-            1
-        ) *
-        0.10;
-
-    neuralPositions[
-        i * 3
-    ] = x;
-
-    neuralPositions[
-        i * 3 + 1
-    ] = y;
-
-    neuralPositions[
-        i * 3 + 2
-    ] = z;
-
-    neuralActivity[i] =
-        random() *
-        0.025;
-
-    neuralMemory[i] =
-        random() *
-        0.02;
-}
-
-
-// ============================================================
-// CONNECTIONS
-// ============================================================
-
-const connections = [];
-
-for (
-    let i = 0;
-    i < NODE_COUNT;
-    i++
-) {
-
-    const neighbours = [];
-
-    const ix =
-        neuralPositions[
-            i * 3
-        ];
-
-    const iy =
-        neuralPositions[
-            i * 3 + 1
-        ];
-
-    const iz =
-        neuralPositions[
-            i * 3 + 2
-        ];
-
-    for (
-        let j = 0;
-        j < NODE_COUNT;
-        j++
-    ) {
-
-        if (i === j) {
-            continue;
+            throw new Error(log);
         }
 
-        const dx =
-            neuralPositions[
-                j * 3
-            ] - ix;
-
-        const dy =
-            neuralPositions[
-                j * 3 + 1
-            ] - iy;
-
-        const dz =
-            neuralPositions[
-                j * 3 + 2
-            ] - iz;
-
-        const distance =
-            Math.sqrt(
-                dx * dx +
-                dy * dy +
-                dz * dz
-            );
-
-        neighbours.push({
-            index: j,
-            distance
-        });
+        return s;
     }
 
-    neighbours.sort(
-        (
-            a,
-            b
-        ) =>
-            a.distance -
-            b.distance
-    );
+    function program(
+        vs,
+        fs
+    ) {
+        const p =
+            gl.createProgram();
 
-    const amount =
-        Math.min(
-            4,
-            neighbours.length
+        gl.attachShader(
+            p,
+            compile(
+                gl.VERTEX_SHADER,
+                vs
+            )
         );
 
-    for (
-        let k = 0;
-        k < amount;
-        k++
+        gl.attachShader(
+            p,
+            compile(
+                gl.FRAGMENT_SHADER,
+                fs
+            )
+        );
+
+        gl.linkProgram(p);
+
+        if (
+            !gl.getProgramParameter(
+                p,
+                gl.LINK_STATUS
+            )
+        ) {
+            throw new Error(
+                gl.getProgramInfoLog(p)
+            );
+        }
+
+        return p;
+    }
+
+    const bodyProgram =
+        program(
+            bodyVS,
+            bodyFS
+        );
+
+    const neuralProgram =
+        program(
+            neuralVS,
+            neuralFS
+        );
+
+    const lineProgram =
+        program(
+            lineVS,
+            lineFS
+        );
+
+    const pointProgram =
+        program(
+            pointVS,
+            pointFS
+        );
+
+    function attrs(
+        p,
+        names
     ) {
+        const o = {};
 
-        const j =
-            neighbours[k].index;
+        names.forEach(
+            n => {
+                o[n] =
+                    gl.getAttribLocation(
+                        p,
+                        n
+                    );
+            }
+        );
 
-        const key =
-            i < j
-                ? i + ":" + j
-                : j + ":" + i;
+        return o;
+    }
 
-        let exists = false;
+    function uniforms(
+        p,
+        names
+    ) {
+        const o = {};
+
+        names.forEach(
+            n => {
+                o[n] =
+                    gl.getUniformLocation(
+                        p,
+                        n
+                    );
+            }
+        );
+
+        return o;
+    }
+
+    const bodyA =
+        attrs(
+            bodyProgram,
+            [
+                "aPosition",
+                "aDepth"
+            ]
+        );
+
+    const bodyU =
+        uniforms(
+            bodyProgram,
+            [
+                "uMVP",
+                "uTime",
+                "uBreath",
+                "uEnergy",
+                "uTemperature",
+                "uVariation"
+            ]
+        );
+
+    const neuralA =
+        attrs(
+            neuralProgram,
+            [
+                "aPosition",
+                "aEnergy",
+                "aTemp",
+                "aLum"
+            ]
+        );
+
+    const neuralU =
+        uniforms(
+            neuralProgram,
+            [
+                "uMVP",
+                "uTime",
+                "uPointSize"
+            ]
+        );
+
+    const lineA =
+        attrs(
+            lineProgram,
+            [
+                "aPosition",
+                "aEnergy",
+                "aTemp"
+            ]
+        );
+
+    const lineU =
+        uniforms(
+            lineProgram,
+            [
+                "uMVP"
+            ]
+        );
+
+    const pointA =
+        attrs(
+            pointProgram,
+            [
+                "aPosition",
+                "aIntensity"
+            ]
+        );
+
+    const pointU =
+        uniforms(
+            pointProgram,
+            [
+                "uMVP",
+                "uSize"
+            ]
+        );
+
+    // ------------------------------------------------------------
+    // COS HEXAGONAL
+    // ------------------------------------------------------------
+
+    const bodyPositions = [];
+    const bodyDepths = [];
+    const bodyIndices = [];
+
+    for (
+        let r = 0;
+        r < P.bodyRings;
+        r++
+    ) {
+        const z =
+            lerp(
+                -P.bodyDepth / 2,
+                P.bodyDepth / 2,
+                r /
+                (P.bodyRings - 1)
+            );
+
+        const depthNorm =
+            Math.abs(z) /
+            (P.bodyDepth / 2);
 
         for (
-            let n = 0;
-            n < connections.length;
-            n++
+            let s = 0;
+            s < P.bodySides;
+            s++
         ) {
-
-            if (
-                connections[n].key ===
-                key
-            ) {
-
-                exists = true;
-                break;
-            }
-        }
-
-        if (!exists) {
-
-            connections.push({
-                a: i,
-                b: j,
-                distance:
-                    neighbours[k].distance,
-                key
-            });
-        }
-
-        if (
-            connections.length >=
-            PARAMS.maxConnections
-        ) {
-            break;
-        }
-    }
-
-    if (
-        connections.length >=
-        PARAMS.maxConnections
-    ) {
-        break;
-    }
-}
-
-
-// ============================================================
-// NEURAL LINE DATA
-// ============================================================
-
-const linePositions =
-    new Float32Array(
-        connections.length *
-        2 *
-        3
-    );
-
-const lineActivities =
-    new Float32Array(
-        connections.length *
-        2
-    );
-
-
-function updateLineGeometry() {
-
-    for (
-        let i = 0;
-        i < connections.length;
-        i++
-    ) {
-
-        const connection =
-            connections[i];
-
-        const a =
-            connection.a;
-
-        const b =
-            connection.b;
-
-        const offset =
-            i * 6;
-
-        linePositions[offset] =
-            neuralPositions[a * 3];
-
-        linePositions[offset + 1] =
-            neuralPositions[a * 3 + 1];
-
-        linePositions[offset + 2] =
-            neuralPositions[a * 3 + 2];
-
-
-        linePositions[offset + 3] =
-            neuralPositions[b * 3];
-
-        linePositions[offset + 4] =
-            neuralPositions[b * 3 + 1];
-
-        linePositions[offset + 5] =
-            neuralPositions[b * 3 + 2];
-
-
-        const activity =
-            (
-                neuralActivity[a] +
-                neuralActivity[b]
-            ) *
-            0.5;
-
-        const memory =
-            (
-                neuralMemory[a] +
-                neuralMemory[b]
-            ) *
-            0.5;
-
-        const value =
-            Math.min(
-                1,
-                activity +
-                memory *
-                PARAMS.memoryInfluence
-            );
-
-        lineActivities[i * 2] =
-            value;
-
-        lineActivities[i * 2 + 1] =
-            value;
-    }
-}
-
-
-updateLineGeometry();
-
-
-// ============================================================
-// NEURAL BUFFERS
-// ============================================================
-
-const neuralPositionBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    neuralPositionBuffer
-);
-
-gl.bufferData(
-    gl.ARRAY_BUFFER,
-    neuralPositions,
-    gl.STATIC_DRAW
-);
-
-
-const neuralActivityBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    neuralActivityBuffer
-);
-
-gl.bufferData(
-    gl.ARRAY_BUFFER,
-    neuralActivity,
-    gl.DYNAMIC_DRAW
-);
-
-
-const linePositionBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    linePositionBuffer
-);
-
-gl.bufferData(
-    gl.ARRAY_BUFFER,
-    linePositions,
-    gl.STATIC_DRAW
-);
-
-
-const lineActivityBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    lineActivityBuffer
-);
-
-gl.bufferData(
-    gl.ARRAY_BUFFER,
-    lineActivities,
-    gl.DYNAMIC_DRAW
-);
-
-
-// ============================================================
-// MATRICES
-// ============================================================
-
-let projection =
-    mat4Identity();
-
-let view =
-    mat4Identity();
-
-let model =
-    mat4Identity();
-
-
-function updateMatrices() {
-
-    projection =
-        mat4Perspective(
-            0.78,
-            aspect,
-            0.05,
-            20
-        );
-
-    view =
-        mat4Translate(
-            0,
-            0,
-            -3.25
-        );
-
-    const rx =
-        mat4RotateX(
-            Math.sin(time * 0.17) *
-            0.055
-        );
-
-    const ry =
-        mat4RotateY(
-            time * 0.055
-        );
-
-    const rz =
-        mat4RotateZ(
-            Math.sin(time * 0.11) *
-            0.025
-        );
-
-    model =
-        mat4Multiply(
-            ry,
-            mat4Multiply(
-                rx,
-                rz
-            )
-        );
-}
-
-
-// ============================================================
-// POINTER COORDINATES
-// ============================================================
-
-function updatePointer(
-    clientX,
-    clientY
-) {
-
-    const rect =
-        canvas.getBoundingClientRect();
-
-    const x =
-        (
-            clientX -
-            rect.left
-        ) /
-        rect.width;
-
-    const y =
-        (
-            clientY -
-            rect.top
-        ) /
-        rect.height;
-
-    const nx =
-        x * 2 -
-        1;
-
-    const ny =
-        1 -
-        y * 2;
-
-
-    const now =
-        performance.now();
-
-    const dt =
-        Math.max(
-            8,
-            now -
-            pointer.lastTime
-        ) /
-        1000;
-
-
-    pointer.previousX =
-        pointer.x;
-
-    pointer.previousY =
-        pointer.y;
-
-    pointer.x =
-        nx;
-
-    pointer.y =
-        ny;
-
-
-    pointer.velocityX =
-        (
-            pointer.x -
-            pointer.previousX
-        ) /
-        dt;
-
-    pointer.velocityY =
-        (
-            pointer.y -
-            pointer.previousY
-        ) /
-        dt;
-
-
-    pointer.speed =
-        Math.min(
-            1,
-            Math.sqrt(
-                pointer.velocityX *
-                pointer.velocityX +
-                pointer.velocityY *
-                pointer.velocityY
-            ) *
-            0.12
-        );
-
-
-    pointer.lastTime =
-        now;
-
-    pointer.inside =
-        true;
-}
-
-
-canvas.addEventListener(
-    "pointermove",
-    event => {
-
-        updatePointer(
-            event.clientX,
-            event.clientY
-        );
-
-    },
-    {
-        passive: true
-    }
-);
-
-
-canvas.addEventListener(
-    "pointerenter",
-    event => {
-
-        pointer.inside =
-            true;
-
-        updatePointer(
-            event.clientX,
-            event.clientY
-        );
-
-    }
-);
-
-
-canvas.addEventListener(
-    "pointerleave",
-    () => {
-
-        pointer.inside =
-            false;
-
-    }
-);
-
-
-canvas.addEventListener(
-    "pointerdown",
-    async event => {
-
-        pointer.down =
-            true;
-
-        updatePointer(
-            event.clientX,
-            event.clientY
-        );
-
-        await startAudio();
-
-    },
-    {
-        passive: true
-    }
-);
-
-
-window.addEventListener(
-    "pointerup",
-    () => {
-
-        pointer.down =
-            false;
-
-    }
-);
-
-
-// ============================================================
-// PERCEPCIÓ
-// ============================================================
-
-function updatePerception() {
-
-    if (!pointer.inside) {
-
-        organism.perception *=
-            0.94;
-
-        organism.anticipation *=
-            0.92;
-
-        organism.touch *=
-            0.90;
-
-        return;
-    }
-
-
-    const distance =
-        Math.sqrt(
-            pointer.x *
-            pointer.x +
-            pointer.y *
-            pointer.y
-        );
-
-
-    organism.perception =
-        smoothDecay(
-            organism.perception,
-            smoothStep(
-                PARAMS.perceptionRadius,
-                0,
-                distance
-            ),
-            0.12
-        );
-
-
-    const anticipationField =
-        smoothStep(
-            PARAMS.anticipationRadius,
-            0,
-            distance
-        );
-
-
-    let approach =
-        0;
-
-
-    if (
-        pointer.speed >
-        0.001
-    ) {
-
-        const length =
-            Math.sqrt(
-                pointer.x *
-                pointer.x +
-                pointer.y *
-                pointer.y
-            );
-
-
-        if (
-            length >
-            0.001
-        ) {
-
-            const radialX =
-                -pointer.x /
-                length;
-
-            const radialY =
-                -pointer.y /
-                length;
-
-            const velocityLength =
-                Math.sqrt(
-                    pointer.velocityX *
-                    pointer.velocityX +
-                    pointer.velocityY *
-                    pointer.velocityY
-                );
-
-
-            const vx =
-                pointer.velocityX /
-                Math.max(
-                    velocityLength,
-                    0.0001
-                );
-
-            const vy =
-                pointer.velocityY /
-                Math.max(
-                    velocityLength,
-                    0.0001
-                );
-
-
-            approach =
-                Math.max(
-                    0,
-                    radialX * vx +
-                    radialY * vy
-                );
-        }
-    }
-
-
-    organism.anticipation =
-        smoothDecay(
-            organism.anticipation,
-            anticipationField *
-            (
-                0.35 +
-                approach *
-                PARAMS.approachInfluence
-            ),
-            0.10
-        );
-
-
-    let targetTouch = 0;
-
-
-    if (
-        pointer.down
-    ) {
-
-        targetTouch =
-            smoothStep(
-                PARAMS.contactRadius,
-                0,
-                distance
-            );
-    }
-
-
-    organism.touch =
-        smoothDecay(
-            organism.touch,
-            targetTouch,
-            targetTouch > organism.touch
-                ? 0.25
-                : 0.08
-        );
-}
-
-
-// ============================================================
-// UTILITATS
-// ============================================================
-
-function smoothStep(
-    edge0,
-    edge1,
-    value
-) {
-
-    const t =
-        Math.max(
-            0,
-            Math.min(
-                1,
+            const a =
                 (
-                    value -
-                    edge0
-                ) /
+                    s /
+                    P.bodySides
+                ) *
+                TAU +
+                Math.PI / 6;
+
+            const ca =
+                Math.cos(a);
+
+            const sa =
+                Math.sin(a);
+
+            const radius =
+                P.bodyRadius *
                 (
-                    edge1 -
-                    edge0
-                )
-            )
-        );
+                    1.0 -
+                    depthNorm * 0.10
+                );
 
-    return (
-        t * t *
-        (
-            3 -
-            2 * t
-        )
-    );
-}
-
-
-function smoothDecay(
-    current,
-    target,
-    amount
-) {
-
-    return (
-        current +
-        (
-            target -
-            current
-        ) *
-        amount
-    );
-}
-
-
-function clamp(
-    value,
-    min,
-    max
-) {
-
-    return Math.max(
-        min,
-        Math.min(
-            max,
-            value
-        )
-    );
-}
-
-
-// ============================================================
-// NEURAL SIMULATION
-// ============================================================
-
-function simulateNeural() {
-
-    let total =
-        0;
-
-    let totalSquared =
-        0;
-
-    let localTouch =
-        0;
-
-
-    for (
-        let i = 0;
-        i < NODE_COUNT;
-        i++
-    ) {
-
-        const x =
-            neuralPositions[
-                i * 3
-            ];
-
-        const y =
-            neuralPositions[
-                i * 3 + 1
-            ];
-
-        const z =
-            neuralPositions[
-                i * 3 + 2
-            ];
-
-
-        const px =
-            pointer.x *
-            0.90;
-
-        const py =
-            pointer.y *
-            0.90;
-
-
-        const dx =
-            x -
-            px;
-
-        const dy =
-            y -
-            py;
-
-        const dz =
-            z;
-
-
-        const distance =
-            Math.sqrt(
-                dx * dx +
-                dy * dy +
-                dz * dz *
-                0.5
+            bodyPositions.push(
+                ca * radius,
+                sa * radius,
+                z
             );
 
-
-        const localPerception =
-            smoothStep(
-                PARAMS.perceptionRadius,
-                0,
-                distance
+            bodyDepths.push(
+                z /
+                P.bodyDepth
             );
-
-
-        const localAnticipation =
-            smoothStep(
-                PARAMS.anticipationRadius,
-                0,
-                distance
-            );
-
-
-        const localContact =
-            smoothStep(
-                PARAMS.contactRadius,
-                0,
-                distance
-            );
-
-
-        let approach =
-            organism.anticipation;
-
-
-        let input =
-            localPerception *
-            0.05;
-
-
-        input +=
-            localAnticipation *
-            PARAMS.anticipationGain *
-            approach *
-            0.055;
-
-
-        input +=
-            localContact *
-            organism.touch *
-            PARAMS.contactGain *
-            0.11;
-
-
-        input *=
-            PARAMS.pointerEnergy;
-
-
-        input *=
-            0.72 +
-            pointer.speed *
-            PARAMS.pointerSpeedInfluence;
-
-
-        const previous =
-            neuralActivity[i];
-
-
-        neuralNext[i] =
-            previous *
-            PARAMS.neuralDecay;
-
-
-        neuralNext[i] +=
-            input;
-
-
-        neuralNext[i] +=
-            (
-                neuralMemory[i] *
-                PARAMS.memoryInfluence
-            );
-
-
-        neuralNext[i] +=
-            (
-                random() -
-                0.5
-            ) *
-            PARAMS.spontaneousActivity;
-
-
-        if (
-            localContact >
-            0.15
-        ) {
-
-            localTouch +=
-                localContact *
-                neuralNext[i];
         }
     }
 
-
-    // --------------------------------------------------------
-    // PROPAGACIÓ
-    // --------------------------------------------------------
-
     for (
-        let i = 0;
-        i < connections.length;
-        i++
+        let r = 0;
+        r < P.bodyRings - 1;
+        r++
     ) {
+        for (
+            let s = 0;
+            s < P.bodySides;
+            s++
+        ) {
+            const n =
+                (s + 1) %
+                P.bodySides;
 
-        const connection =
-            connections[i];
+            const a =
+                r *
+                P.bodySides +
+                s;
 
-        const a =
-            connection.a;
+            const b =
+                r *
+                P.bodySides +
+                n;
 
-        const b =
-            connection.b;
+            const c =
+                (r + 1) *
+                P.bodySides +
+                n;
 
-        const valueA =
-            neuralActivity[a];
+            const d =
+                (r + 1) *
+                P.bodySides +
+                s;
 
-        const valueB =
-            neuralActivity[b];
-
-
-        const distanceFactor =
-            clamp(
-                1 -
-                connection.distance /
-                PARAMS.propagationDistance,
-                0,
-                1
+            bodyIndices.push(
+                a,
+                b,
+                c,
+                a,
+                c,
+                d
             );
-
-
-        const transfer =
-            PARAMS.propagation *
-            distanceFactor;
-
-
-        neuralNext[a] +=
-            valueB *
-            transfer *
-            0.10;
-
-        neuralNext[b] +=
-            valueA *
-            transfer *
-            0.10;
+        }
     }
 
+    const bodyPosBuffer =
+        gl.createBuffer();
 
-    // --------------------------------------------------------
-    // RECUPERACIÓ + MEMÒRIA
-    // --------------------------------------------------------
+    const bodyDepthBuffer =
+        gl.createBuffer();
 
-    for (
-        let i = 0;
-        i < NODE_COUNT;
-        i++
-    ) {
-
-        let value =
-            neuralNext[i];
-
-
-        value =
-            clamp(
-                value,
-                0,
-                1
-            );
-
-
-        value =
-            value *
-            (
-                1 -
-                PARAMS.recovery
-            );
-
-
-        neuralNext[i] =
-            value;
-
-
-        const difference =
-            Math.abs(
-                value -
-                neuralActivity[i]
-            );
-
-
-        neuralMemoryNext[i] =
-            neuralMemory[i] *
-            (
-                1 -
-                PARAMS.memoryRate -
-                PARAMS.memoryDecay
-            );
-
-
-        neuralMemoryNext[i] +=
-            difference *
-            PARAMS.memoryGain *
-            PARAMS.memoryRate;
-
-
-        neuralMemoryNext[i] =
-            clamp(
-                neuralMemoryNext[i],
-                0,
-                1
-            );
-
-
-        total +=
-            value;
-
-        totalSquared +=
-            value *
-            value;
-    }
-
-
-    // --------------------------------------------------------
-    // SWAP
-    // --------------------------------------------------------
-
-    for (
-        let i = 0;
-        i < NODE_COUNT;
-        i++
-    ) {
-
-        neuralActivity[i] =
-            neuralNext[i];
-
-        neuralMemory[i] =
-            neuralMemoryNext[i];
-    }
-
-
-    const mean =
-        total /
-        NODE_COUNT;
-
-
-    const variance =
-        Math.max(
-            0,
-            totalSquared /
-            NODE_COUNT -
-            mean * mean
-        );
-
-
-    const coherence =
-        clamp(
-            1 -
-            variance * 18,
-            0,
-            1
-        );
-
-
-    organism.previousActivity =
-        organism.activity;
-
-
-    organism.activity =
-        smoothDecay(
-            organism.activity,
-            mean,
-            0.16
-        );
-
-
-    organism.coherence =
-        smoothDecay(
-            organism.coherence,
-            coherence,
-            0.035
-        );
-
-
-    organism.memory =
-        smoothDecay(
-            organism.memory,
-            mean *
-            0.45 +
-            averageMemory() *
-            0.55,
-            0.025
-        );
-
-
-    organism.calm =
-        clamp(
-            1 -
-            organism.activity * 2.2,
-            0,
-            1
-        );
-
-
-    organism.voltage =
-        clamp(
-            organism.activity * 2.2 +
-            organism.touch * 0.35 +
-            organism.memory * 0.25,
-            0,
-            1
-        );
-
-
-    organism.localTouch =
-        clamp(
-            localTouch /
-            NODE_COUNT *
-            8,
-            0,
-            1
-        );
-}
-
-
-function averageMemory() {
-
-    let total =
-        0;
-
-    for (
-        let i = 0;
-        i < NODE_COUNT;
-        i++
-    ) {
-
-        total +=
-            neuralMemory[i];
-    }
-
-    return (
-        total /
-        NODE_COUNT
-    );
-}
-
-
-// ============================================================
-// BODY UPDATE
-// ============================================================
-
-function updateBodyGeometry() {
-
-    const energy =
-        organism.activity;
-
-    const memory =
-        organism.memory;
-
-    const touch =
-        organism.localTouch;
-
-
-    for (
-        let i = 0;
-        i < bodyPositions.length / 3;
-        i++
-    ) {
-
-        let x =
-            bodyPositions[i * 3];
-
-        let y =
-            bodyPositions[i * 3 + 1];
-
-        let z =
-            bodyPositions[i * 3 + 2];
-
-
-        const angle =
-            Math.atan2(
-                y,
-                x
-            );
-
-
-        const organic =
-            Math.sin(
-                angle * 3.0 +
-                z * 4.0 +
-                time * 0.42
-            );
-
-
-        const organic2 =
-            Math.sin(
-                angle * 5.0 -
-                z * 2.0 -
-                time * 0.27
-            );
-
-
-        const radius =
-            Math.sqrt(
-                x * x +
-                y * y
-            );
-
-
-        const breath =
-            Math.sin(
-                time * 0.31
-            ) *
-            PARAMS.bodyBreathing;
-
-
-        const tissue =
-            (
-                organic +
-                organic2 * 0.35
-            ) *
-            PARAMS.bodyDeformation *
-            (
-                0.12 +
-                energy
-            );
-
-
-        const local =
-            smoothStep(
-                1.2,
-                0,
-                Math.sqrt(
-                    (
-                        x -
-                        pointer.x *
-                        0.72
-                    ) ** 2 +
-                    (
-                        y -
-                        pointer.y *
-                        0.72
-                    ) ** 2
-                )
-            );
-
-
-        const response =
-            local *
-            touch *
-            0.035;
-
-
-        const scale =
-            1 +
-            breath +
-            tissue +
-            response +
-            memory *
-            0.008;
-
-
-        bodyPositions[i * 3] =
-            x *
-            scale;
-
-        bodyPositions[i * 3 + 1] =
-            y *
-            scale;
-
-        bodyPositions[i * 3 + 2] =
-            z +
-            Math.sin(
-                angle * 2.0 +
-                time * 0.22
-            ) *
-            energy *
-            0.012;
-    }
-
+    const bodyIndexBuffer =
+        gl.createBuffer();
 
     gl.bindBuffer(
         gl.ARRAY_BUFFER,
-        bodyPositionBuffer
+        bodyPosBuffer
     );
 
-    gl.bufferSubData(
+    gl.bufferData(
         gl.ARRAY_BUFFER,
-        0,
         new Float32Array(
             bodyPositions
-        )
+        ),
+        gl.STATIC_DRAW
     );
-}
-
-
-// ============================================================
-// AUDIO
-// ============================================================
-
-let audio = null;
-let audioStarting = false;
-
-
-async function startAudio() {
-
-    if (audio) {
-
-        if (
-            audio.context.state ===
-            "suspended"
-        ) {
-
-            try {
-                await audio.context.resume();
-            }
-            catch (_) {}
-        }
-
-        return;
-    }
-
-
-    if (audioStarting) {
-        return;
-    }
-
-
-    audioStarting =
-        true;
-
-
-    try {
-
-        const AudioContext =
-            window.AudioContext ||
-            window.webkitAudioContext;
-
-
-        if (!AudioContext) {
-            audioStarting = false;
-            return;
-        }
-
-
-        const context =
-            new AudioContext();
-
-
-        const oscillator =
-            context.createOscillator();
-
-
-        const filter =
-            context.createBiquadFilter();
-
-
-        const compressor =
-            context.createDynamicsCompressor();
-
-
-        const master =
-            context.createGain();
-
-
-        oscillator.type =
-            "sine";
-
-
-        oscillator.frequency.value =
-            PARAMS.baseFrequency;
-
-
-        filter.type =
-            "lowpass";
-
-
-        filter.frequency.value =
-            PARAMS.filterMin;
-
-
-        filter.Q.value =
-            0.35;
-
-
-        compressor.threshold.value =
-            -18;
-
-        compressor.knee.value =
-            16;
-
-        compressor.ratio.value =
-            3;
-
-        compressor.attack.value =
-            0.015;
-
-        compressor.release.value =
-            0.18;
-
-
-        master.gain.value =
-            0;
-
-
-        oscillator.connect(
-            filter
-        );
-
-        filter.connect(
-            compressor
-        );
-
-        compressor.connect(
-            master
-        );
-
-        master.connect(
-            context.destination
-        );
-
-
-        oscillator.start();
-
-
-        audio = {
-
-            context,
-
-            oscillator,
-
-            filter,
-
-            compressor,
-
-            master
-        };
-
-
-        if (
-            context.state ===
-            "suspended"
-        ) {
-
-            await context.resume();
-        }
-
-
-        audioStarting =
-            false;
-
-    }
-    catch (_) {
-
-        audioStarting =
-            false;
-    }
-}
-
-
-function updateAudio() {
-
-    if (!audio) {
-        return;
-    }
-
-
-    const now =
-        audio.context.currentTime;
-
-
-    const activity =
-        organism.activity;
-
-    const coherence =
-        organism.coherence;
-
-    const memory =
-        organism.memory;
-
-    const touch =
-        organism.touch;
-
-
-    // --------------------------------------------------------
-    // LA FREQÜÈNCIA NEIX DE L'ESTAT
-    // --------------------------------------------------------
-
-    const frequency =
-        PARAMS.baseFrequency +
-        coherence *
-        PARAMS.frequencyRange * 0.38 +
-        activity *
-        PARAMS.frequencyRange * 0.62 +
-        memory *
-        18;
-
-
-    const filterFrequency =
-        PARAMS.filterMin +
-        (
-            PARAMS.filterMax -
-            PARAMS.filterMin
-        ) *
-        (
-            activity * 0.55 +
-            coherence * 0.25 +
-            touch * 0.20
-        );
-
-
-    const targetGain =
-        PARAMS.audioMaster *
-        (
-            0.12 +
-            activity * 0.75 +
-            touch * 0.22
-        );
-
-
-    audio.oscillator.frequency
-        .setTargetAtTime(
-            frequency,
-            now,
-            PARAMS.audioAttack
-        );
-
-
-    audio.filter.frequency
-        .setTargetAtTime(
-            filterFrequency,
-            now,
-            0.16
-        );
-
-
-    audio.master.gain
-        .setTargetAtTime(
-            targetGain,
-            now,
-            PARAMS.audioRelease
-        );
-}
-
-
-// ============================================================
-// RENDER BODY
-// ============================================================
-
-function prepareBody() {
-
-    gl.useProgram(
-        bodyProgram
-    );
-
-
-    gl.uniformMatrix4fv(
-        bodyLocations.projection,
-        false,
-        projection
-    );
-
-    gl.uniformMatrix4fv(
-        bodyLocations.view,
-        false,
-        view
-    );
-
-    gl.uniformMatrix4fv(
-        bodyLocations.model,
-        false,
-        model
-    );
-
-
-    gl.uniform1f(
-        bodyLocations.time,
-        time
-    );
-
-    gl.uniform1f(
-        bodyLocations.activity,
-        organism.activity
-    );
-
-    gl.uniform1f(
-        bodyLocations.touch,
-        organism.localTouch
-    );
-
-    gl.uniform1f(
-        bodyLocations.memory,
-        organism.memory
-    );
-
-    gl.uniform1f(
-        bodyLocations.coherence,
-        organism.coherence
-    );
-
 
     gl.bindBuffer(
         gl.ARRAY_BUFFER,
-        bodyPositionBuffer
+        bodyDepthBuffer
     );
 
-    gl.enableVertexAttribArray(
-        bodyLocations.position
-    );
-
-    gl.vertexAttribPointer(
-        bodyLocations.position,
-        3,
-        gl.FLOAT,
-        false,
-        0,
-        0
-    );
-
-
-    gl.bindBuffer(
+    gl.bufferData(
         gl.ARRAY_BUFFER,
-        bodyNormalBuffer
+        new Float32Array(
+            bodyDepths
+        ),
+        gl.STATIC_DRAW
     );
-
-    gl.enableVertexAttribArray(
-        bodyLocations.normal
-    );
-
-    gl.vertexAttribPointer(
-        bodyLocations.normal,
-        3,
-        gl.FLOAT,
-        false,
-        0,
-        0
-    );
-
 
     gl.bindBuffer(
         gl.ELEMENT_ARRAY_BUFFER,
         bodyIndexBuffer
     );
-}
 
-
-function drawBodyPass(
-    backPass
-) {
-
-    if (backPass) {
-
-        gl.enable(
-            gl.CULL_FACE
-        );
-
-        gl.cullFace(
-            gl.FRONT
-        );
-
-        gl.uniform1f(
-            bodyLocations.alpha,
-            PARAMS.shellBackAlpha
-        );
-
-        gl.uniform1f(
-            bodyLocations.pass,
-            0
-        );
-
-    }
-    else {
-
-        gl.enable(
-            gl.CULL_FACE
-        );
-
-        gl.cullFace(
-            gl.BACK
-        );
-
-        gl.uniform1f(
-            bodyLocations.alpha,
-            PARAMS.shellFrontAlpha
-        );
-
-        gl.uniform1f(
-            bodyLocations.pass,
-            1
-        );
-    }
-
-
-    gl.drawElements(
-        gl.TRIANGLES,
-        bodyIndices.length,
-        gl.UNSIGNED_SHORT,
-        0
-    );
-}
-
-
-// ============================================================
-// RENDER NEURAL TISSUE
-// ============================================================
-
-function drawNeuralTissue() {
-
-    // --------------------------------------------------------
-    // LÍNIES
-    // --------------------------------------------------------
-
-    updateLineGeometry();
-
-
-    gl.useProgram(
-        lineProgram
+    gl.bufferData(
+        gl.ELEMENT_ARRAY_BUFFER,
+        new Uint16Array(
+            bodyIndices
+        ),
+        gl.STATIC_DRAW
     );
 
-
-    gl.uniformMatrix4fv(
-        lineLocations.projection,
-        false,
-        projection
-    );
-
-    gl.uniformMatrix4fv(
-        lineLocations.view,
-        false,
-        view
-    );
-
-    gl.uniformMatrix4fv(
-        lineLocations.model,
-        false,
-        model
-    );
-
-
-    gl.bindBuffer(
-        gl.ARRAY_BUFFER,
-        linePositionBuffer
-    );
-
-    gl.enableVertexAttribArray(
-        lineLocations.position
-    );
-
-    gl.vertexAttribPointer(
-        lineLocations.position,
-        3,
-        gl.FLOAT,
-        false,
-        0,
-        0
-    );
-
-
-    gl.bindBuffer(
-        gl.ARRAY_BUFFER,
-        lineActivityBuffer
-    );
-
-    gl.bufferSubData(
-        gl.ARRAY_BUFFER,
-        0,
-        lineActivities
-    );
-
-
-    gl.enableVertexAttribArray(
-        lineLocations.activity
-    );
-
-    gl.vertexAttribPointer(
-        lineLocations.activity,
-        1,
-        gl.FLOAT,
-        false,
-        0,
-        0
-    );
-
-
-    gl.drawArrays(
-        gl.LINES,
-        0,
-        connections.length * 2
-    );
-
-
-    // --------------------------------------------------------
-    // PUNTS
-    // --------------------------------------------------------
-
-    gl.useProgram(
-        neuralProgram
-    );
-
-
-    gl.uniformMatrix4fv(
-        neuralLocations.projection,
-        false,
-        projection
-    );
-
-    gl.uniformMatrix4fv(
-        neuralLocations.view,
-        false,
-        view
-    );
-
-    gl.uniformMatrix4fv(
-        neuralLocations.model,
-        false,
-        model
-    );
-
-
-    gl.uniform1f(
-        neuralLocations.time,
-        time
-    );
-
-
-    gl.bindBuffer(
-        gl.ARRAY_BUFFER,
-        neuralPositionBuffer
-    );
-
-    gl.enableVertexAttribArray(
-        neuralLocations.position
-    );
-
-    gl.vertexAttribPointer(
-        neuralLocations.position,
-        3,
-        gl.FLOAT,
-        false,
-        0,
-        0
-    );
-
-
-    gl.bindBuffer(
-        gl.ARRAY_BUFFER,
-        neuralActivityBuffer
-    );
-
-    gl.bufferSubData(
-        gl.ARRAY_BUFFER,
-        0,
-        neuralActivity
-    );
-
-
-    gl.enableVertexAttribArray(
-        neuralLocations.activity
-    );
-
-    gl.vertexAttribPointer(
-        neuralLocations.activity,
-        1,
-        gl.FLOAT,
-        false,
-        0,
-        0
-    );
-
-
-    gl.drawArrays(
-        gl.POINTS,
-        0,
-        NODE_COUNT
-    );
-}
-
-
-// ============================================================
-// HEXAGON EDGES
-// ============================================================
-
-function drawHexagonalEdges() {
-
-    gl.useProgram(
-        lineProgram
-    );
-
-
-    const edgePositions =
-        [];
-
-
-    // --------------------------------------------------------
-    // FRONT / BACK
-    // --------------------------------------------------------
-
-    for (
-        let ringIndex of [
-            0,
-            BODY_RINGS - 1
-        ]
-    ) {
-
-        for (
-            let side = 0;
-            side < BODY_SIDES;
-            side++
-        ) {
-
-            const next =
-                (
-                    side + 1
-                ) %
-                BODY_SIDES;
-
-
-            const a =
-                ringIndex *
-                BODY_SIDES +
-                side;
-
-            const b =
-                ringIndex *
-                BODY_SIDES +
-                next;
-
-
-            edgePositions.push(
-                bodyPositions[a * 3],
-                bodyPositions[a * 3 + 1],
-                bodyPositions[a * 3 + 2],
-
-                bodyPositions[b * 3],
-                bodyPositions[b * 3 + 1],
-                bodyPositions[b * 3 + 2]
-            );
-        }
-    }
-
-
-    // --------------------------------------------------------
-    // LONGITUDINALS
-    // --------------------------------------------------------
-
-    for (
-        let side = 0;
-        side < BODY_SIDES;
-        side++
-    ) {
-
-        const a =
-            side;
-
-        const b =
-            (
-                BODY_RINGS - 1
-            ) *
-            BODY_SIDES +
-            side;
-
-
-        edgePositions.push(
-            bodyPositions[a * 3],
-            bodyPositions[a * 3 + 1],
-            bodyPositions[a * 3 + 2],
-
-            bodyPositions[b * 3],
-            bodyPositions[b * 3 + 1],
-            bodyPositions[b * 3 + 2]
-        );
-    }
-
-
-    const edgeActivity =
-        new Float32Array(
-            edgePositions.length /
-            3
-        );
-
+    // ------------------------------------------------------------
+    // TEIXIT NEURONAL
+    // ------------------------------------------------------------
+
+    const neural = [];
 
     for (
         let i = 0;
-        i < edgeActivity.length;
+        i < P.neuralCount;
         i++
     ) {
+        const a =
+            rand(
+                0,
+                TAU
+            );
 
-        edgeActivity[i] =
-            0.16 +
-            organism.activity *
-            0.42 +
-            organism.memory *
-            0.12;
+        const r =
+            Math.sqrt(
+                Math.random()
+            ) *
+            P.neuralRadius;
+
+        const hex =
+            0.90 -
+            0.10 *
+            Math.abs(
+                Math.cos(
+                    3 * a
+                )
+            );
+
+        neural.push({
+            x:
+                Math.cos(a) *
+                r *
+                hex,
+
+            y:
+                Math.sin(a) *
+                r *
+                hex,
+
+            z:
+                rand(
+                    -P.neuralDepth,
+                    P.neuralDepth
+                ) *
+                0.5,
+
+            vx: 0,
+            vy: 0,
+            vz: 0,
+
+            energy:
+                rand(
+                    0.045,
+                    0.16
+                ),
+
+            temperature:
+                rand(
+                    0.20,
+                    0.38
+                ),
+
+            memory:
+                rand(
+                    0.0,
+                    0.08
+                ),
+
+            activity: 0,
+            lum: 0,
+
+            flowX:
+                rand(
+                    -0.1,
+                    0.1
+                ),
+
+            flowY:
+                rand(
+                    -0.1,
+                    0.1
+                ),
+
+            flowZ:
+                rand(
+                    -0.06,
+                    0.06
+                ),
+
+            phase:
+                rand(
+                    0,
+                    TAU
+                )
+        });
     }
 
+    const links = [];
 
-    const positionBuffer =
-        gl.createBuffer();
+    for (
+        let i = 0;
+        i < neural.length;
+        i++
+    ) {
+        const candidates = [];
 
-    gl.bindBuffer(
-        gl.ARRAY_BUFFER,
-        positionBuffer
-    );
+        for (
+            let j = 0;
+            j < neural.length;
+            j++
+        ) {
+            if (i === j) {
+                continue;
+            }
 
-    gl.bufferData(
-        gl.ARRAY_BUFFER,
+            const d =
+                dist3(
+                    neural[i],
+                    neural[j]
+                );
+
+            candidates.push({
+                j,
+                d
+            });
+        }
+
+        candidates.sort(
+            (a, b) =>
+                a.d - b.d
+        );
+
+        const count =
+            2 +
+            Math.floor(
+                rand(
+                    0,
+                    3
+                )
+            );
+
+        for (
+            let k = 0;
+            k < count;
+            k++
+        ) {
+            const j =
+                candidates[k].j;
+
+            const exists =
+                links.some(
+                    l =>
+                        (
+                            l.a === i &&
+                            l.b === j
+                        ) ||
+                        (
+                            l.a === j &&
+                            l.b === i
+                        )
+                );
+
+            if (
+                !exists &&
+                links.length <
+                    P.maxLinks
+            ) {
+                links.push({
+                    a: i,
+                    b: j
+                });
+            }
+        }
+    }
+
+    const neuralPositionData =
         new Float32Array(
-            edgePositions
-        ),
-        gl.DYNAMIC_DRAW
-    );
+            P.neuralCount * 3
+        );
 
+    const neuralEnergyData =
+        new Float32Array(
+            P.neuralCount
+        );
 
-    gl.enableVertexAttribArray(
-        lineLocations.position
-    );
+    const neuralTempData =
+        new Float32Array(
+            P.neuralCount
+        );
 
-    gl.vertexAttribPointer(
-        lineLocations.position,
-        3,
-        gl.FLOAT,
-        false,
-        0,
-        0
-    );
+    const neuralLumData =
+        new Float32Array(
+            P.neuralCount
+        );
 
+    const linePositionData =
+        new Float32Array(
+            links.length *
+            2 *
+            3
+        );
 
-    const activityBuffer =
+    const lineEnergyData =
+        new Float32Array(
+            links.length *
+            2
+        );
+
+    const lineTempData =
+        new Float32Array(
+            links.length *
+            2
+        );
+
+    const neuralPosBuffer =
+        gl.createBuffer();
+
+    const neuralEnergyBuffer =
+        gl.createBuffer();
+
+    const neuralTempBuffer =
+        gl.createBuffer();
+
+    const neuralLumBuffer =
+        gl.createBuffer();
+
+    const linePosBuffer =
+        gl.createBuffer();
+
+    const lineEnergyBuffer =
+        gl.createBuffer();
+
+    const lineTempBuffer =
         gl.createBuffer();
 
     gl.bindBuffer(
         gl.ARRAY_BUFFER,
-        activityBuffer
+        neuralPosBuffer
     );
 
     gl.bufferData(
         gl.ARRAY_BUFFER,
-        edgeActivity,
+        neuralPositionData.byteLength,
         gl.DYNAMIC_DRAW
     );
 
-
-    gl.enableVertexAttribArray(
-        lineLocations.activity
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        neuralEnergyBuffer
     );
 
-    gl.vertexAttribPointer(
-        lineLocations.activity,
-        1,
-        gl.FLOAT,
-        false,
-        0,
-        0
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        neuralEnergyData.byteLength,
+        gl.DYNAMIC_DRAW
     );
 
-
-    gl.uniformMatrix4fv(
-        lineLocations.projection,
-        false,
-        projection
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        neuralTempBuffer
     );
 
-    gl.uniformMatrix4fv(
-        lineLocations.view,
-        false,
-        view
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        neuralTempData.byteLength,
+        gl.DYNAMIC_DRAW
     );
 
-    gl.uniformMatrix4fv(
-        lineLocations.model,
-        false,
-        model
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        neuralLumBuffer
     );
 
-
-    gl.drawArrays(
-        gl.LINES,
-        0,
-        edgePositions.length / 3
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        neuralLumData.byteLength,
+        gl.DYNAMIC_DRAW
     );
 
-
-    gl.deleteBuffer(
-        positionBuffer
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        linePosBuffer
     );
 
-    gl.deleteBuffer(
-        activityBuffer
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        linePositionData.byteLength,
+        gl.DYNAMIC_DRAW
     );
-}
 
-
-// ============================================================
-// RESIZE
-// ============================================================
-
-function resize() {
-
-    const rect =
-        canvas.getBoundingClientRect();
-
-
-    width =
-        Math.max(
-            1,
-            rect.width
-        );
-
-    height =
-        Math.max(
-            1,
-            rect.height
-        );
-
-
-    aspect =
-        width /
-        height;
-
-
-    dpr =
-        Math.min(
-            window.devicePixelRatio ||
-            1,
-            PARAMS.maxDPR
-        );
-
-
-    canvas.width =
-        Math.floor(
-            width *
-            dpr
-        );
-
-    canvas.height =
-        Math.floor(
-            height *
-            dpr
-        );
-
-
-    gl.viewport(
-        0,
-        0,
-        canvas.width,
-        canvas.height
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        lineEnergyBuffer
     );
-}
 
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        lineEnergyData.byteLength,
+        gl.DYNAMIC_DRAW
+    );
 
-window.addEventListener(
-    "resize",
-    resize
-);
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        lineTempBuffer
+    );
 
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        lineTempData.byteLength,
+        gl.DYNAMIC_DRAW
+    );
 
-resize();
+    // ------------------------------------------------------------
+    // CAMPS INTERNS
+    // ------------------------------------------------------------
 
+    const organism = {
+        energy: 0.18,
+        temperature: 0.30,
+        activity: 0.12,
+        memory: 0.08,
+        coherence: 0.68,
+        variation: 0.12,
+        flow: 0.12,
+        luminescence: 0.08,
+        organization: 0.68,
+        permeability: 0.18,
+        cameraDepth: 0,
+        cameraTarget: 0,
+        bassPressure: 0,
+        eventPressure: 0
+    };
 
-// ============================================================
-// WEBGL ESTAT
-// ============================================================
+    const pointer = {
+        inside: false,
 
-gl.enable(
-    gl.DEPTH_TEST
-);
+        x: 0.5,
+        y: 0.5,
 
-gl.depthFunc(
-    gl.LEQUAL
-);
+        prevX: 0.5,
+        prevY: 0.5,
 
-gl.enable(
-    gl.BLEND
-);
+        vx: 0,
+        vy: 0,
 
-gl.blendFunc(
-    gl.SRC_ALPHA,
-    gl.ONE_MINUS_SRC_ALPHA
-);
+        speed: 0,
+        distance: 1,
+        proximity: 0,
+        anticipation: 0,
+        contact: 0,
+        contactTime: 0,
+        continuity: 0,
 
-gl.disable(
-    gl.CULL_FACE
-);
+        lastMove: 0,
+        down: false
+    };
 
+    function pointerWorld() {
+        return {
+            x:
+                (
+                    pointer.x -
+                    0.5
+                ) *
+                3.0,
 
-// ============================================================
-// RENDER
-// ============================================================
+            y:
+                (
+                    0.5 -
+                    pointer.y
+                ) *
+                2.2,
 
-function render(now) {
+            z: 0
+        };
+    }
 
-    const delta =
-        Math.min(
-            0.05,
+    function updatePointer(
+        now,
+        dt
+    ) {
+        const dx =
+            pointer.x -
+            pointer.prevX;
+
+        const dy =
+            pointer.y -
+            pointer.prevY;
+
+        pointer.vx =
+            dx /
+            Math.max(
+                dt,
+                0.001
+            );
+
+        pointer.vy =
+            dy /
+            Math.max(
+                dt,
+                0.001
+            );
+
+        pointer.speed =
+            clamp(
+                Math.hypot(
+                    dx,
+                    dy
+                ) *
+                34,
+                0,
+                1
+            );
+
+        pointer.prevX =
+            pointer.x;
+
+        pointer.prevY =
+            pointer.y;
+
+        const cx = 0.5;
+        const cy = 0.5;
+
+        pointer.distance =
+            clamp(
+                Math.hypot(
+                    pointer.x - cx,
+                    pointer.y - cy
+                ) /
+                0.55,
+                0,
+                1
+            );
+
+        pointer.proximity =
+            pointer.inside
+                ? 1 -
+                  pointer.distance
+                : 0;
+
+        const approach =
+            clamp(
+                (
+                    -pointer.vx *
+                    (
+                        pointer.x -
+                        cx
+                    ) -
+
+                    pointer.vy *
+                    (
+                        pointer.y -
+                        cy
+                    )
+                ) *
+                3.0,
+                0,
+                1
+            );
+
+        pointer.anticipation =
+            pointer.proximity *
             (
-                now -
-                lastTime
-            ) /
-            1000
+                0.30 +
+                approach *
+                0.70
+            );
+
+        if (pointer.down) {
+
+            pointer.contact =
+                lerp(
+                    pointer.contact,
+                    1,
+                    1 -
+                    Math.exp(
+                        -dt * 11
+                    )
+                );
+
+            pointer.contactTime +=
+                dt;
+
+        } else {
+
+            pointer.contact =
+                lerp(
+                    pointer.contact,
+                    0,
+                    1 -
+                    Math.exp(
+                        -dt * 7
+                    )
+                );
+
+            pointer.contactTime =
+                0;
+        }
+
+        if (
+            now -
+            pointer.lastMove <
+            0.20
+        ) {
+            pointer.continuity =
+                lerp(
+                    pointer.continuity,
+                    1,
+                    1 -
+                    Math.exp(
+                        -dt * 4
+                    )
+                );
+        } else {
+            pointer.continuity =
+                lerp(
+                    pointer.continuity,
+                    0,
+                    1 -
+                    Math.exp(
+                        -dt * 1.2
+                    )
+                );
+        }
+    }
+
+    function injectStimulus(
+        dt
+    ) {
+        const pw =
+            pointerWorld();
+
+        for (
+            let i = 0;
+            i < neural.length;
+            i++
+        ) {
+            const n =
+                neural[i];
+
+            const d =
+                Math.sqrt(
+                    (
+                        n.x -
+                        pw.x
+                    ) *
+                    (
+                        n.x -
+                        pw.x
+                    ) +
+
+                    (
+                        n.y -
+                        pw.y
+                    ) *
+                    (
+                        n.y -
+                        pw.y
+                    ) +
+
+                    (
+                        n.z -
+                        pw.z
+                    ) *
+                    (
+                        n.z -
+                        pw.z
+                    ) *
+                    0.7
+                );
+
+            const influence =
+                Math.exp(
+                    -d * d * 2.8
+                ) *
+                pointer.proximity;
+
+            const touch =
+                influence *
+                (
+                    0.35 +
+                    pointer.contact *
+                    1.7 +
+                    pointer.anticipation *
+                    0.38
+                );
+
+            n.energy +=
+                touch *
+                P.pointerEnergy *
+                dt;
+
+            n.memory +=
+                touch *
+                0.09 *
+                dt;
+        }
+    }
+
+    // ------------------------------------------------------------
+    // SIMULACIÓ
+    // ------------------------------------------------------------
+
+    function simulate(
+        dt,
+        time
+    ) {
+        injectStimulus(dt);
+
+        /*
+         * Activitat basal no periòdica.
+         * La variació depèn de l'estat intern actual.
+         */
+        const globalVariation =
+            Math.sin(
+                time * 0.071 +
+                organism.memory * 5.1
+            ) *
+            0.5 +
+
+            Math.sin(
+                time * 0.037 +
+                organism.temperature * 7.3
+            ) *
+            0.5;
+
+        const energyDelta =
+            new Float32Array(
+                neural.length
+            );
+
+        const tempDelta =
+            new Float32Array(
+                neural.length
+            );
+
+        /*
+         * Energia basal + dissipació.
+         */
+        for (
+            let i = 0;
+            i < neural.length;
+            i++
+        ) {
+            const n =
+                neural[i];
+
+            const basal =
+                P.energyBase *
+                (
+                    0.55 +
+                    0.45 *
+                    (
+                        0.5 +
+                        globalVariation *
+                        0.5
+                    )
+                );
+
+            energyDelta[i] +=
+                basal *
+                dt;
+
+            energyDelta[i] -=
+                P.energyDissipation *
+                n.energy *
+                dt;
+
+            /*
+             * Una mica d'impuls quan
+             * l'organització és alta.
+             */
+            energyDelta[i] +=
+                (
+                    organism.coherence -
+                    0.5
+                ) *
+                0.018 *
+                dt;
+        }
+
+        /*
+         * Difusió d'energia i temperatura
+         * pel graf neuronal.
+         */
+        for (
+            let k = 0;
+            k < links.length;
+            k++
+        ) {
+            const a =
+                neural[
+                    links[k].a
+                ];
+
+            const b =
+                neural[
+                    links[k].b
+                ];
+
+            const e =
+                (
+                    b.energy -
+                    a.energy
+                ) *
+                P.energyDiffusion *
+                dt;
+
+            energyDelta[
+                links[k].a
+            ] += e;
+
+            energyDelta[
+                links[k].b
+            ] -= e;
+
+            const t =
+                (
+                    b.temperature -
+                    a.temperature
+                ) *
+                P.temperatureDiffusion *
+                dt;
+
+            tempDelta[
+                links[k].a
+            ] += t;
+
+            tempDelta[
+                links[k].b
+            ] -= t;
+        }
+
+        let totalEnergy = 0;
+        let totalActivity = 0;
+        let totalTemp = 0;
+        let totalMemory = 0;
+        let totalLum = 0;
+
+        let alignment = 0;
+
+        /*
+         * Evolució individual del teixit.
+         */
+        for (
+            let i = 0;
+            i < neural.length;
+            i++
+        ) {
+            const n =
+                neural[i];
+
+            /*
+             * Energia.
+             */
+            n.energy =
+                clamp(
+                    n.energy +
+                    energyDelta[i],
+                    0,
+                    1.6
+                );
+
+            /*
+             * Activitat derivada de l'energia
+             * i de la temperatura.
+             */
+            const targetActivity =
+                smooth(
+                    0.10,
+                    0.72,
+                    n.energy
+                ) *
+                (
+                    0.55 +
+                    n.temperature *
+                    0.65
+                );
+
+            n.activity =
+                lerp(
+                    n.activity,
+                    targetActivity,
+                    1 -
+                    Math.exp(
+                        -dt * 3.2
+                    )
+                );
+
+            /*
+             * Temperatura:
+             *
+             * activitat → escalfor
+             * dissipació → refredament
+             */
+            const heating =
+                P.heating *
+                n.activity *
+                dt;
+
+            const cooling =
+                P.cooling *
+                (
+                    n.temperature -
+                    P.temperatureBase
+                ) *
+                dt;
+
+            n.temperature =
+                clamp(
+                    n.temperature +
+                    heating -
+                    cooling +
+                    tempDelta[i],
+                    0.05,
+                    1.0
+                );
+
+            /*
+             * Memòria lenta.
+             *
+             * No és un historial.
+             * És una alteració persistent
+             * de la sensibilitat local.
+             */
+            n.memory =
+                clamp(
+                    n.memory +
+                    (
+                        P.memoryGain *
+                        n.activity -
+
+                        P.memoryDecay *
+                        n.memory
+                    ) *
+                    dt,
+                    0,
+                    1
+                );
+
+            /*
+             * Flux intern.
+             *
+             * No és una trajectòria fixa:
+             * temperatura i estat alteren
+             * la seva intensitat.
+             */
+            const fx =
+                -n.y * 0.12 +
+                Math.sin(
+                    time * 0.047 +
+                    n.z * 4.0 +
+                    n.phase
+                ) *
+                0.08;
+
+            const fy =
+                n.x * 0.12 +
+                Math.cos(
+                    time * 0.053 +
+                    n.x * 3.0
+                ) *
+                0.08;
+
+            const fz =
+                Math.sin(
+                    time * 0.061 +
+                    n.x * 2.0 -
+                    n.y * 2.0
+                ) *
+                0.045;
+
+            const tempSpeed =
+                0.55 +
+                n.temperature *
+                P.flowTemperature;
+
+            n.flowX =
+                lerp(
+                    n.flowX,
+                    fx * tempSpeed,
+                    1 -
+                    Math.exp(
+                        -dt * 1.6
+                    )
+                );
+
+            n.flowY =
+                lerp(
+                    n.flowY,
+                    fy * tempSpeed,
+                    1 -
+                    Math.exp(
+                        -dt * 1.6
+                    )
+                );
+
+            n.flowZ =
+                lerp(
+                    n.flowZ,
+                    fz * tempSpeed,
+                    1 -
+                    Math.exp(
+                        -dt * 1.6
+                    )
+                );
+
+            /*
+             * Lluminescència amb retard.
+             *
+             * Activitat no significa llum immediata.
+             */
+            const lumTarget =
+                n.activity *
+                (
+                    0.35 +
+                    n.memory * 0.65
+                ) *
+                P.luminescenceGain;
+
+            n.lum =
+                clamp(
+                    n.lum +
+                    (
+                        lumTarget -
+                        n.lum
+                    ) *
+                    (
+                        1 -
+                        Math.exp(
+                            -dt *
+                            P.luminescenceDecay
+                        )
+                    ),
+                    0,
+                    1
+                );
+
+            /*
+             * Moviment físic mínim.
+             *
+             * La posició és conseqüència
+             * del camp intern.
+             */
+            n.vx +=
+                n.flowX *
+                P.flowStrength *
+                dt;
+
+            n.vy +=
+                n.flowY *
+                P.flowStrength *
+                dt;
+
+            n.vz +=
+                n.flowZ *
+                P.flowStrength *
+                dt;
+
+            n.vx *=
+                Math.pow(
+                    P.flowDamping,
+                    dt
+                );
+
+            n.vy *=
+                Math.pow(
+                    P.flowDamping,
+                    dt
+                );
+
+            n.vz *=
+                Math.pow(
+                    P.flowDamping,
+                    dt
+                );
+
+            n.x +=
+                n.vx *
+                dt *
+                0.20;
+
+            n.y +=
+                n.vy *
+                dt *
+                0.20;
+
+            n.z +=
+                n.vz *
+                dt *
+                0.16;
+
+            /*
+             * Restauració cap a l'estructura hexagonal.
+             *
+             * Conserva organització sense fer reset.
+             */
+            const rr =
+                Math.hypot(
+                    n.x,
+                    n.y
+                );
+
+            const maxR =
+                P.neuralRadius *
+                (
+                    0.84 -
+                    Math.abs(n.z) *
+                    0.12
+                );
+
+            if (
+                rr >
+                maxR
+            ) {
+                const q =
+                    (
+                        rr -
+                        maxR
+                    ) /
+                    Math.max(
+                        rr,
+                        0.001
+                    );
+
+                n.vx -=
+                    n.x *
+                    q *
+                    0.8 *
+                    dt;
+
+                n.vy -=
+                    n.y *
+                    q *
+                    0.8 *
+                    dt;
+            }
+
+            n.z =
+                clamp(
+                    n.z,
+                    -P.neuralDepth *
+                        0.52,
+                    P.neuralDepth *
+                        0.52
+                );
+
+            totalEnergy +=
+                n.energy;
+
+            totalActivity +=
+                n.activity;
+
+            totalTemp +=
+                n.temperature;
+
+            totalMemory +=
+                n.memory;
+
+            totalLum +=
+                n.lum;
+        }
+
+        /*
+         * Coherència:
+         *
+         * mesura la similitud local
+         * d'energia entre connexions.
+         */
+        let localVariance = 0;
+
+        for (
+            let k = 0;
+            k < links.length;
+            k++
+        ) {
+            const a =
+                neural[
+                    links[k].a
+                ];
+
+            const b =
+                neural[
+                    links[k].b
+                ];
+
+            localVariance +=
+                Math.abs(
+                    a.energy -
+                    b.energy
+                );
+        }
+
+        localVariance /=
+            Math.max(
+                links.length,
+                1
+            );
+
+        alignment =
+            clamp(
+                1 -
+                localVariance *
+                2.3,
+                0,
+                1
+            );
+
+        /*
+         * Estat global de l'organisme.
+         */
+        organism.energy =
+            lerp(
+                organism.energy,
+                clamp(
+                    totalEnergy /
+                    neural.length *
+                    0.95,
+                    0,
+                    1
+                ),
+                1 -
+                Math.exp(
+                    -dt * 2
+                )
+            );
+
+        organism.activity =
+            lerp(
+                organism.activity,
+                clamp(
+                    totalActivity /
+                    neural.length,
+                    0,
+                    1
+                ),
+                1 -
+                Math.exp(
+                    -dt * 2.5
+                )
+            );
+
+        organism.temperature =
+            lerp(
+                organism.temperature,
+                totalTemp /
+                neural.length,
+                1 -
+                Math.exp(
+                    -dt * 1.2
+                )
+            );
+
+        organism.memory =
+            lerp(
+                organism.memory,
+                totalMemory /
+                neural.length,
+                1 -
+                Math.exp(
+                    -dt * 0.75
+                )
+            );
+
+        organism.luminescence =
+            lerp(
+                organism.luminescence,
+                totalLum /
+                neural.length,
+                1 -
+                Math.exp(
+                    -dt * 3
+                )
+            );
+
+        organism.coherence =
+            lerp(
+                organism.coherence,
+                alignment,
+                1 -
+                Math.exp(
+                    -dt * 1.5
+                )
+            );
+
+        /*
+         * Organització:
+         *
+         * coherència +
+         * temperatura +
+         * memòria
+         */
+        organism.organization =
+            clamp(
+                organism.coherence *
+                    0.62 +
+
+                (
+                    1 -
+                    organism.temperature
+                ) *
+                    0.18 +
+
+                organism.memory *
+                    0.20,
+
+                0,
+                1
+            );
+
+        /*
+         * Variació:
+         *
+         * activitat +
+         * pèrdua de coherència +
+         * fluctuació.
+         */
+        organism.variation =
+            clamp(
+                0.08 +
+                organism.activity *
+                    0.30 +
+
+                (
+                    1 -
+                    organism.coherence
+                ) *
+                    0.42 +
+
+                Math.abs(
+                    globalVariation
+                ) *
+                    0.12,
+
+                0,
+                1
+            );
+
+        /*
+         * Flux global.
+         */
+        organism.flow =
+            clamp(
+                organism.activity *
+                    0.52 +
+
+                organism.temperature *
+                    0.30 +
+
+                (
+                    1 -
+                    organism.coherence
+                ) *
+                    0.18,
+
+                0,
+                1
+            );
+
+        /*
+         * Permeabilitat.
+         *
+         * No és "confiança".
+         * És una propietat física computacional
+         * derivada de l'estat del sistema.
+         */
+        organism.permeability =
+            clamp(
+                0.08 +
+                organism.organization *
+                    0.36 +
+
+                organism.memory *
+                    0.18 +
+
+                pointer.anticipation *
+                    0.22,
+
+                0,
+                1
+            );
+
+        /*
+         * La càmera és una sortida del sistema.
+         */
+        organism.cameraTarget =
+            clamp(
+                organism.permeability *
+                    0.72 +
+
+                pointer.anticipation *
+                    0.16 +
+
+                organism.activity *
+                    0.12,
+
+                0,
+                1
+            );
+
+        organism.cameraDepth =
+            lerp(
+                organism.cameraDepth,
+                organism.cameraTarget,
+                1 -
+                Math.exp(
+                    -dt *
+                    P.cameraResponse
+                )
+            );
+
+        /*
+         * Pressió del baix.
+         */
+        organism.bassPressure =
+            lerp(
+                organism.bassPressure,
+                clamp(
+                    0.28 +
+                    organism.energy *
+                        0.65 +
+                    organism.memory *
+                        0.22,
+                    0,
+                    1
+                ),
+                1 -
+                Math.exp(
+                    -dt * 1.8
+                )
+            );
+
+        /*
+         * Pressió d'esdeveniments sonors.
+         */
+        organism.eventPressure =
+            clamp(
+                organism.activity *
+                    0.58 +
+
+                organism.luminescence *
+                    0.25 +
+
+                pointer.contact *
+                    0.38,
+
+                0,
+                1
+            );
+    }
+
+    // ------------------------------------------------------------
+    // BUFFERS DE DADES
+    // ------------------------------------------------------------
+
+    function updateBuffers() {
+
+        for (
+            let i = 0;
+            i < neural.length;
+            i++
+        ) {
+            const n =
+                neural[i];
+
+            const o =
+                i * 3;
+
+            neuralPositionData[o] =
+                n.x;
+
+            neuralPositionData[o + 1] =
+                n.y;
+
+            neuralPositionData[o + 2] =
+                n.z;
+
+            neuralEnergyData[i] =
+                clamp(
+                    n.energy *
+                        0.82,
+                    0,
+                    1
+                );
+
+            neuralTempData[i] =
+                n.temperature;
+
+            neuralLumData[i] =
+                n.lum;
+        }
+
+        for (
+            let k = 0;
+            k < links.length;
+            k++
+        ) {
+            const a =
+                neural[
+                    links[k].a
+                ];
+
+            const b =
+                neural[
+                    links[k].b
+                ];
+
+            const o =
+                k * 6;
+
+            linePositionData[o] =
+                a.x;
+
+            linePositionData[o + 1] =
+                a.y;
+
+            linePositionData[o + 2] =
+                a.z;
+
+            linePositionData[o + 3] =
+                b.x;
+
+            linePositionData[o + 4] =
+                b.y;
+
+            linePositionData[o + 5] =
+                b.z;
+
+            lineEnergyData[k * 2] =
+                clamp(
+                    a.energy * 0.72 +
+                    a.lum * 0.28,
+                    0,
+                    1
+                );
+
+            lineEnergyData[
+                k * 2 + 1
+            ] =
+                clamp(
+                    b.energy * 0.72 +
+                    b.lum * 0.28,
+                    0,
+                    1
+                );
+
+            lineTempData[k * 2] =
+                a.temperature;
+
+            lineTempData[
+                k * 2 + 1
+            ] =
+                b.temperature;
+        }
+
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            neuralPosBuffer
         );
 
+        gl.bufferSubData(
+            gl.ARRAY_BUFFER,
+            0,
+            neuralPositionData
+        );
 
-    lastTime =
-        now;
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            neuralEnergyBuffer
+        );
 
-    time +=
-        delta;
+        gl.bufferSubData(
+            gl.ARRAY_BUFFER,
+            0,
+            neuralEnergyData
+        );
 
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            neuralTempBuffer
+        );
 
-    // --------------------------------------------------------
-    // POINTER
-    // --------------------------------------------------------
+        gl.bufferSubData(
+            gl.ARRAY_BUFFER,
+            0,
+            neuralTempData
+        );
 
-    updatePerception();
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            neuralLumBuffer
+        );
 
+        gl.bufferSubData(
+            gl.ARRAY_BUFFER,
+            0,
+            neuralLumData
+        );
 
-    // --------------------------------------------------------
-    // ORGANISME
-    // --------------------------------------------------------
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            linePosBuffer
+        );
 
-    simulateNeural();
+        gl.bufferSubData(
+            gl.ARRAY_BUFFER,
+            0,
+            linePositionData
+        );
 
-    updateBodyGeometry();
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            lineEnergyBuffer
+        );
 
-    updateMatrices();
+        gl.bufferSubData(
+            gl.ARRAY_BUFFER,
+            0,
+            lineEnergyData
+        );
 
-    updateAudio();
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            lineTempBuffer
+        );
 
+        gl.bufferSubData(
+            gl.ARRAY_BUFFER,
+            0,
+            lineTempData
+        );
+    }
 
-    // --------------------------------------------------------
-    // CLEAR
-    // --------------------------------------------------------
+    // ------------------------------------------------------------
+    // RENDER
+    // ------------------------------------------------------------
 
-    gl.clearColor(
-        0.018,
-        0.012,
-        0.022,
-        1
+    let projection =
+        mat4Identity();
+
+    function resize() {
+
+        const dpr =
+            Math.min(
+                window.devicePixelRatio || 1,
+                P.maxDpr
+            );
+
+        const w =
+            Math.max(
+                1,
+                Math.floor(
+                    innerWidth *
+                    dpr
+                )
+            );
+
+        const h =
+            Math.max(
+                1,
+                Math.floor(
+                    innerHeight *
+                    dpr
+                )
+            );
+
+        if (
+            canvas.width !== w ||
+            canvas.height !== h
+        ) {
+            canvas.width = w;
+            canvas.height = h;
+        }
+
+        gl.viewport(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        projection =
+            perspective(
+                Math.PI / 3.1,
+                canvas.width /
+                    canvas.height,
+                0.05,
+                30
+            );
+    }
+
+    window.addEventListener(
+        "resize",
+        resize,
+        {
+            passive: true
+        }
     );
 
+    resize();
 
-    gl.clear(
-        gl.COLOR_BUFFER_BIT |
-        gl.DEPTH_BUFFER_BIT
+    function modelView(
+        time
+    ) {
+        /*
+         * Exterior ↔ interior.
+         */
+        const d =
+            lerp(
+                P.cameraOutside,
+                P.cameraInside,
+                organism.cameraDepth
+            );
+
+        /*
+         * Petita deriva perceptiva.
+         */
+        const yaw =
+            Math.sin(
+                time * 0.071
+            ) *
+            0.17 +
+
+            (
+                pointer.x -
+                0.5
+            ) *
+            0.10;
+
+        const pitch =
+            Math.cos(
+                time * 0.053
+            ) *
+            0.09 +
+
+            (
+                0.5 -
+                pointer.y
+            ) *
+            0.06;
+
+        const roll =
+            Math.sin(
+                time * 0.031
+            ) *
+            0.035;
+
+        const objectRotation =
+            mat4Multiply(
+                rotateZ(roll),
+                mat4Multiply(
+                    rotateY(yaw),
+                    rotateX(pitch)
+                )
+            );
+
+        const camera =
+            translate(
+                0,
+                0,
+                -d
+            );
+
+        return mat4Multiply(
+            camera,
+            objectRotation
+        );
+    }
+
+    function drawBody(
+        mvp,
+        time
+    ) {
+        gl.useProgram(
+            bodyProgram
+        );
+
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            bodyPosBuffer
+        );
+
+        gl.enableVertexAttribArray(
+            bodyA.aPosition
+        );
+
+        gl.vertexAttribPointer(
+            bodyA.aPosition,
+            3,
+            gl.FLOAT,
+            false,
+            0,
+            0
+        );
+
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            bodyDepthBuffer
+        );
+
+        gl.enableVertexAttribArray(
+            bodyA.aDepth
+        );
+
+        gl.vertexAttribPointer(
+            bodyA.aDepth,
+            1,
+            gl.FLOAT,
+            false,
+            0,
+            0
+        );
+
+        gl.bindBuffer(
+            gl.ELEMENT_ARRAY_BUFFER,
+            bodyIndexBuffer
+        );
+
+        gl.uniformMatrix4fv(
+            bodyU.uMVP,
+            false,
+            mvp
+        );
+
+        gl.uniform1f(
+            bodyU.uTime,
+            time
+        );
+
+        gl.uniform1f(
+            bodyU.uBreath,
+            P.bodyBreath *
+            (
+                0.65 +
+                organism.energy *
+                    0.8
+            )
+        );
+
+        gl.uniform1f(
+            bodyU.uEnergy,
+            organism.energy
+        );
+
+        gl.uniform1f(
+            bodyU.uTemperature,
+            organism.temperature
+        );
+
+        gl.uniform1f(
+            bodyU.uVariation,
+            organism.variation
+        );
+
+        gl.enable(
+            gl.BLEND
+        );
+
+        gl.blendFunc(
+            gl.SRC_ALPHA,
+            gl.ONE_MINUS_SRC_ALPHA
+        );
+
+        /*
+         * La carcassa no escriu profunditat,
+         * perquè volem poder veure el teixit intern.
+         */
+        gl.depthMask(false);
+
+        gl.drawElements(
+            gl.TRIANGLES,
+            bodyIndices.length,
+            gl.UNSIGNED_SHORT,
+            0
+        );
+
+        gl.depthMask(true);
+    }
+
+    function bindAttrib(
+        buffer,
+        location,
+        size
+    ) {
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            buffer
+        );
+
+        gl.enableVertexAttribArray(
+            location
+        );
+
+        gl.vertexAttribPointer(
+            location,
+            size,
+            gl.FLOAT,
+            false,
+            0,
+            0
+        );
+    }
+
+    function drawNeural(
+        mvp,
+        time
+    ) {
+        gl.useProgram(
+            neuralProgram
+        );
+
+        bindAttrib(
+            neuralPosBuffer,
+            neuralA.aPosition,
+            3
+        );
+
+        bindAttrib(
+            neuralEnergyBuffer,
+            neuralA.aEnergy,
+            1
+        );
+
+        bindAttrib(
+            neuralTempBuffer,
+            neuralA.aTemp,
+            1
+        );
+
+        bindAttrib(
+            neuralLumBuffer,
+            neuralA.aLum,
+            1
+        );
+
+        gl.uniformMatrix4fv(
+            neuralU.uMVP,
+            false,
+            mvp
+        );
+
+        gl.uniform1f(
+            neuralU.uTime,
+            time
+        );
+
+        gl.uniform1f(
+            neuralU.uPointSize,
+            Math.min(
+                canvas.width,
+                canvas.height
+            ) *
+            0.0072
+        );
+
+        gl.enable(
+            gl.BLEND
+        );
+
+        gl.blendFunc(
+            gl.SRC_ALPHA,
+            gl.ONE
+        );
+
+        gl.drawArrays(
+            gl.POINTS,
+            0,
+            neural.length
+        );
+    }
+
+    function drawLines(
+        mvp
+    ) {
+        gl.useProgram(
+            lineProgram
+        );
+
+        bindAttrib(
+            linePosBuffer,
+            lineA.aPosition,
+            3
+        );
+
+        bindAttrib(
+            lineEnergyBuffer,
+            lineA.aEnergy,
+            1
+        );
+
+        bindAttrib(
+            lineTempBuffer,
+            lineA.aTemp,
+            1
+        );
+
+        gl.uniformMatrix4fv(
+            lineU.uMVP,
+            false,
+            mvp
+        );
+
+        gl.lineWidth(1);
+
+        gl.enable(
+            gl.BLEND
+        );
+
+        gl.blendFunc(
+            gl.SRC_ALPHA,
+            gl.ONE
+        );
+
+        gl.drawArrays(
+            gl.LINES,
+            0,
+            links.length * 2
+        );
+    }
+
+    function drawAmbientParticles(
+        mvp,
+        time
+    ) {
+        const count = 34;
+
+        const data =
+            new Float32Array(
+                count * 4
+            );
+
+        for (
+            let i = 0;
+            i < count;
+            i++
+        ) {
+            const a =
+                i * 1.73;
+
+            const r =
+                1.35 +
+                Math.sin(
+                    a * 2.1
+                ) *
+                0.32;
+
+            data[i * 4] =
+                Math.cos(
+                    a +
+                    time * 0.018
+                ) *
+                r;
+
+            data[i * 4 + 1] =
+                Math.sin(
+                    a * 0.91 +
+                    time * 0.014
+                ) *
+                r *
+                0.72;
+
+            data[i * 4 + 2] =
+                Math.sin(
+                    a * 1.31 +
+                    time * 0.011
+                );
+
+            data[i * 4 + 3] =
+                0.15 +
+                0.25 *
+                (
+                    0.5 +
+                    0.5 *
+                    Math.sin(
+                        a +
+                        time * 0.08
+                    )
+                );
+        }
+
+        const buf =
+            drawAmbientParticles.buffer ||
+            (
+                drawAmbientParticles.buffer =
+                    gl.createBuffer()
+            );
+
+        gl.useProgram(
+            pointProgram
+        );
+
+        gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            buf
+        );
+
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            data,
+            gl.DYNAMIC_DRAW
+        );
+
+        gl.enableVertexAttribArray(
+            pointA.aPosition
+        );
+
+        gl.vertexAttribPointer(
+            pointA.aPosition,
+            3,
+            gl.FLOAT,
+            false,
+            16,
+            0
+        );
+
+        gl.enableVertexAttribArray(
+            pointA.aIntensity
+        );
+
+        gl.vertexAttribPointer(
+            pointA.aIntensity,
+            1,
+            gl.FLOAT,
+            false,
+            16,
+            12
+        );
+
+        gl.uniformMatrix4fv(
+            pointU.uMVP,
+            false,
+            mvp
+        );
+
+        gl.uniform1f(
+            pointU.uSize,
+            Math.min(
+                canvas.width,
+                canvas.height
+            ) *
+            0.0045
+        );
+
+        gl.enable(
+            gl.BLEND
+        );
+
+        gl.blendFunc(
+            gl.SRC_ALPHA,
+            gl.ONE
+        );
+
+        gl.drawArrays(
+            gl.POINTS,
+            0,
+            count
+        );
+    }
+
+    function render(
+        time
+    ) {
+        const mvp =
+            mat4Multiply(
+                projection,
+                modelView(time)
+            );
+
+        gl.clearColor(
+            0.008,
+            0.011,
+            0.014,
+            1
+        );
+
+        gl.clear(
+            gl.COLOR_BUFFER_BIT |
+            gl.DEPTH_BUFFER_BIT
+        );
+
+        gl.enable(
+            gl.DEPTH_TEST
+        );
+
+        gl.depthFunc(
+            gl.LEQUAL
+        );
+
+        /*
+         * Teixit primer:
+         * volem que sigui perceptible
+         * a través del cos translúcid.
+         */
+        drawNeural(
+            mvp,
+            time
+        );
+
+        drawLines(
+            mvp
+        );
+
+        /*
+         * Carcassa translúcida.
+         */
+        drawBody(
+            mvp,
+            time
+        );
+
+        /*
+         * Atmosfera microscòpica.
+         */
+        drawAmbientParticles(
+            mvp,
+            time
+        );
+
+        /*
+         * Segona passada molt fina
+         * per recuperar la silueta.
+         */
+        gl.depthMask(false);
+
+        drawBody(
+            mvp,
+            time
+        );
+
+        gl.depthMask(true);
+    }
+
+    // ------------------------------------------------------------
+    // AUDIO · Bb JAZZ ORGÀNIC
+    // ------------------------------------------------------------
+
+    let audio = null;
+
+    function midiToHz(m) {
+        return 440 *
+            Math.pow(
+                2,
+                (m - 69) / 12
+            );
+    }
+
+    function createAudio() {
+
+        if (audio) {
+            return audio;
+        }
+
+        const AC =
+            window.AudioContext ||
+            window.webkitAudioContext;
+
+        if (!AC) {
+            return null;
+        }
+
+        const ctx =
+            new AC();
+
+        const master =
+            ctx.createGain();
+
+        const compressor =
+            ctx.createDynamicsCompressor();
+
+        compressor.threshold.value =
+            -22;
+
+        compressor.knee.value =
+            18;
+
+        compressor.ratio.value =
+            3.5;
+
+        compressor.attack.value =
+            0.012;
+
+        compressor.release.value =
+            0.22;
+
+        master.gain.value =
+            P.audioMaster;
+
+        compressor
+            .connect(master)
+            .connect(ctx.destination);
+
+        /*
+         * BAIX
+         *
+         * Bb1 ≈ 58.27 Hz.
+         *
+         * És el cos de la criatura.
+         */
+        const bass =
+            ctx.createOscillator();
+
+        const bassFilter =
+            ctx.createBiquadFilter();
+
+        const bassGain =
+            ctx.createGain();
+
+        bass.type =
+            "sine";
+
+        bass.frequency.value =
+            P.bassHz;
+
+        bassFilter.type =
+            "lowpass";
+
+        bassFilter.frequency.value =
+            240;
+
+        bassFilter.Q.value =
+            0.55;
+
+        bassGain.gain.value =
+            0.0001;
+
+        bass
+            .connect(bassFilter)
+            .connect(bassGain)
+            .connect(compressor);
+
+        bass.start();
+
+        /*
+         * SUBHARMÒNIC
+         */
+        const sub =
+            ctx.createOscillator();
+
+        const subGain =
+            ctx.createGain();
+
+        sub.type =
+            "triangle";
+
+        sub.frequency.value =
+            P.bassHz / 2;
+
+        subGain.gain.value =
+            0.0001;
+
+        sub
+            .connect(subGain)
+            .connect(compressor);
+
+        sub.start();
+
+        /*
+         * PAD FM
+         *
+         * Bb4 com a centre harmònic.
+         */
+        const padCarrier =
+            ctx.createOscillator();
+
+        const padMod =
+            ctx.createOscillator();
+
+        const padModGain =
+            ctx.createGain();
+
+        const padFilter =
+            ctx.createBiquadFilter();
+
+        const padGain =
+            ctx.createGain();
+
+        padCarrier.type =
+            "sine";
+
+        padMod.type =
+            "sine";
+
+        padCarrier.frequency.value =
+            midiToHz(70);
+
+        padMod.frequency.value =
+            0.21;
+
+        padModGain.gain.value =
+            4.5;
+
+        padFilter.type =
+            "lowpass";
+
+        padFilter.frequency.value =
+            900;
+
+        padFilter.Q.value =
+            0.5;
+
+        padGain.gain.value =
+            0.0001;
+
+        padMod
+            .connect(padModGain)
+            .connect(padCarrier.frequency);
+
+        padCarrier
+            .connect(padFilter)
+            .connect(padGain)
+            .connect(compressor);
+
+        padCarrier.start();
+        padMod.start();
+
+        /*
+         * AIRE / TEXTURA
+         */
+        const noiseBuffer =
+            ctx.createBuffer(
+                1,
+                ctx.sampleRate * 2,
+                ctx.sampleRate
+            );
+
+        const noise =
+            noiseBuffer.getChannelData(0);
+
+        for (
+            let i = 0;
+            i < noise.length;
+            i++
+        ) {
+            const fade =
+                1 -
+                i /
+                noise.length;
+
+            noise[i] =
+                (
+                    Math.random() *
+                    2 -
+                    1
+                ) *
+                fade;
+        }
+
+        const noiseSource =
+            ctx.createBufferSource();
+
+        const noiseFilter =
+            ctx.createBiquadFilter();
+
+        const noiseGain =
+            ctx.createGain();
+
+        noiseSource.buffer =
+            noiseBuffer;
+
+        noiseSource.loop =
+            true;
+
+        noiseFilter.type =
+            "bandpass";
+
+        noiseFilter.frequency.value =
+            850;
+
+        noiseFilter.Q.value =
+            0.45;
+
+        noiseGain.gain.value =
+            P.audioTexture *
+            0.15;
+
+        noiseSource
+            .connect(noiseFilter)
+            .connect(noiseGain)
+            .connect(compressor);
+
+        noiseSource.start();
+
+        audio = {
+            ctx,
+
+            master,
+            compressor,
+
+            bass,
+            bassGain,
+            bassFilter,
+
+            sub,
+            subGain,
+
+            padCarrier,
+            padMod,
+            padGain,
+            padFilter,
+
+            noiseGain,
+
+            lastEvent: 0,
+            nextEvent: 0.8
+        };
+
+        return audio;
+    }
+
+    async function startAudio() {
+
+        const a =
+            createAudio();
+
+        if (!a) {
+            return;
+        }
+
+        if (
+            a.ctx.state ===
+            "suspended"
+        ) {
+            try {
+                await a.ctx.resume();
+            }
+            catch (_) {}
+        }
+    }
+
+    function audioEvent(
+        now
+    ) {
+        if (
+            !audio ||
+            audio.ctx.state !==
+                "running"
+        ) {
+            return;
+        }
+
+        const t =
+            audio.ctx.currentTime;
+
+        const energy =
+            organism.energy;
+
+        const temp =
+            organism.temperature;
+
+        const memory =
+            organism.memory;
+
+        const coherence =
+            organism.coherence;
+
+        /*
+         * Material harmònic al voltant
+         * de Bb:
+         *
+         * 1
+         * 3
+         * 5
+         * b7
+         * 9
+         * 11
+         * 13
+         */
+        const scale = [
+            58,
+            62,
+            65,
+            68,
+            72,
+            75,
+            79,
+            82
+        ];
+
+        const base =
+            scale[
+                Math.floor(
+                    rand(
+                        0,
+                        scale.length
+                    )
+                )
+            ];
+
+        const octave =
+            energy > 0.62
+                ? 12
+                : (
+                    energy < 0.28
+                        ? -12
+                        : 0
+                );
+
+        const midi =
+            base +
+            octave;
+
+        const hz =
+            midiToHz(
+                midi
+            );
+
+        const osc =
+            audio.ctx.createOscillator();
+
+        const g =
+            audio.ctx.createGain();
+
+        const f =
+            audio.ctx.createBiquadFilter();
+
+        const pan =
+            audio.ctx.createStereoPanner
+                ? audio.ctx.createStereoPanner()
+                : null;
+
+        /*
+         * Quan la coherència és alta,
+         * el so és més pur.
+         */
+        osc.type =
+            coherence > 0.66
+                ? "sine"
+                : "triangle";
+
+        osc.frequency.setValueAtTime(
+            hz,
+            t
+        );
+
+        osc.detune.setValueAtTime(
+            (
+                temp -
+                0.45
+            ) *
+            32,
+            t
+        );
+
+        f.type =
+            "lowpass";
+
+        f.frequency.setValueAtTime(
+            420 +
+            temp *
+            1500,
+            t
+        );
+
+        f.Q.value =
+            0.45 +
+            memory *
+            1.2;
+
+        const velocity =
+            P.audioEvent *
+            (
+                0.35 +
+                energy *
+                0.8
+            ) *
+            (
+                0.55 +
+                organism.luminescence *
+                0.65
+            );
+
+        const attack =
+            0.025 +
+            (
+                1 -
+                coherence
+            ) *
+            0.045;
+
+        const release =
+            0.42 +
+            memory *
+            0.9;
+
+        g.gain.setValueAtTime(
+            0.0001,
+            t
+        );
+
+        g.gain.exponentialRampToValueAtTime(
+            Math.max(
+                0.001,
+                velocity
+            ),
+            t +
+            attack
+        );
+
+        g.gain.exponentialRampToValueAtTime(
+            0.0001,
+            t +
+            attack +
+            release
+        );
+
+        osc
+            .connect(f)
+            .connect(g);
+
+        if (pan) {
+
+            pan.pan.value =
+                clamp(
+                    Math.sin(
+                        now * 0.37 +
+                        midi
+                    ) *
+                    0.34,
+                    -0.6,
+                    0.6
+                );
+
+            g
+                .connect(pan)
+                .connect(
+                    audio.compressor
+                );
+
+        } else {
+
+            g.connect(
+                audio.compressor
+            );
+        }
+
+        osc.start(t);
+
+        osc.stop(
+            t +
+            attack +
+            release +
+            0.05
+        );
+
+        audio.lastEvent =
+            now;
+    }
+
+    function updateAudio(
+        time,
+        dt
+    ) {
+        if (
+            !audio ||
+            audio.ctx.state !==
+                "running"
+        ) {
+            return;
+        }
+
+        const t =
+            audio.ctx.currentTime;
+
+        const energy =
+            organism.energy;
+
+        const temp =
+            organism.temperature;
+
+        const memory =
+            organism.memory;
+
+        const activity =
+            organism.activity;
+
+        const coherence =
+            organism.coherence;
+
+        /*
+         * BAIX:
+         * l'energia i la memòria
+         * en modifiquen la presència.
+         */
+        const bassTarget =
+            P.audioBass *
+            (
+                0.35 +
+                organism.bassPressure *
+                0.85
+            );
+
+        audio.bassGain.gain.setTargetAtTime(
+            bassTarget,
+            t,
+            0.14
+        );
+
+        audio.subGain.gain.setTargetAtTime(
+            P.audioBass *
+            0.12 *
+            (
+                0.4 +
+                energy
+            ),
+            t,
+            0.22
+        );
+
+        /*
+         * Temperatura → microdesafinació.
+         */
+        audio.bass.frequency.setTargetAtTime(
+            P.bassHz *
+            (
+                1 +
+                (
+                    temp -
+                    0.32
+                ) *
+                0.035 +
+
+                (
+                    coherence -
+                    0.6
+                ) *
+                0.012
+            ),
+            t,
+            0.18
+        );
+
+        audio.sub.frequency.setTargetAtTime(
+            P.bassHz /
+            2 *
+            (
+                1 +
+                (
+                    temp -
+                    0.32
+                ) *
+                0.018
+            ),
+            t,
+            0.22
+        );
+
+        audio.bassFilter.frequency.setTargetAtTime(
+            170 +
+            energy * 260 +
+            activity * 180,
+            t,
+            0.25
+        );
+
+        /*
+         * PAD:
+         *
+         * la memòria pot desplaçar
+         * el centre cap a una octava superior.
+         */
+        const padRoot =
+            midiToHz(
+                70 +
+                (
+                    memory >
+                    0.42
+                        ? 12
+                        : 0
+                )
+            );
+
+        audio.padCarrier.frequency.setTargetAtTime(
+            padRoot,
+            t,
+            0.45
+        );
+
+        audio.padMod.frequency.setTargetAtTime(
+            0.13 +
+            activity * 0.24 +
+            temp * 0.10,
+            t,
+            0.4
+        );
+
+        audio.padGain.gain.setTargetAtTime(
+            P.audioPad *
+            (
+                0.25 +
+                coherence * 0.7
+            ),
+            t,
+            0.55
+        );
+
+        audio.padFilter.frequency.setTargetAtTime(
+            650 +
+            temp * 1500 +
+            activity * 700,
+            t,
+            0.4
+        );
+
+        /*
+         * Textura.
+         */
+        audio.noiseGain.gain.setTargetAtTime(
+            P.audioTexture *
+            (
+                0.15 +
+                temp * 0.6 +
+                activity * 0.55
+            ),
+            t,
+            0.28
+        );
+
+        /*
+         * Esdeveniments harmònics.
+         *
+         * No hi ha un loop musical tancat.
+         * Els esdeveniments apareixen segons
+         * l'estat intern.
+         */
+        const eventProbability =
+            0.13 +
+            activity * 0.24 +
+            organism.luminescence *
+            0.16;
+
+        if (
+            time >
+                audio.nextEvent &&
+            Math.random() <
+                eventProbability *
+                dt *
+                4.0
+        ) {
+            audioEvent(time);
+
+            audio.nextEvent =
+                time +
+                0.38 +
+                Math.random() *
+                1.5 +
+                (
+                    1 -
+                    coherence
+                ) *
+                0.7;
+        }
+    }
+
+    // ------------------------------------------------------------
+    // INPUT
+    // ------------------------------------------------------------
+
+    function setPointer(
+        clientX,
+        clientY
+    ) {
+        pointer.x =
+            clamp(
+                clientX /
+                Math.max(
+                    innerWidth,
+                    1
+                ),
+                0,
+                1
+            );
+
+        pointer.y =
+            clamp(
+                clientY /
+                Math.max(
+                    innerHeight,
+                    1
+                ),
+                0,
+                1
+            );
+
+        pointer.lastMove =
+            performance.now() /
+            1000;
+    }
+
+    canvas.addEventListener(
+        "pointerenter",
+        e => {
+            pointer.inside =
+                true;
+
+            setPointer(
+                e.clientX,
+                e.clientY
+            );
+        },
+        {
+            passive: true
+        }
     );
 
+    canvas.addEventListener(
+        "pointermove",
+        e => {
+            pointer.inside =
+                true;
 
-    // --------------------------------------------------------
-    // INTERIOR
-    //
-    // El teixit existeix abans que la carcassa.
-    // --------------------------------------------------------
-
-    gl.depthMask(
-        true
+            setPointer(
+                e.clientX,
+                e.clientY
+            );
+        },
+        {
+            passive: true
+        }
     );
 
-    gl.enable(
-        gl.BLEND
+    canvas.addEventListener(
+        "pointerleave",
+        () => {
+            pointer.inside =
+                false;
+        },
+        {
+            passive: true
+        }
     );
 
-    gl.blendFunc(
-        gl.SRC_ALPHA,
-        gl.ONE_MINUS_SRC_ALPHA
+    /*
+     * El primer contacte també
+     * desperta el graph d'àudio.
+     */
+    canvas.addEventListener(
+        "pointerdown",
+        async e => {
+
+            pointer.down =
+                true;
+
+            pointer.inside =
+                true;
+
+            setPointer(
+                e.clientX,
+                e.clientY
+            );
+
+            await startAudio();
+
+            if (audio) {
+                audioEvent(
+                    performance.now() /
+                    1000
+                );
+            }
+        },
+        {
+            passive: true
+        }
     );
 
-
-    drawNeuralTissue();
-
-
-    // --------------------------------------------------------
-    // CARCASSA POSTERIOR
-    // --------------------------------------------------------
-
-    gl.depthMask(
-        false
+    window.addEventListener(
+        "pointerup",
+        () => {
+            pointer.down =
+                false;
+        },
+        {
+            passive: true
+        }
     );
 
-    prepareBody();
+    /*
+     * Un doble toc no ordena una acció
+     * visual directa: només augmenta
+     * lleugerament la permeabilitat.
+     *
+     * La resposta posterior continua
+     * sent calculada per l'organisme.
+     */
+    let lastTap = 0;
 
-    drawBodyPass(
-        true
+    canvas.addEventListener(
+        "pointerup",
+        () => {
+
+            const now =
+                performance.now() /
+                1000;
+
+            if (
+                now -
+                lastTap <
+                0.34
+            ) {
+                organism.permeability =
+                    clamp(
+                        organism.permeability +
+                        0.18,
+                        0,
+                        1
+                    );
+            }
+
+            lastTap =
+                now;
+        },
+        {
+            passive: true
+        }
     );
 
+    // ------------------------------------------------------------
+    // BUCLE
+    // ------------------------------------------------------------
 
-    // --------------------------------------------------------
-    // CARCASSA DAVANTERA
-    // --------------------------------------------------------
+    let last =
+        performance.now();
 
-    drawBodyPass(
-        false
-    );
+    let accumulator = 0;
 
+    const fixed =
+        1 / 60;
 
-    // --------------------------------------------------------
-    // ARESTES
-    // --------------------------------------------------------
+    function frame(
+        nowMs
+    ) {
+        const now =
+            nowMs / 1000;
 
-    gl.depthMask(
-        false
-    );
+        let dt =
+            Math.min(
+                (
+                    nowMs -
+                    last
+                ) /
+                1000,
+                0.05
+            );
 
-    drawHexagonalEdges();
+        last =
+            nowMs;
 
+        accumulator +=
+            dt;
 
-    gl.depthMask(
-        true
-    );
+        /*
+         * Simulació fixa:
+         * evita que la dinàmica canviï
+         * massa segons la velocitat
+         * de renderització.
+         */
+        while (
+            accumulator >=
+            fixed
+        ) {
+            updatePointer(
+                now,
+                fixed
+            );
 
+            simulate(
+                fixed,
+                now
+            );
+
+            accumulator -=
+                fixed;
+        }
+
+        updateBuffers();
+
+        updateAudio(
+            now,
+            dt
+        );
+
+        render(
+            now
+        );
+
+        requestAnimationFrame(
+            frame
+        );
+    }
+
+    /*
+     * Estat inicial:
+     * la medusa existeix abans
+     * que aparegui l'observador.
+     */
+    for (
+        let i = 0;
+        i < neural.length;
+        i++
+    ) {
+        neural[i].energy +=
+            Math.sin(
+                i * 2.17
+            ) *
+            0.012 +
+            0.018;
+    }
 
     requestAnimationFrame(
-        render
+        frame
     );
-}
 
-
-requestAnimationFrame(
-    render
-);
-
-
-// ============================================================
-// SEGURETAT
-// ============================================================
-
-window.addEventListener(
-    "blur",
-    () => {
-
-        pointer.down =
-            false;
-
-        pointer.inside =
-            false;
-    }
-);
-
-
-// ============================================================
-// FI
-// ============================================================
+})();
