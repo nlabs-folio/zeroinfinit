@@ -1,32 +1,3 @@
-// ============================================================
-// ZERO INFINIT · NODEN · MATÈRIA
-//
-// MOTOR MUSICAL + MATÈRIA MICROSCÒPICA + FOTONS
-//
-// MATÈRIA
-//      ↓
-// ESTAT
-//      ↓
-// CÀLCUL
-//      ↓
-// FENOMEN
-//      ↓
-// LLUM FOTÒNICA
-//      ↙       ↘
-// MATÈRIA     MÚSICA
-//
-// El punter no toca notes.
-// Modifica un estat musical.
-//
-// El cercle de quintes és latent.
-// La composició té memòria.
-// El silenci és un estat.
-// ============================================================
-
-
-// ============================================================
-// CANVAS
-// ============================================================
 
 const canvas =
     document.getElementById("cosmos");

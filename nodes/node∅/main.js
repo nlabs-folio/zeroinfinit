@@ -430,6 +430,271 @@ let previousPointerY = 0;
 let pointerSpeed = 0;
 let movementAccumulator = 0;
 let lastEventTime = 0;
+
+// ============================================================
+// FIELD INTERFACE STATE
+// Coordinates = observer position
+// Status = field response
+// ============================================================
+
+const coordXElement =
+    document.getElementById("coordX");
+
+const coordYElement =
+    document.getElementById("coordY");
+
+const statusElement =
+    document.getElementById("status");
+
+const fieldStatusElement =
+    document.getElementById("fieldStatus");
+
+const statusDotElement =
+    document.querySelector(".status-dot");
+
+
+let fieldState = "CALMA";
+let fieldStateTarget = "CALMA";
+
+let fieldActivity = 0;
+let fieldActivitySmooth = 0;
+
+let fieldStateHoldUntil = 0;
+
+
+// ------------------------------------------------------------
+// UPDATE COORDINATES
+// ------------------------------------------------------------
+
+function updateFieldCoordinates() {
+
+    if (!coordXElement || !coordYElement) {
+        return;
+    }
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+    if (
+        !rect.width ||
+        !rect.height
+    ) {
+        return;
+    }
+
+    const x =
+        ((pointerX - rect.left) / rect.width - 0.5) *
+        (rect.width / rect.height);
+
+    const y =
+        0.5 -
+        (pointerY - rect.top) / rect.height;
+
+    coordXElement.textContent =
+        x.toFixed(3);
+
+    coordYElement.textContent =
+        y.toFixed(3);
+}
+
+
+// ------------------------------------------------------------
+// FIELD STATE
+// ------------------------------------------------------------
+
+function updateFieldState() {
+
+    const now =
+        performance.now() / 1000;
+
+
+    /*
+     * Recent events contribute to the perceived
+     * activity of the field.
+     */
+    const recentEventEnergy =
+        events
+            .filter(Boolean)
+            .reduce(
+                (sum, event) => {
+
+                    const age =
+                        now - event.time;
+
+                    if (
+                        age < 0 ||
+                        age > 3.5
+                    ) {
+                        return sum;
+                    }
+
+                    return sum +
+                        event.strength *
+                        Math.exp(-age * 0.9);
+
+                },
+                0
+            );
+
+
+    /*
+     * Pointer movement + event activity.
+     */
+    fieldActivity =
+        Math.min(
+            1,
+            pointerSpeed * 0.72 +
+            recentEventEnergy * 0.12
+        );
+
+
+    /*
+     * Smooth the activity so the state does not
+     * flicker between CALMA / ACTIU.
+     */
+    fieldActivitySmooth +=
+        (
+            fieldActivity -
+            fieldActivitySmooth
+        ) * 0.055;
+
+
+    /*
+     * RESSONANT:
+     *
+     * Use the same harmonic pressure that already
+     * exists in the audio system.
+     *
+     * This makes the interface describe a real
+     * internal state rather than an independent UI state.
+     */
+    if (
+        harmony.pressure > 0.52 &&
+        fieldActivitySmooth > 0.24
+    ) {
+
+        fieldStateTarget =
+            "RESSONANT";
+
+        fieldStateHoldUntil =
+            now + 1.8;
+
+    }
+
+    /*
+     * ACTIU:
+     */
+    else if (
+        fieldActivitySmooth > 0.075
+    ) {
+
+        fieldStateTarget =
+            "ACTIU";
+
+        fieldStateHoldUntil =
+            Math.max(
+                fieldStateHoldUntil,
+                now + 0.35
+            );
+
+    }
+
+    /*
+     * CALMA:
+     *
+     * Only enter CALMA when the previous state
+     * has had enough time to decay.
+     */
+    else if (
+        now > fieldStateHoldUntil
+    ) {
+
+        fieldStateTarget =
+            "CALMA";
+    }
+
+
+    /*
+     * Slow state transition.
+     */
+    if (
+        fieldState !== fieldStateTarget
+    ) {
+
+        fieldState =
+            fieldStateTarget;
+
+        updateFieldStatusUI();
+    }
+}
+
+
+// ------------------------------------------------------------
+// STATUS UI
+// ------------------------------------------------------------
+
+function updateFieldStatusUI() {
+
+    if (!statusElement) {
+        return;
+    }
+
+    statusElement.textContent =
+        fieldState;
+
+
+    if (fieldStatusElement) {
+
+        fieldStatusElement.style.opacity =
+            fieldState === "CALMA"
+                ? "0.58"
+                : fieldState === "ACTIU"
+                    ? "0.82"
+                    : "1";
+    }
+
+
+    if (statusDotElement) {
+
+        if (fieldState === "CALMA") {
+
+            statusDotElement.style.opacity =
+                "0.44";
+
+            statusDotElement.style.transform =
+                "scale(1)";
+
+            statusDotElement.style.boxShadow =
+                "0 0 10px rgba(255, 165, 140, 0.20)";
+        }
+
+        else if (fieldState === "ACTIU") {
+
+            statusDotElement.style.opacity =
+                "0.72";
+
+            statusDotElement.style.transform =
+                "scale(1.25)";
+
+            statusDotElement.style.boxShadow =
+                "0 0 13px rgba(255, 165, 140, 0.32)";
+        }
+
+        else {
+
+            statusDotElement.style.opacity =
+                "1";
+
+            statusDotElement.style.transform =
+                "scale(1.5)";
+
+            statusDotElement.style.boxShadow =
+                "0 0 18px rgba(255, 165, 140, 0.48)";
+        }
+    }
+}
+
+
 // ============================================================
 // AUDIO
 // ============================================================
@@ -1338,6 +1603,9 @@ pointerSpeed *= 0.91;
 
 updateTonalCenter();
 updateAudio();
+
+updateFieldCoordinates();
+updateFieldState();
 
 const positionData =
     new Float32Array(MAX_EVENTS * 2);
