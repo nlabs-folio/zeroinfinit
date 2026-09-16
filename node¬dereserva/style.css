@@ -1,0 +1,155 @@
+:root {
+  --violet: #bd9cff;
+  --cyan: #8deaff;
+  --pink: #ff9edb;
+  --dark: #080613;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--dark);
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: Georgia, serif;
+  color: #eeeaff;
+}
+
+#universe {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 50%, #24174e 0%, #0e0a22 35%, #05040d 100%);
+}
+
+#space {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#interface {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#title {
+  position: absolute;
+  top: clamp(18px, 5vh, 50px);
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  letter-spacing: 0.32em;
+  text-shadow: 0 0 20px var(--violet);
+  white-space: nowrap;
+}
+
+#title span {
+  display: block;
+  font-size: clamp(18px, 3vw, 30px);
+}
+
+#title small {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(9px, 1.5vw, 13px);
+  letter-spacing: 0.18em;
+  opacity: 0.65;
+}
+
+#status {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(88px, 14vh, 130px);
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  opacity: 0.7;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#soundButton {
+  pointer-events: auto;
+  position: absolute;
+  left: 50%;
+  bottom: clamp(28px, 5vh, 52px);
+  transform: translateX(-50%);
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(210, 184, 255, 0.55);
+  border-radius: 50%;
+  color: white;
+  background: rgba(113, 74, 181, 0.2);
+  box-shadow:
+    0 0 15px rgba(198, 149, 255, 0.6),
+    inset 0 0 15px rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+
+#soundButton span {
+  display: block;
+  font-size: 22px;
+  transition: transform 0.4s ease;
+}
+
+#soundButton.active span {
+  transform: rotate(180deg);
+  color: var(--cyan);
+}
+
+#progressions {
+  pointer-events: auto;
+  position: absolute;
+  right: clamp(15px, 3vw, 42px);
+  bottom: clamp(25px, 5vh, 52px);
+  display: flex;
+  gap: 6px;
+}
+
+#progressions button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(205, 178, 255, 0.35);
+  border-radius: 50%;
+  color: #cab9ee;
+  background: rgba(30, 18, 63, 0.5);
+  font-family: Georgia, serif;
+  cursor: pointer;
+}
+
+#progressions button.active {
+  color: #fff;
+  background: rgba(180, 128, 255, 0.45);
+  box-shadow: 0 0 13px var(--violet);
+}
+
+@media (max-width: 600px) {
+  #progressions {
+    right: 14px;
+    bottom: 28px;
+  }
+
+  #status {
+    bottom: 94px;
+  }
+
+  #title {
+    top: 24px;
+  }
+}

@@ -1,0 +1,179 @@
+:root {
+  --night: #070511;
+  --violet: #bd9cff;
+  --violet-soft: #745cc7;
+  --cyan: #91edff;
+  --pink: #ffacd9;
+  --white: #f8f1ff;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--night);
+  touch-action: none;
+}
+
+body {
+  color: var(--white);
+  font-family: Georgia, "Times New Roman", serif;
+  user-select: none;
+}
+
+#universe {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at center,
+      #28184b 0%,
+      #100b27 38%,
+      #070511 100%
+    );
+}
+
+#space {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#interface {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#title {
+  position: absolute;
+  top: clamp(20px, 5vh, 50px);
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0 20px rgba(203, 157, 255, 0.75);
+}
+
+#title span {
+  display: block;
+  font-size: clamp(18px, 3vw, 30px);
+}
+
+#title small {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(9px, 1.45vw, 13px);
+  letter-spacing: 0.16em;
+  opacity: 0.62;
+}
+
+#status {
+  position: absolute;
+  bottom: clamp(88px, 14vh, 132px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  opacity: 0.72;
+  transition: opacity 1.5s ease;
+}
+
+#soundButton {
+  pointer-events: auto;
+  position: absolute;
+  bottom: clamp(26px, 5vh, 54px);
+  left: 50%;
+  width: 50px;
+  height: 50px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(221, 192, 255, 0.6);
+  border-radius: 50%;
+  color: white;
+  background: rgba(101, 69, 165, 0.22);
+  box-shadow:
+    0 0 16px rgba(203, 157, 255, 0.58),
+    inset 0 0 15px rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition:
+    background 0.4s ease,
+    box-shadow 0.4s ease;
+}
+
+#soundButton span {
+  display: block;
+  font-size: 22px;
+  transition: transform 0.5s ease;
+}
+
+#soundButton.active {
+  background: rgba(175, 110, 214, 0.38);
+  box-shadow:
+    0 0 25px rgba(255, 174, 231, 0.75),
+    inset 0 0 18px rgba(255, 255, 255, 0.17);
+}
+
+#soundButton.active span {
+  color: var(--cyan);
+  transform: rotate(180deg);
+}
+
+#progressions {
+  pointer-events: auto;
+  position: absolute;
+  right: clamp(14px, 3vw, 42px);
+  bottom: clamp(26px, 5vh, 54px);
+  display: flex;
+  gap: 6px;
+}
+
+#progressions button {
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 1px solid rgba(205, 178, 255, 0.38);
+  border-radius: 50%;
+  color: #c9b9ed;
+  background: rgba(34, 21, 67, 0.55);
+  font-family: Georgia, serif;
+  cursor: pointer;
+  transition:
+    color 0.3s ease,
+    background 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+#progressions button.active {
+  color: white;
+  background: rgba(180, 128, 255, 0.45);
+  box-shadow: 0 0 14px var(--violet);
+}
+
+@media (max-width: 600px) {
+  #title {
+    top: 24px;
+  }
+
+  #progressions {
+    right: 14px;
+    bottom: 29px;
+  }
+
+  #status {
+    bottom: 96px;
+  }
+}

@@ -1,109 +1,106 @@
 <!doctype html>
 <html lang="ca">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Quartz Void</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quartz Void — Documentary Passage</title>
 
-  <style>
-    :root {
-      --bg: #03050c;
-      --cyan: #62e8ff;
-      --blue: #327dff;
-      --violet: #ad76ff;
-      --white: #e3fbff;
-    }
+<style>
+:root {
+  --bg: #03050c;
+  --cyan: #62e8ff;
+  --blue: #327dff;
+  --violet: #ad76ff;
+}
 
-    * {
-      box-sizing: border-box;
-    }
+* { box-sizing: border-box; }
 
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: var(--bg);
-    }
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
 
-    body {
-      display: grid;
-      place-items: center;
-      color: var(--cyan);
-      font-family: monospace;
-      cursor: crosshair;
-      touch-action: none;
-    }
+body {
+  display: grid;
+  place-items: center;
+  color: var(--cyan);
+  font-family: monospace;
+  cursor: crosshair;
+  touch-action: none;
+}
 
-    #screen {
-      width: min(100vw, 1280px);
-      height: min(100vh, 720px);
-      aspect-ratio: 16 / 9;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      background: #03050c;
-      border: 1px solid #245482;
-      box-shadow:
-        0 0 0 5px #081121,
-        0 0 0 6px #153454,
-        0 0 50px rgba(42, 135, 220, .45),
-        inset 0 0 45px rgba(25, 90, 170, .25);
-    }
+canvas {
+  width: min(100vw, 1280px);
+  height: min(100vh, 720px);
+  aspect-ratio: 16 / 9;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #03050c;
+  border: 1px solid #245482;
+  box-shadow:
+    0 0 0 5px #081121,
+    0 0 0 6px #153454,
+    0 0 50px rgba(42,135,220,.45),
+    inset 0 0 45px rgba(25,90,170,.25);
+}
 
-    #startLayer {
-      position: fixed;
-      inset: 0;
-      z-index: 5;
-      display: grid;
-      place-items: center;
-      background: rgba(2, 5, 13, .8);
-      cursor: pointer;
-    }
+#start {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(2,5,13,.82);
+  cursor: pointer;
+}
 
-    #startLayer span {
-      padding: 18px 25px;
-      border: 1px solid var(--cyan);
-      color: var(--cyan);
-      background: #071426;
-      box-shadow:
-        0 0 14px rgba(80, 215, 255, .6),
-        inset 0 0 18px rgba(50, 130, 255, .2);
-      font-size: 12px;
-      letter-spacing: .18em;
-      text-align: center;
-    }
+#start span {
+  padding: 18px 25px;
+  border: 1px solid var(--cyan);
+  background: #071426;
+  box-shadow:
+    0 0 14px rgba(80,215,255,.6),
+    inset 0 0 18px rgba(50,130,255,.2);
+  font-size: 12px;
+  letter-spacing: .18em;
+  text-align: center;
+}
 
-    .hidden {
-      display: none !important;
-    }
-  </style>
+.hidden { display: none !important; }
+</style>
 </head>
 
 <body>
-  <canvas id="screen" width="320" height="180"></canvas>
 
-  <div id="startLayer">
-    <span>ENTER THE QUARTZ VOID</span>
-  </div>
+<canvas id="screen" width="320" height="180"></canvas>
+
+<div id="start">
+  <span>ENTER THE QUARTZ VOID</span>
+</div>
 
 <script>
 "use strict";
 
 /* ----------------------------------------------------
-   CONFIGURACIÓ GENERAL
+   CONFIGURACIÓ
 ----------------------------------------------------- */
 
 const canvas = document.querySelector("#screen");
 const ctx = canvas.getContext("2d", { alpha: false });
-const startLayer = document.querySelector("#startLayer");
 
+const start = document.querySelector("#start");
 const W = canvas.width;
 const H = canvas.height;
 
+const TAU = Math.PI * 2;
+
 const rand = (a, b) => a + Math.random() * (b - a);
-const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
+const midiToHz = n => 440 * Math.pow(2, (n - 69) / 12);
 
 let time = 0;
 let lastTime = performance.now();
@@ -112,50 +109,46 @@ let pointer = {
   x: W / 2,
   y: H / 2,
   targetX: W / 2,
-  targetY: H / 2,
-  active: false
+  targetY: H / 2
 };
 
 let camera = {
   x: 0,
   y: 0,
-  targetX: 0,
-  targetY: 0,
-  velocityX: 0,
-  velocityY: 0
+  vx: 0,
+  vy: 0,
+  zoom: 1,
+  targetZoom: 1
 };
 
 let crystals = [];
 let particles = [];
 let stars = [];
+let cultivationMode = false;
+let cultivationEnergy = 0;
+let cultivationPulse = 0;
 
-let activity = 0;
 let journey = 0;
+let activity = 0;
+let started = false;
+let lastResonance = -Infinity;
 
 /* ----------------------------------------------------
-   ÀUDIO
+   ÀUDIO PROCEDURAL
 ----------------------------------------------------- */
 
-let audio = null;
-let master = null;
-let masterFilter = null;
+let audio;
+let master;
+let masterFilter;
+let reverb;
+let reverbGain;
 
-let voidOsc = null;
-let voidGain = null;
-let voidFilter = null;
+let voidOsc;
+let voidGain;
+let voidFilter;
 
-let reverb = null;
-let reverbGain = null;
-
-let started = false;
-let lastResonance = 0;
-
-function midiToHz(note) {
-  return 440 * Math.pow(2, (note - 69) / 12);
-}
-
-function createImpulseResponse(duration = 6, decay = 3.5) {
-  const length = audio.sampleRate * duration;
+function impulseResponse(duration = 5.5, decay = 3.8) {
+  const length = Math.floor(audio.sampleRate * duration);
   const buffer = audio.createBuffer(2, length, audio.sampleRate);
 
   for (let channel = 0; channel < 2; channel++) {
@@ -163,45 +156,100 @@ function createImpulseResponse(duration = 6, decay = 3.5) {
 
     for (let i = 0; i < length; i++) {
       const t = i / length;
-      data[i] = (
-        Math.random() * 2 - 1
-      ) * Math.pow(1 - t, decay);
+      data[i] =
+        (Math.random() * 2 - 1) *
+        Math.pow(1 - t, decay) *
+        .55;
     }
   }
 
   return buffer;
 }
+function cultivateQuartz(dt) {
+  if (!cultivationMode) {
+    cultivationEnergy *= Math.pow(.96, dt);
+    return;
+  }
 
-function setupReverb(destination) {
-  reverb = audio.createConvolver();
-  reverb.buffer = createImpulseResponse(7, 4);
+  const worldX = camera.x + pointer.x - W / 2;
+  const worldY = camera.y + pointer.y - H / 2;
 
-  reverbGain = audio.createGain();
-  reverbGain.gain.value = .22;
+  let nearest = null;
+  let nearestDistance = Infinity;
 
-  reverb.connect(reverbGain);
-  reverbGain.connect(destination);
+  for (const crystal of crystals) {
+    const dx = crystal.x - worldX;
+    const dy = crystal.baseY - worldY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < nearestDistance) {
+      nearest = crystal;
+      nearestDistance = distance;
+    }
+  }
+
+  if (nearest && nearestDistance < 28) {
+    const influence = 1 - nearestDistance / 28;
+
+    nearest.targetHeight +=
+      .018 * influence * dt;
+
+    nearest.growth +=
+      .000035 * influence * dt;
+
+    nearest.resonance = clamp(
+      nearest.resonance + .003 * influence * dt,
+      0,
+      1
+    );
+
+    nearest.opacity = clamp(
+      nearest.opacity + .008 * influence * dt,
+      0,
+      1
+    );
+
+    cultivationEnergy = clamp(
+      cultivationEnergy + .012 * influence * dt,
+      0,
+      1
+    );
+
+    cultivationPulse += .08 * influence * dt;
+
+    if (
+      Math.random() <
+      .0025 * influence * dt
+    ) {
+      particles.push({
+        x: nearest.x,
+        y: nearest.baseY - nearest.height,
+        vx: rand(-.12, .12),
+        vy: rand(-.4, -.08),
+        life: rand(35, 70),
+        color: nearest.hue === "cyan"
+          ? "#d9fbff"
+          : "#f4d9ff"
+      });
+    }
+
+    if (
+      cultivationEnergy > .75 &&
+      Math.random() < .004 * dt
+    ) {
+      crystalResonance(
+        .35 + influence * .45,
+        (pointer.x / W - .5) * 2,
+        nearest.scale
+      );
+
+      cultivationEnergy *= .45;
+    }
+  }
+
+  cultivationPulse *= Math.pow(.9, dt);
 }
 
-function makeLFO(min, max, speed) {
-  const oscillator = audio.createOscillator();
-  const gain = audio.createGain();
-  const offset = audio.createConstantSource();
-
-  oscillator.type = "sine";
-  oscillator.frequency.value = speed;
-
-  gain.gain.value = (max - min) / 2;
-  offset.offset.value = (max + min) / 2;
-
-  oscillator.connect(gain);
-  offset.connect(gain);
-
-  oscillator.start();
-  offset.start();
-
-  return gain;
-}
 
 function startAudio() {
   if (started) {
@@ -213,167 +261,200 @@ function startAudio() {
   audio = new AudioContext();
 
   master = audio.createGain();
-  master.gain.value = .055;
+  master.gain.value = .075;
 
   masterFilter = audio.createBiquadFilter();
   masterFilter.type = "lowpass";
-  masterFilter.frequency.value = 5200;
+  masterFilter.frequency.value = 4200;
   masterFilter.Q.value = .55;
 
   const compressor = audio.createDynamicsCompressor();
-  compressor.threshold.value = -30;
-  compressor.knee.value = 20;
+  compressor.threshold.value = -28;
+  compressor.knee.value = 18;
   compressor.ratio.value = 3;
-  compressor.attack.value = .02;
-  compressor.release.value = .6;
+  compressor.attack.value = .025;
+  compressor.release.value = .7;
 
   master.connect(masterFilter);
   masterFilter.connect(compressor);
   compressor.connect(audio.destination);
 
-  setupReverb(compressor);
+  reverb = audio.createConvolver();
+  reverb.buffer = impulseResponse();
 
-  /* El buit: greu lent i profund */
+  reverbGain = audio.createGain();
+  reverbGain.gain.value = .24;
+
+  reverb.connect(reverbGain);
+  reverbGain.connect(compressor);
+
+  /* El buit: oscil·lador permanent, però respiratori */
   voidOsc = audio.createOscillator();
   voidGain = audio.createGain();
   voidFilter = audio.createBiquadFilter();
 
   voidOsc.type = "sine";
-  voidOsc.frequency.value = 38;
-
-  voidGain.gain.value = .025;
+  voidOsc.frequency.value = midiToHz(30);
+  voidGain.gain.value = .018;
 
   voidFilter.type = "lowpass";
-  voidFilter.frequency.value = 160;
-  voidFilter.Q.value = 1.3;
+  voidFilter.frequency.value = 180;
+  voidFilter.Q.value = 1.2;
 
   voidOsc.connect(voidGain);
   voidGain.connect(voidFilter);
   voidFilter.connect(master);
-
   voidOsc.start();
 
-  startMineralBody();
-  startAmbientMotion();
+  /* Modulació molt lenta del buit */
+  const voidLfo = audio.createOscillator();
+  const voidLfoGain = audio.createGain();
+
+  voidLfo.type = "sine";
+  voidLfo.frequency.value = .017;
+  voidLfoGain.gain.value = 2.8;
+
+  voidLfo.connect(voidLfoGain);
+  voidLfoGain.connect(voidOsc.frequency);
+  voidLfo.start();
+
+  /* Cos mineral: harmònics molt baixos */
+  const fundamental = rand(82, 104);
+  const ratios = [1, 2.01, 3.01, 4.02, 5.03, 7.01];
+
+  ratios.forEach((ratio, i) => {
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    const filter = audio.createBiquadFilter();
+
+    osc.type = i === 0 ? "sine" : "triangle";
+    osc.frequency.value = fundamental * ratio;
+
+    gain.gain.value = .012 / Math.pow(i + 1, .9);
+
+    filter.type = "lowpass";
+    filter.frequency.value = 1700 + i * 500;
+    filter.Q.value = .7;
+
+    osc.connect(gain);
+    gain.connect(filter);
+    filter.connect(master);
+    osc.start();
+  });
 
   audio.resume();
 }
 
-function startMineralBody() {
-  const fundamental = rand(86, 112);
-  const ratios = [1, 2.01, 3.01, 4.02, 5.03, 7.01];
-
-  ratios.forEach((ratio, index) => {
-    const oscillator = audio.createOscillator();
-    const gain = audio.createGain();
-    const filter = audio.createBiquadFilter();
-
-    oscillator.type = index === 0 ? "sine" : "triangle";
-    oscillator.frequency.value = fundamental * ratio;
-
-    gain.gain.value = .013 / Math.pow(index + 1, .85);
-
-    filter.type = "lowpass";
-    filter.frequency.value = 2100 + index * 500;
-    filter.Q.value = .7;
-
-    const drift = makeLFO(
-      fundamental * ratio * .996,
-      fundamental * ratio * 1.004,
-      rand(.003, .014)
-    );
-
-    drift.connect(oscillator.frequency);
-    oscillator.connect(gain);
-    gain.connect(filter);
-    filter.connect(master);
-
-    oscillator.start();
-  });
-
-  /* Respiració general */
-  const breath = audio.createOscillator();
-  const breathGain = audio.createGain();
-
-  breath.frequency.value = .012;
-  breathGain.gain.value = 1100;
-
-  breath.connect(breathGain);
-  breathGain.connect(masterFilter.frequency);
-
-  breath.start();
-}
-
-function startAmbientMotion() {
-  const movement = audio.createOscillator();
-  const movementGain = audio.createGain();
-
-  movement.frequency.value = .008;
-  movementGain.gain.value = .006;
-
-  movement.connect(movementGain);
-  movementGain.connect(master.gain);
-
-  movement.start();
-}
-
-/* So agut breu, només com a esdeveniment */
-function crystalResonance(intensity = 1, direction = 0) {
+function crystalResonance(intensity, direction, crystalSize = 1) {
   if (!audio) return;
 
   const now = audio.currentTime;
 
-  if (now - lastResonance < .18) return;
+  if (now - lastResonance < .16) return;
   lastResonance = now;
 
-  const oscillator = audio.createOscillator();
+  const osc = audio.createOscillator();
   const gain = audio.createGain();
   const filter = audio.createBiquadFilter();
   const pan = audio.createStereoPanner();
 
-  const root = rand(900, 2800);
-  const duration = rand(1.2, 3.8);
+  const root = rand(850, 2600) * (1 + crystalSize * .15);
+  const duration = rand(1.6, 3.8);
 
-  oscillator.type = Math.random() < .7 ? "sine" : "triangle";
-
-  oscillator.frequency.setValueAtTime(root, now);
-  oscillator.frequency.exponentialRampToValueAtTime(
+  osc.type = Math.random() < .7 ? "sine" : "triangle";
+  osc.frequency.setValueAtTime(root, now);
+  osc.frequency.exponentialRampToValueAtTime(
     root * rand(.72, 1.3),
     now + duration
   );
 
   filter.type = "bandpass";
   filter.frequency.value = root;
-  filter.Q.value = rand(12, 32);
+  filter.Q.value = rand(14, 30);
 
   pan.pan.value = clamp(direction, -1, 1);
 
+  const volume = (.006 + intensity * .014) * (1 + crystalSize * .15);
+
   gain.gain.setValueAtTime(.0001, now);
   gain.gain.exponentialRampToValueAtTime(
-    rand(.008, .022) * intensity,
-    now + rand(.06, .16)
+    volume,
+    now + rand(.05, .14)
   );
   gain.gain.exponentialRampToValueAtTime(
     .0001,
     now + duration
   );
 
-  oscillator.connect(gain);
+  osc.connect(gain);
   gain.connect(filter);
   filter.connect(pan);
 
-  /* So directe quasi imperceptible */
   pan.connect(master);
-
-  /* La cua espacial és el component majestuós */
   pan.connect(reverb);
 
-  oscillator.start(now);
-  oscillator.stop(now + duration + .1);
+  osc.start(now);
+  osc.stop(now + duration + .1);
 }
 
+function updateAudio() {
+  if (!audio) return;
+
+  const horizontal = pointer.x / W;
+  const vertical = pointer.y / H;
+  const movement = Math.abs(camera.vx) + Math.abs(camera.vy);
+
+  const note = lerp(27, 44, horizontal);
+
+  voidOsc.frequency.setTargetAtTime(
+    midiToHz(note) + movement * 2,
+    audio.currentTime,
+    .8
+  );
+
+  voidGain.gain.setTargetAtTime(
+  .014 +
+  activity * .026 +
+  cultivationEnergy * .018 +
+  cultivationPulse * .01 +
+  Math.sin(time * .00035) * .003,
+  audio.currentTime,
+  .7
+);
+
+
+  voidFilter.frequency.setTargetAtTime(
+    lerp(80, 420, 1 - vertical) + activity * 180,
+    audio.currentTime,
+    .9
+  );
+
+  reverbGain.gain.setTargetAtTime(
+    lerp(.14, .42, horizontal) + activity * .08,
+    audio.currentTime,
+    1
+  );
+
+  masterFilter.frequency.setTargetAtTime(
+    lerp(2300, 6500, 1 - vertical) + activity * 900,
+    cultivationEnergy * 1800,
+    audio.currentTime,
+    1.2
+  );
+}
+window.addEventListener("keydown", event => {
+  if (event.code === "KeyC") {
+    cultivationMode = !cultivationMode;
+
+    if (cultivationMode) {
+      cultivationEnergy = .15;
+    }
+  }
+});
+
+
 /* ----------------------------------------------------
-   ESPAI I CRISTALLS
+   MÓN CRISTAL·LÍ
 ----------------------------------------------------- */
 
 function resetWorld() {
@@ -381,20 +462,20 @@ function resetWorld() {
   particles = [];
   stars = [];
 
-  for (let i = 0; i < 75; i++) {
+  for (let i = 0; i < 90; i++) {
     stars.push({
       x: rand(-W, W * 2),
       y: rand(8, H - 20),
       z: rand(.1, 1),
-      phase: rand(0, Math.PI * 2),
+      phase: rand(0, TAU),
       size: Math.random() < .85 ? 1 : 2
     });
   }
 
-  for (let i = 0; i < 32; i++) {
+  for (let i = 0; i < 38; i++) {
     createCrystal(
       rand(-W, W * 2),
-      rand(H * .42, H * .92),
+      rand(H * .46, H * .94),
       rand(.35, 1.5),
       rand(.1, 1)
     );
@@ -408,121 +489,206 @@ function createCrystal(x, y, scale, depth) {
     baseY: y,
     scale,
     depth,
-    height: rand(7, 24) * scale,
+
+    height: 1,
     targetHeight: rand(22, 68) * scale,
     width: rand(2, 6) * scale,
-    phase: rand(0, Math.PI * 2),
+
+    phase: rand(0, TAU),
     growth: rand(.003, .011) * scale,
-    hue: Math.random() < .65 ? "cyan" : "violet",
-    resonated: false,
-    life: rand(0, 1)
+
+    hue: Math.random() < .68 ? "cyan" : "violet",
+
+    state: "nucleation",
+    age: 0,
+    opacity: 0,
+    resonance: 0,
+    resonated: false
   });
 }
+function updateCrystals(dt) {
+  let mineralActivity = 0;
 
-function growWorld(dt) {
-  for (const crystal of crystals) {
-    if (crystal.height < crystal.targetHeight) {
-      crystal.height += crystal.growth * dt;
-    }
+  for (const c of crystals) {
+    c.age += dt;
 
-    if (
-      !crystal.resonated &&
-      crystal.height > crystal.targetHeight * .72
-    ) {
-      crystal.resonated = true;
+    if (c.state === "nucleation") {
+      c.opacity = lerp(c.opacity, .4, .035 * dt);
+      c.height += c.growth * .35 * dt;
 
-      if (Math.random() < .42 && audio) {
-        crystalResonance(
-          rand(.35, .85),
-          clamp((crystal.x - pointer.x) / 100, -1, 1)
-        );
+      if (c.age > c.nucleationDuration) {
+        c.state = "growth";
       }
     }
 
-    crystal.life += dt * .00003;
+    if (c.state === "growth") {
+      c.opacity = lerp(c.opacity, 1, .04 * dt);
+      c.height += c.growth * dt;
+
+      mineralActivity += c.growth;
+
+      if (c.height >= c.targetHeight * .72) {
+        c.state = "resonance";
+      }
+    }
+
+    if (c.state === "resonance") {
+      c.opacity = lerp(c.opacity, 1, .04 * dt);
+      c.height = lerp(
+        c.height,
+        c.targetHeight,
+        .025 * dt
+      );
+
+      c.resonance = lerp(
+        c.resonance,
+        1,
+        .035 * dt
+      );
+
+      if (!c.resonated) {
+        c.resonated = true;
+
+        if (audio) {
+          crystalResonance(
+            .35 + c.depth * .45,
+            clamp((c.x - pointer.x) / 110, -1, 1),
+            c.scale
+          );
+        }
+      }
+
+      if (c.resonance > .9) {
+        c.state = "stable";
+      }
+    }
+
+    if (c.state === "stable") {
+      c.opacity = lerp(c.opacity, 1, .02 * dt);
+      c.resonance *= Math.pow(.994, dt);
+
+      c.height =
+        c.targetHeight +
+        Math.sin(time * .001 + c.phase) *
+        c.targetHeight *
+        .022;
+    }
+
+    /*
+      Només desapareixen quan queden clarament enrere.
+      Amb el signe correcte segons el sentit de navegació.
+    */
+    const behindCamera =
+      c.x < camera.x - W * 1.8;
+
+    if (behindCamera) {
+      c.state = "dissolving";
+    }
+
+    if (c.state === "dissolving") {
+      c.opacity -= .006 * dt;
+    }
   }
 
-  /* Quan avancem, neixen estructures darrere de nosaltres */
-  if (Math.random() < .006 * dt) {
-    const direction = camera.velocityX >= 0 ? -1 : 1;
+  crystals = crystals.filter(c => c.opacity > .005);
 
+  activity = clamp(
+    activity + mineralActivity * .09,
+    0,
+    1
+  );
+
+  activity *= Math.pow(.985, dt);
+
+  /*
+    Sempre mantenim una reserva mínima de cristalls.
+  */
+  if (crystals.length < 42) {
     createCrystal(
-      camera.x + direction * rand(W * .7, W * 1.6),
-      rand(H * .45, H * .94),
-      rand(.35, 1.4),
+      camera.x + rand(W * .7, W * 1.6),
+      rand(H * .46, H * .93),
+      rand(.35, 1.35),
       rand(.1, 1)
     );
   }
 }
 
-function updateCamera(dt) {
-  const dx = pointer.x - W / 2;
-  const dy = pointer.y - H / 2;
 
-  camera.targetX += dx * .0009 * dt;
-  camera.targetY += dy * .0004 * dt;
 
-  camera.targetX *= .9985;
-  camera.targetY *= .997;
+/* ----------------------------------------------------
+   CÀMERA / NAVEGACIÓ
+----------------------------------------------------- */
 
-  camera.velocityX = lerp(
-    camera.velocityX,
-    camera.targetX,
-    .018 * dt
-  );
+function amera(dt) {
+  const nx = (pointer.x / W - .5) * 2;
+  const ny = (pointer.y / H - .5) * 2;
 
-  camera.velocityY = lerp(
-    camera.velocityY,
-    camera.targetY,
-    .018 * dt
-  );
+  const desiredX = nx * 1.8;
+  const desiredY = ny * .65;
 
-  camera.x += camera.velocityX * dt;
-  camera.y += camera.velocityY * dt;
+  camera.vx += (desiredX - camera.vx) * .025 * dt;
+  camera.vy += (desiredY - camera.vy) * .025 * dt;
 
-  journey += Math.abs(camera.velocityX) * dt;
+  camera.vx *= Math.pow(.88, dt);
+  camera.vy *= Math.pow(.88, dt);
 
-  activity *= Math.pow(.985, dt);
+  const driftX = Math.sin(time * .00011) * .035;
+  const driftY = Math.sin(time * .00017 + 2) * .012;
+
+  camera.x += (camera.vx + driftX) * dt;
+  camera.y += (camera.vy + driftY) * dt;
+
+  camera.x = clamp(camera.x, -W * .9, W * .9);
+  camera.y = clamp(camera.y, -H * .28, H * .28);
+
+  camera.targetZoom = lerp(.88, 1.12, pointer.y / H);
+  camera.zoom = lerp(camera.zoom, camera.targetZoom, .018 * dt);
+
+  journey += Math.abs(camera.vx) * dt;
 }
 
-function project(crystal, t) {
-  const parallax = .25 + crystal.depth * .9;
+/* ----------------------------------------------------
+   PROJECCIÓ
+----------------------------------------------------- */
 
-  const x =
-    crystal.x -
+function project(c, t) {
+  const parallax = .25 + c.depth * .9;
+
+  const rawX =
+    c.x -
     camera.x * parallax +
-    Math.sin(t * .00025 + crystal.phase) * crystal.depth * 8;
+    Math.sin(t * .00025 + c.phase) * c.depth * 8;
 
-  const y =
-    crystal.baseY -
+  const rawY =
+    c.baseY -
     camera.y * parallax +
-    Math.sin(t * .0005 + crystal.phase) * crystal.depth * 2;
+    Math.sin(t * .0005 + c.phase) * c.depth * 2;
 
-  const scale = .45 + crystal.depth * .7;
+  const scale = (.45 + c.depth * .7) * camera.zoom;
 
   return {
-    x,
-    y,
+    x: W / 2 + (rawX - W / 2) * camera.zoom,
+    y: H / 2 + (rawY - H / 2) * camera.zoom,
     scale,
-    height: crystal.height * scale,
-    width: crystal.width * scale
+    height: c.height * scale,
+    width: c.width * scale
   };
 }
+
+/* ----------------------------------------------------
+   DIBUIX
+----------------------------------------------------- */
 
 function drawBackground(t) {
   ctx.fillStyle = "#03050c";
   ctx.fillRect(0, 0, W, H);
 
   const glow = ctx.createRadialGradient(
-    W / 2,
-    H / 2,
-    2,
-    W / 2,
-    H / 2,
-    135
+    W / 2, H / 2, 2,
+    W / 2, H / 2, 140
   );
 
-  glow.addColorStop(0, "rgba(35,112,190,.16)");
+  glow.addColorStop(0, "rgba(35,112,190,.17)");
   glow.addColorStop(.55, "rgba(10,42,94,.1)");
   glow.addColorStop(1, "rgba(0,0,0,0)");
 
@@ -534,7 +700,9 @@ function drawBackground(t) {
     const y = star.y - camera.y * star.z * .1;
     const pulse = .3 + Math.sin(t * .001 + star.phase) * .25;
 
-    ctx.fillStyle = `rgba(110,210,255,${pulse * star.z})`;
+    ctx.fillStyle =
+      `rgba(110,210,255,${pulse * star.z})`;
+
     ctx.fillRect(
       Math.floor(x),
       Math.floor(y),
@@ -543,7 +711,6 @@ function drawBackground(t) {
     );
   }
 
-  /* Escaneig CRT */
   ctx.fillStyle = "rgba(80,180,255,.035)";
 
   for (let y = 0; y < H; y += 3) {
@@ -551,60 +718,74 @@ function drawBackground(t) {
   }
 }
 
-function drawDepthGrid() {
-  const horizon = H * .67;
+function drawMode7Grid() {
+  const horizon = H * .665;
+  const vanishX = W / 2 - camera.x * .08;
 
   ctx.strokeStyle = "rgba(45,120,200,.18)";
   ctx.lineWidth = 1;
 
-  for (let y = horizon + 8; y < H; y += 9) {
+  for (let i = 1; i < 25; i++) {
+    const depth = i / 24;
+    const y =
+      horizon +
+      Math.pow(depth, 2.15) * (H - horizon) +
+      camera.y * .08;
+
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
+    ctx.moveTo(0, Math.floor(y));
+    ctx.lineTo(W, Math.floor(y));
     ctx.stroke();
   }
 
-  for (let x = -W; x < W * 2; x += 18) {
+  for (let x = -W * 2; x < W * 3; x += 16) {
     ctx.beginPath();
-    ctx.moveTo(W / 2, horizon);
-    ctx.lineTo(x - camera.x * .12, H);
+    ctx.moveTo(vanishX, horizon);
+    ctx.lineTo(x + camera.x * .14, H);
     ctx.stroke();
   }
 
-  ctx.strokeStyle = "rgba(82,190,255,.4)";
+  ctx.strokeStyle = "rgba(82,190,255,.45)";
   ctx.beginPath();
   ctx.moveTo(0, horizon);
   ctx.lineTo(W, horizon);
   ctx.stroke();
 }
 
-function drawCrystal(crystal, t) {
-  const p = project(crystal, t);
+function drawCrystal(c, t) {
+  const p = project(c, t);
 
   if (
     p.x < -30 ||
     p.x > W + 30 ||
     p.y < -80 ||
     p.y > H + 20
-  ) {
-    return;
-  }
+  ) return;
 
   const left = Math.floor(p.x - p.width);
   const right = Math.floor(p.x + p.width);
   const top = Math.floor(p.y - p.height);
   const base = Math.floor(p.y);
-  const tip = Math.floor(p.x + Math.sin(t * .001 + crystal.phase) * p.width);
+  const tip = Math.floor(
+    p.x + Math.sin(t * .001 + c.phase) * p.width
+  );
 
-  const main = crystal.hue === "cyan" ? "#4ddcff" : "#a86eff";
-  const dark = crystal.hue === "cyan" ? "#14558f" : "#522a91";
-  const light = crystal.hue === "cyan" ? "#d9fbff" : "#f4d9ff";
+  const main = c.hue === "cyan" ? "#4ddcff" : "#a86eff";
+  const dark = c.hue === "cyan" ? "#14558f" : "#522a91";
+  const light = c.hue === "cyan" ? "#d9fbff" : "#f4d9ff";
 
-  /* Ombra/projecte */
+  ctx.save();
+  ctx.globalAlpha = c.opacity;
+
+  if (c.resonance > .05) {
+    ctx.shadowColor = main;
+    ctx.shadowBlur = 3 + c.resonance * 8;
+    cultivationEnergy * 7;
+  }
+
   ctx.fillStyle = "rgba(0,0,0,.36)";
   ctx.fillRect(left - 2, base, Math.max(3, right - left + 4), 2);
 
-  /* Cos fosc */
   ctx.fillStyle = dark;
   ctx.beginPath();
   ctx.moveTo(left, base);
@@ -615,7 +796,6 @@ function drawCrystal(crystal, t) {
   ctx.closePath();
   ctx.fill();
 
-  /* Cara principal */
   ctx.fillStyle = main;
   ctx.beginPath();
   ctx.moveTo(Math.floor(p.x), base);
@@ -625,28 +805,27 @@ function drawCrystal(crystal, t) {
   ctx.closePath();
   ctx.fill();
 
-  /* Cara de llum */
   ctx.fillStyle = light;
-  ctx.globalAlpha = .7;
+  ctx.globalAlpha = c.opacity * .72;
   ctx.beginPath();
   ctx.moveTo(Math.floor(p.x), base);
   ctx.lineTo(tip, top);
   ctx.lineTo(Math.floor(p.x), top + 9);
   ctx.closePath();
   ctx.fill();
-  ctx.globalAlpha = 1;
 
-  /* Fissura interna */
   if (p.height > 18) {
     ctx.strokeStyle = "rgba(225,250,255,.7)";
     ctx.beginPath();
     ctx.moveTo(Math.floor(p.x), top + 8);
-    ctx.lineTo(Math.floor(p.x + rand(-1, 1)), base - 3);
+    ctx.lineTo(
+      Math.floor(p.x + rand(-1, 1)),
+      base - 3
+    );
     ctx.stroke();
   }
 
-  /* Partícules associades a la punta */
-  if (Math.random() < .008 * crystal.depth) {
+  if (Math.random() < .008 * c.depth) {
     particles.push({
       x: tip,
       y: top,
@@ -656,6 +835,8 @@ function drawCrystal(crystal, t) {
       color: main
     });
   }
+
+  ctx.restore();
 }
 
 function drawParticles(dt) {
@@ -708,29 +889,31 @@ function drawVoid(t) {
     7,
     7
   );
-
-  ctx.strokeStyle = "rgba(110,220,255,.18)";
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x, H);
-  ctx.moveTo(x, y);
-  ctx.lineTo(0, y);
-  ctx.moveTo(x, y);
-  ctx.lineTo(W, y);
-  ctx.stroke();
 }
 
 function drawInterface() {
   ctx.fillStyle = "#78dfff";
   ctx.font = "6px monospace";
 
+  if (cultivationMode) {
+  ctx.fillStyle = "rgba(210,245,255,.85)";
   ctx.fillText(
-    "QUARTZ VOID // DEEP CRYSTALLINE PASSAGE",
+    "CULTIVATION // " +
+    String(Math.floor(cultivationEnergy * 100)).padStart(3, "0") +
+    "%",
+    8,
+    19
+  );
+}
+
+  ctx.fillText(
+    "QUARTZ VOID // DOCUMENTARY PASSAGE",
     8,
     10
   );
 
   ctx.fillStyle = "rgba(120,223,255,.55)";
+
   ctx.fillText(
     "JOURNEY " + String(Math.floor(journey)).padStart(6, "0"),
     8,
@@ -738,38 +921,11 @@ function drawInterface() {
   );
 
   ctx.fillText(
-    "AUTONOMOUS GROWTH",
-    W - 112,
+    "MINERAL ACTIVITY " +
+    Math.floor(activity * 100) + "%",
+    W - 115,
     H - 9
   );
-}
-
-/* ----------------------------------------------------
-   BUCLE VISUAL
------------------------------------------------------ */
-
-function render(now) {
-  const dt = clamp((now - lastTime) / 16.666, .2, 3);
-  lastTime = now;
-  time = now;
-
-  updateCamera(dt);
-  growWorld(dt);
-
-  drawBackground(now);
-  drawDepthGrid();
-
-  /* Primer els cristalls llunyans */
-  crystals
-    .slice()
-    .sort((a, b) => a.depth - b.depth)
-    .forEach(crystal => drawCrystal(crystal, now));
-
-  drawParticles(dt);
-  drawVoid(now);
-  drawInterface();
-
-  requestAnimationFrame(render);
 }
 
 /* ----------------------------------------------------
@@ -780,77 +936,20 @@ function updatePointer(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
 
   pointer.targetX = clamp(
-    ((clientX - rect.left) / rect.width) * W,
+    (clientX - rect.left) / rect.width * W,
     0,
     W
   );
 
   pointer.targetY = clamp(
-    ((clientY - rect.top) / rect.height) * H,
+    (clientY - rect.top) / rect.height * H,
     0,
     H
   );
 
-  pointer.active = true;
-  activity = clamp(activity + .12, 0, 1);
+  if (!started) startAudio();
 
-  pointer.x = lerp(pointer.x, pointer.targetX, .25);
-  pointer.y = lerp(pointer.y, pointer.targetY, .25);
-
-  if (!started) {
-    startAudio();
-  }
-
-  const horizontal = pointer.x / W;
-  const vertical = pointer.y / H;
-
-  if (voidOsc) {
-    /* Esquerra: buit molt greu. Dreta: buit més harmònic */
-    const note = lerp(26, 50, horizontal);
-
-    voidOsc.frequency.setTargetAtTime(
-      midiToHz(note),
-      audio.currentTime,
-      .35
-    );
-
-    /* A dalt, més profund i silenciós */
-    voidGain.gain.setTargetAtTime(
-      lerp(.065, .018, vertical),
-      audio.currentTime,
-      .5
-    );
-
-    voidFilter.frequency.setTargetAtTime(
-      lerp(80, 460, 1 - vertical),
-      audio.currentTime,
-      .6
-    );
-
-    /* El moviment horitzontal obre l'espai */
-    reverbGain.gain.setTargetAtTime(
-      lerp(.13, .42, horizontal),
-      audio.currentTime,
-      .8
-    );
-
-    masterFilter.frequency.setTargetAtTime(
-      lerp(2400, 6500, 1 - vertical),
-      audio.currentTime,
-      1.2
-    );
-  }
-
-  /* El so només respon a moviments amplis */
-  if (
-    Math.random() <
-    .012 + activity * .018
-  ) {
-    crystalResonance(
-      rand(.25, .7) + activity * .5,
-      (horizontal - .5) * 1.5
-    );
-  }
+  updateAudio();
 }
 
 canvas.addEventListener("pointermove", event => {
@@ -860,32 +959,35 @@ canvas.addEventListener("pointermove", event => {
 canvas.addEventListener("pointerdown", event => {
   updatePointer(event.clientX, event.clientY);
 
+  pointer.x = pointer.targetX;
+  pointer.y = pointer.targetY;
+
   for (let i = 0; i < 3; i++) {
     createCrystal(
       camera.x + rand(-20, 20),
-      rand(H * .52, H * .9),
+      rand(H * .54, H * .9),
       rand(.35, .9),
       rand(.5, 1)
     );
   }
 
-  crystalResonance(.8, (pointer.x / W - .5) * 2);
+  activity = clamp(activity + .2, 0, 1);
+
+  crystalResonance(
+    .8,
+    (pointer.x / W - .5) * 2,
+    1.2
+  );
 });
 
-startLayer.addEventListener("click", async () => {
-  try {
-    startAudio();
+start.addEventListener("click", async () => {
+  startAudio();
 
-    if (audio.state === "suspended") {
-      await audio.resume();
-    }
-
-    startLayer.classList.add("hidden");
-  } catch (error) {
-    console.error(error);
-    startLayer.querySelector("span").textContent =
-      "ERROR D'ÀUDIO — REVISA LA CONSOLA";
+  if (audio.state === "suspended") {
+    await audio.resume();
   }
+
+  start.classList.add("hidden");
 });
 
 window.addEventListener("keydown", async event => {
@@ -897,12 +999,45 @@ window.addEventListener("keydown", async event => {
     await audio.resume();
   }
 
-  startLayer.classList.add("hidden");
+  start.classList.add("hidden");
 });
 
 /* ----------------------------------------------------
-   INICI
+   BUCLE
 ----------------------------------------------------- */
+
+function render(now) {
+  const dt = clamp(
+    (now - lastTime) / 16.666,
+    .2,
+    3
+  );
+
+  lastTime = now;
+  time = now;
+
+  pointer.x = lerp(pointer.x, pointer.targetX, .12 * dt);
+  pointer.y = lerp(pointer.y, pointer.targetY, .12 * dt);
+
+  updateCamera(dt);
+  cultivateQuartz(dt);
+  updateCrystals(dt);
+  updateAudio();
+
+  drawBackground(now);
+  drawMode7Grid();
+
+  crystals
+    .slice()
+    .sort((a, b) => a.depth - b.depth)
+    .forEach(c => drawCrystal(c, now));
+
+  drawParticles(dt);
+  drawVoid(now);
+  drawInterface();
+
+  requestAnimationFrame(render);
+}
 
 resetWorld();
 requestAnimationFrame(render);

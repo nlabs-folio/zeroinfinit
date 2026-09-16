@@ -1,8 +1,16 @@
-const canvas = document.querySelector("#visual");
-const view = canvas.getContext("2d", {
-  alpha: false,
-  desynchronized: true
-});
+"use strict";
+
+/* ----------------------------------------------------
+   CONFIGURACIÓ
+----------------------------------------------------- */
+
+const canvas = document.querySelector("#screen");
+const ctx = canvas.getContext("2d", { alpha: false });
+
+const start = document.querySelector("#start");
+const W = canvas.width;
+const H = canvas.height;
+
 
 /* --------------------------------------------------
    CONFIGURACIÓ
@@ -391,7 +399,33 @@ function createCrystalEvent() {
       random(500, 2200)
     )
   );
+}function createCrystal(x, y, scale, depth) {
+  crystals.push({
+    x,
+    y,
+    baseY: y,
+    scale,
+    depth,
+
+    height: 2,
+    targetHeight: rand(22, 68) * scale,
+    width: rand(2, 6) * scale,
+
+    phase: rand(0, TAU),
+    growth: rand(.012, .032) * scale,
+
+    hue: Math.random() < .68 ? "cyan" : "violet",
+
+    state: "growth",
+    age: 0,
+    opacity: .15,
+    resonance: 0,
+    resonated: false,
+
+    nucleationDuration: rand(45, 100)
+  });
 }
+
 
 async function startAudio() {
   if (audioStarted) {
@@ -1006,3 +1040,5 @@ canvas.addEventListener(
   startExperience,
   { once: false }
 );
+resetWorld();
+requestAnimationFrame(render);
