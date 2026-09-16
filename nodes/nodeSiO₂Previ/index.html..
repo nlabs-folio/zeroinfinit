@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cristal·lització del quars</title>
+
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --fg: #d9e6ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--fg);
+      font: 16px sans-serif;
+    }
+
+    body {
+      position: relative;
+    }
+
+    #visual {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+    }
+
+    #controls {
+      position: fixed;
+      z-index: 2;
+      top: 1.5rem;
+      left: 1.5rem;
+    }
+
+    button {
+      padding: .7rem 1rem;
+      margin-right: .5rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="visual"></canvas>
+
+  <div id="controls">
+    <button id="start">Iniciar</button>
+    <button id="stop">Aturar</button>
+  </div>
+
+<script>
+let ctx;
+let master;
+let analyser;
+let running = false;
+let timers = [];
+
+const rand = (a, b) => a + Math.random() * (b - a);
+
+function clamp(x, a, b) {
+  return Math.max(a, Math.min(b, x));
+}
+
+/* ------------------------------------------------------------
+   VISUAL
+------------------------------------------------------------ */
+
+const canvas = document.getElementById("visual");
+const view = canvas.getContext("2d", {
+  alpha: false,
+  desynchronized: true
+});
+
+let width = 0;
+let height = 0;
+let dpr = 1;
+let visualFrame = 0;
+let lastVisualTime = 0;
+
+const spectrum = new Uint8Array(128);
+const waveform = new Uint8Array(128);
+
+const crystalPool = [];
+const CRYSTAL_COUNT = 42;
+
+for (let i = 0; i < CRYSTAL_COUNT; i++) {
+  crystalPool.push({
+    angle: rand(0, Math.PI * 2),
+    distance: rand(.08, .9),
+    size: rand(2, 8),
+    life: rand(0, 1),
+    speed: rand(.0003, .0012),
+    hue: rand(190, 225),
+    energy: rand(.2, 1)
+  });
+}
+
+function resizeCanvas() {
+  dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+
+  width = window.innerWidth;
+  height = window.innerHeight;
+
+  canvas.width = Math.floor(width * dpr);
+  canvas.height = Math.floor(height * dpr);
+  canvas.style.width = width + "px";
+  canvas.style.height = height + "px";
+
+  view.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+window.addEventListener("resize", resizeCanvas, { passive: true });
+resizeCanvas();
+
+function drawCrystal(x, y, size, alpha, angle, hue) {
+  view.save();
+  view.translate(x, y);
+  view.rotate(angle);
+
+  view.globalAlpha = alpha;
+  view.strokeStyle = `hsla(${hue}, 85%, 78%, ${alpha})`;
+  view.lineWidth = 1;
+
+  view.beginPath();
+  view.moveTo(-size, 0);
+  view.lineTo(0, -size * 2.2);
+  view.lineTo(size, 0);
+  view.lineTo(0, size * 2.2);
+  view.closePath();
+  view.stroke();
+
+  view.restore();
+}
+
+function drawVisual(time) {
+  if (!running || !analyser) {
+    visualFrame = 0;
+    return;
+  }
+
+  /*
+    Limitem explícitament el visual a uns 30 FPS.
+    L'àudio continua funcionant a la seva freqüència normal.
+  */
+  if (time - lastVisualTime < 33) {
+    visualFrame = requestAnimationFrame(drawVisual);
+    return;
+  }
+
+  lastVisualTime = time;
+
+  analyser.getByteFrequencyData(spectrum);
+  analyser.getByteTimeDomainData(waveform);
+
+  let low = 0;
+  let high = 0;
+  let total = 0;
+
+  for (let i = 0; i < 20; i++) {
+    low += spectrum[i];
+  }
+
+  for (let i = 35; i < 80; i++) {
+    high += spectrum[i];
+  }
+
+  for (let i = 0; i < spectrum.length; i++) {
+    total += spectrum[i];
+  }
+
+  low /= 20 * 255;
+  high /= 45 * 255;
+
+  const energy = total / (spectrum.length * 255);
+  const cx = width * .5;
+  const cy = height * .52;
+  const radius = Math.min(width, height) * .18;
+
+  /*
+    Esborrem amb una mica d'alfa.
+    Això deixa una estela molt barata, sense haver de conservar cap buffer.
+  */
+  view.fillStyle = "rgba(11, 14, 20, .22)";
+  view.fillRect(0, 0, width, height);
+
+  /* Aura central */
+  const auraSize = radius * (1.3 + low * 1.8);
+  const aura = view.createRadialGradient(
+    cx, cy, 0,
+    cx, cy, auraSize
+  );
+
+  aura.addColorStop(0, `rgba(125, 190, 255, ${.08 + energy * .15})`);
+  aura.addColorStop(.4, `rgba(60, 130, 220, ${.025 + high * .07})`);
+  aura.addColorStop(1, "rgba(20, 50, 100, 0)");
+
+  view.fillStyle = aura;
+  view.beginPath();
+  view.arc(cx, cy, auraSize, 0, Math.PI * 2);
+  view.fill();
+
+  /* Nucli ressonant */
+  view.save();
+  view.translate(cx, cy);
+  view.rotate(time * .00003);
+
+  view.beginPath();
+
+  const points = 12;
+  const pulse = 1 + low * .35;
+
+  for (let i = 0; i <= points; i++) {
+    const angle = (i / points) * Math.PI * 2;
+    const index = Math.floor((i / points) * 80);
+    const frequency = spectrum[index] / 255;
+    const r = radius * pulse * (.82 + frequency * .28);
+
+    const x = Math.cos(angle) * r;
+    const y = Math.sin(angle) * r;
+
+    if (i === 0) view.moveTo(x, y);
+    else view.lineTo(x, y);
+  }
+
+  view.closePath();
+  view.strokeStyle = `rgba(170, 220, 255, ${.25 + energy * .45})`;
+  view.lineWidth = 1;
+  view.stroke();
+
+  /* Fractures radials */
+  view.strokeStyle = `rgba(100, 180, 255, ${.08 + high * .24})`;
+
+  for (let i = 0; i < 8; i++) {
+    const angle = i * Math.PI / 4 + time * .00002;
+    const length = radius * (1.3 + high * 1.8);
+
+    view.beginPath();
+    view.moveTo(
+      Math.cos(angle) * radius * .35,
+      Math.sin(angle) * radius * .35
+    );
+
+    view.lineTo(
+      Math.cos(angle) * length,
+      Math.sin(angle) * length
+    );
+
+    view.stroke();
+  }
+
+  view.restore();
+
+  /* Cristalls persistents reutilitzats */
+  for (const crystal of crystalPool) {
+    crystal.life -= crystal.speed * 16;
+
+    if (crystal.life <= 0) {
+      /*
+        Només reactivem alguns cristalls quan hi ha energia.
+        No es creen objectes nous durant el renderitzat.
+      */
+      if (energy > .08 && Math.random() < energy * .22) {
+        crystal.life = 1;
+        crystal.angle = rand(0, Math.PI * 2);
+        crystal.distance = rand(.25, 1.1);
+        crystal.size = rand(2, 8) * (1 + high);
+        crystal.energy = .3 + energy;
+      }
+      continue;
+    }
+
+    const distance = radius * (1.2 + crystal.distance * (1 + low));
+    const x = cx + Math.cos(crystal.angle) * distance;
+    const y = cy + Math.sin(crystal.angle) * distance;
+
+    drawCrystal(
+      x,
+      y,
+      crystal.size * (1 + high * .8),
+      crystal.life * .7,
+      crystal.angle + time * .0002,
+      crystal.hue
+    );
+  }
+
+  visualFrame = requestAnimationFrame(drawVisual);
+}
+
+/* ------------------------------------------------------------
+   ÀUDIO
+------------------------------------------------------------ */
+
+function makeLFO(min, max, speed) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.value = speed;
+  gain.gain.value = (max - min) / 2;
+
+  osc.connect(gain);
+  osc.start();
+
+  const offset = ctx.createConstantSource();
+  offset.offset.value = (min + max) / 2;
+  offset.connect(gain);
+  offset.start();
+
+  return gain;
+}
+
+function startQuartzBody() {
+  const fundamental = rand(90, 130);
+  const partials = [1, 2.01, 3.01, 4.02, 5.03, 7.01, 9.02];
+
+  partials.forEach((ratio, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = i === 0 ? "sine" : "triangle";
+    osc.frequency.value = fundamental * ratio;
+
+    gain.gain.value = .018 / Math.pow(i + 1, .8);
+
+    filter.type = "lowpass";
+    filter.frequency.value = 2600 + i * 500;
+    filter.Q.value = .7;
+
+    const drift = makeLFO(
+      fundamental * ratio * .996,
+      fundamental * ratio * 1.004,
+      rand(.003, .015)
+    );
+
+    drift.connect(osc.frequency);
+    osc.connect(gain);
+    gain.connect(filter);
+    filter.connect(master);
+
+    osc.start();
+  });
+}
+
+function startGlobalEvolution() {
+  const lfo = ctx.createOscillator();
+  const depth = ctx.createGain();
+
+  lfo.frequency.value = .018;
+  depth.gain.value = 1500;
+
+  lfo.connect(depth);
+  depth.connect(master.filter.frequency);
+  lfo.start();
+
+  const volumeLFO = ctx.createOscillator();
+  const volumeDepth = ctx.createGain();
+
+  volumeLFO.frequency.value = .009;
+  volumeDepth.gain.value = .008;
+
+  volumeLFO.connect(volumeDepth);
+  volumeDepth.connect(master.gain);
+  volumeLFO.start();
+}
+
+function makeCrystallineNoise() {
+  const bufferSize = ctx.sampleRate * 2;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const source = ctx.createBufferSource();
+  const bandpass = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+
+  source.buffer = buffer;
+  source.loop = true;
+
+  bandpass.type = "bandpass";
+  bandpass.frequency.value = rand(1800, 5000);
+  bandpass.Q.value = rand(8, 22);
+
+  gain.gain.value = .006;
+
+  source.connect(bandpass);
+  bandpass.connect(gain);
+  gain.connect(master);
+
+  source.start();
+
+  const movement = ctx.createOscillator();
+  const movementGain = ctx.createGain();
+
+  movement.frequency.value = rand(.01, .035);
+  movementGain.gain.value = 1800;
+
+  movement.connect(movementGain);
+  movementGain.connect(bandpass.frequency);
+  movement.start();
+}
+
+function crystalSeed() {
+  if (!running) return;
+
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  const pan = ctx.createStereoPanner();
+
+  const root = rand(600, 2600);
+  const duration = rand(.08, .8);
+
+  osc.type = Math.random() < .7 ? "sine" : "triangle";
+
+  osc.frequency.setValueAtTime(root * rand(.8, 1.2), now);
+  osc.frequency.exponentialRampToValueAtTime(
+    root * rand(1.5, 3.8),
+    now + duration
+  );
+
+  filter.type = "bandpass";
+  filter.frequency.value = root * rand(1.2, 2.8);
+  filter.Q.value = rand(8, 35);
+
+  const peak = rand(.015, .06);
+
+  gain.gain.setValueAtTime(.0001, now);
+  gain.gain.exponentialRampToValueAtTime(peak, now + .005);
+  gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+
+  pan.pan.value = rand(-.8, .8);
+
+  osc.connect(gain);
+  gain.connect(filter);
+  filter.connect(pan);
+  pan.connect(master);
+
+  osc.start(now);
+  osc.stop(now + duration + .03);
+
+  timers.push(setTimeout(crystalSeed, rand(180, 1800)));
+}
+
+function microFracture() {
+  if (!running) return;
+
+  const now = ctx.currentTime;
+  const partials = Math.floor(rand(2, 6));
+
+  for (let i = 0; i < partials; i++) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    const f = rand(2500, 9000) * (i + 1);
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(f, now);
+    osc.frequency.exponentialRampToValueAtTime(
+      f * rand(.5, .85),
+      now + rand(.15, .7)
+    );
+
+    gain.gain.setValueAtTime(.0001, now);
+    gain.gain.exponentialRampToValueAtTime(
+      rand(.003, .014),
+      now + .002
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      .0001,
+      now + rand(.2, .9)
+    );
+
+    osc.connect(gain);
+    gain.connect(master);
+
+    osc.start(now);
+    osc.stop(now + 1);
+  }
+
+  timers.push(setTimeout(microFracture, rand(2500, 9000)));
+}
+
+/* ------------------------------------------------------------
+   INICIAR / ATURAR
+------------------------------------------------------------ */
+
+async function start() {
+  if (running) return;
+
+  ctx = new AudioContext();
+
+  master = ctx.createGain();
+  master.gain.value = .055;
+
+  master.filter = ctx.createBiquadFilter();
+  master.filter.type = "lowpass";
+  master.filter.frequency.value = 6000;
+  master.filter.Q.value = .5;
+
+  /*
+    L'AnalyserNode no modifica pràcticament el senyal.
+    Es col·loca abans del filtre/compressor per analitzar
+    millor les freqüències originals.
+  */
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = 256;
+  analyser.minDecibels = -90;
+  analyser.maxDecibels = -20;
+  analyser.smoothingTimeConstant = .82;
+
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = -28;
+  compressor.knee.value = 18;
+  compressor.ratio.value = 3;
+  compressor.attack.value = .01;
+  compressor.release.value = .5;
+
+  master.connect(analyser);
+  master.connect(master.filter);
+  master.filter.connect(compressor);
+  compressor.connect(ctx.destination);
+
+  running = true;
+
+  startQuartzBody();
+  startGlobalEvolution();
+  makeCrystallineNoise();
+
+  crystalSeed();
+  microFracture();
+
+  await ctx.resume();
+
+  cancelAnimationFrame(visualFrame);
+  visualFrame = requestAnimationFrame(drawVisual);
+}
+
+function stop() {
+  running = false;
+
+  timers.forEach(clearTimeout);
+  timers = [];
+
+  cancelAnimationFrame(visualFrame);
+  visualFrame = 0;
+
+  /*
+    Neteja visual sense haver de recrear el canvas.
+  */
+  view.fillStyle = "#0b0e14";
+  view.fillRect(0, 0, width, height);
+
+  if (ctx) {
+    ctx.close();
+    ctx = null;
+    analyser = null;
+  }
+}
+
+document
+  .getElementById("start")
+  .addEventListener("click", start);
+
+document
+  .getElementById("stop")
+  .addEventListener("click", stop);
+</script>
+</body>
+</html>

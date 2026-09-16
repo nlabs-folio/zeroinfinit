@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <title>Cristal·lització del quars</title>
+  <style>
+    body {
+      background: #0b0e14;
+      color: #d9e6ff;
+      font: 16px sans-serif;
+      padding: 2rem;
+    }
+
+    button {
+      padding: .7rem 1rem;
+      margin-right: .5rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <button id="start">Iniciar</button>
+  <button id="stop">Aturar</button>
+
+<script>
+let ctx;
+let master;
+let running = false;
+let timers = [];
+
+const rand = (a, b) => a + Math.random() * (b - a);
+
+function clamp(x, a, b) {
+  return Math.max(a, Math.min(b, x));
+}
+
+// Soroll de baixa freqüència: modulació lenta i orgànica
+function makeLFO(min, max, speed) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.value = speed;
+  gain.gain.value = (max - min) / 2;
+
+  osc.connect(gain);
+  osc.start();
+
+  const offset = ctx.createConstantSource();
+  offset.offset.value = (min + max) / 2;
+  offset.connect(gain);
+  offset.start();
+
+  return gain;
+}
+
+// Capa harmònica: nucli transparent i estable
+function startQuartzBody() {
+  const fundamental = rand(90, 130);
+  const partials = [1, 2.01, 3.01, 4.02, 5.03, 7.01, 9.02];
+
+  partials.forEach((ratio, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = i === 0 ? "sine" : "triangle";
+    osc.frequency.value = fundamental * ratio;
+
+    // Parcials superiors molt més febles
+    gain.gain.value = 0.018 / Math.pow(i + 1, 0.8);
+
+    filter.type = "lowpass";
+    filter.frequency.value = 2600 + i * 500;
+    filter.Q.value = 0.7;
+
+    // Deriva lenta, com una estructura que es reorganitza
+    const drift = makeLFO(
+      fundamental * ratio * 0.996,
+      fundamental * ratio * 1.004,
+      rand(0.003, 0.015)
+    );
+
+    drift.connect(osc.frequency);
+    osc.connect(gain);
+    gain.connect(filter);
+    filter.connect(master);
+
+    osc.start();
+  });
+}
+
+// Filtre que fa respirar tota la superfície
+function startGlobalEvolution() {
+  const lfo = ctx.createOscillator();
+  const depth = ctx.createGain();
+
+  lfo.type = "sine";
+  lfo.frequency.value = 0.018;
+  depth.gain.value = 1500;
+
+  lfo.connect(depth);
+  depth.connect(master.filter.frequency);
+
+  lfo.start();
+
+  const volumeLFO = ctx.createOscillator();
+  const volumeDepth = ctx.createGain();
+
+  volumeLFO.frequency.value = 0.009;
+  volumeDepth.gain.value = 0.008;
+
+  volumeLFO.connect(volumeDepth);
+  volumeDepth.connect(master.gain);
+  volumeLFO.start();
+}
+
+// Soroll filtrat per suggerir tensió microscòpica
+function makeCrystallineNoise() {
+  const bufferSize = ctx.sampleRate * 2;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const source = ctx.createBufferSource();
+  const bandpass = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+
+  source.buffer = buffer;
+  source.loop = true;
+
+  bandpass.type = "bandpass";
+  bandpass.frequency.value = rand(1800, 5000);
+  bandpass.Q.value = rand(8, 22);
+
+  gain.gain.value = 0.006;
+
+  source.connect(bandpass);
+  bandpass.connect(gain);
+  gain.connect(master);
+
+  source.start();
+
+  // Variació contínua de la zona espectral
+  const movement = ctx.createOscillator();
+  const movementGain = ctx.createGain();
+
+  movement.frequency.value = rand(0.01, 0.035);
+  movementGain.gain.value = 1800;
+
+  movement.connect(movementGain);
+  movementGain.connect(bandpass.frequency);
+  movement.start();
+}
+
+// Un “esdeveniment” de cristal·lització: impacte breu i ressonant
+function crystalSeed() {
+  if (!running) return;
+
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  const pan = ctx.createStereoPanner();
+
+  const root = rand(600, 2600);
+  const duration = rand(0.08, 0.8);
+
+  osc.type = Math.random() < 0.7 ? "sine" : "triangle";
+  osc.frequency.setValueAtTime(root * rand(0.8, 1.2), now);
+  osc.frequency.exponentialRampToValueAtTime(
+    root * rand(1.5, 3.8),
+    now + duration
+  );
+
+  filter.type = "bandpass";
+  filter.frequency.value = root * rand(1.2, 2.8);
+  filter.Q.value = rand(8, 35);
+
+  const peak = rand(0.015, 0.06);
+
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(peak, now + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+  pan.pan.value = rand(-0.8, 0.8);
+
+  osc.connect(gain);
+  gain.connect(filter);
+  filter.connect(pan);
+  pan.connect(master);
+
+  osc.start(now);
+  osc.stop(now + duration + 0.03);
+
+  // Després d'una llavor, la següent apareix amb una densitat irregular
+  const next = rand(180, 1800);
+  timers.push(setTimeout(crystalSeed, next));
+}
+
+// Ressonància curta, com una microfractura que recorre la superfície
+function microFracture() {
+  if (!running) return;
+
+  const now = ctx.currentTime;
+  const partials = Math.floor(rand(2, 6));
+
+  for (let i = 0; i < partials; i++) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    const f = rand(2500, 9000) * (i + 1);
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(f, now);
+    osc.frequency.exponentialRampToValueAtTime(
+      f * rand(0.5, 0.85),
+      now + rand(0.15, 0.7)
+    );
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(
+      rand(0.003, 0.014),
+      now + 0.002
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      now + rand(0.2, 0.9)
+    );
+
+    osc.connect(gain);
+    gain.connect(master);
+
+    osc.start(now);
+    osc.stop(now + 1);
+  }
+
+  timers.push(setTimeout(microFracture, rand(2500, 9000)));
+}
+
+async function start() {
+  if (running) return;
+
+  ctx = new AudioContext();
+
+  master = ctx.createGain();
+  master.gain.value = 0.055;
+
+  master.filter = ctx.createBiquadFilter();
+  master.filter.type = "lowpass";
+  master.filter.frequency.value = 6000;
+  master.filter.Q.value = 0.5;
+
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = -28;
+  compressor.knee.value = 18;
+  compressor.ratio.value = 3;
+  compressor.attack.value = 0.01;
+  compressor.release.value = 0.5;
+
+  master.connect(master.filter);
+  master.filter.connect(compressor);
+  compressor.connect(ctx.destination);
+
+  running = true;
+
+  startQuartzBody();
+  startGlobalEvolution();
+  makeCrystallineNoise();
+
+  crystalSeed();
+  microFracture();
+
+  await ctx.resume();
+}
+
+function stop() {
+  running = false;
+
+  timers.forEach(clearTimeout);
+  timers = [];
+
+  if (ctx) {
+    ctx.close();
+    ctx = null;
+  }
+}
+
+document.getElementById("start").addEventListener("click", start);
+document.getElementById("stop").addEventListener("click", stop);
+</script>
+</body>
+</html>
