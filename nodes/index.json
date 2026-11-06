@@ -7,6 +7,10 @@
         {
             "id": "node ∅",
             "entry": "nodes/node∅/main.js"
+        },
+        {
+            "id": "Node∫",
+            "entry": "nodes/node∫/main.js"
         }
     ]
 }

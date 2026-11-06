@@ -1,0 +1,1329 @@
+
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#171020">
+<title>NEURAL ARCHITECTURE 005 · POINTER ORGANISM</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  background: #171020;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html, body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #171020;
+  overscroll-behavior: none;
+  touch-action: none;
+  cursor: none;
+}
+
+canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: none;
+}
+</style>
+</head>
+
+<body>
+<canvas id="world"></canvas>
+
+<script>
+"use strict";
+
+(() => {
+
+/* =========================================================
+   NEURAL ARCHITECTURE 005
+   POINTER ORGANISM
+   Self-contained / ephemeral / no interface
+========================================================= */
+
+const canvas = document.getElementById("world");
+const ctx = canvas.getContext("2d", { alpha: false });
+
+const TAU = Math.PI * 2;
+
+const clamp = (v, min=0, max=1) =>
+  Math.max(min, Math.min(max, v));
+
+const lerp = (a,b,t) => a+(b-a)*t;
+
+const random = (a,b) => a+Math.random()*(b-a);
+
+let W = 0;
+let H = 0;
+let DPR = 1;
+
+let running = true;
+let raf = 0;
+let lastFrame = 0;
+
+let session = null;
+let audio = null;
+
+function resize() {
+  W = innerWidth;
+  H = innerHeight;
+  DPR = Math.min(devicePixelRatio || 1, 2);
+
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+
+  canvas.style.width = W + "px";
+  canvas.style.height = H + "px";
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+addEventListener("resize", resize);
+resize();
+
+/* =========================================================
+   EXPERIENCE STATE
+========================================================= */
+
+function createExperience() {
+  return {
+    energy: .16,
+    rhythm: .25,
+    tension: 0,
+
+    targetX: 0,
+    targetY: 0,
+
+    offsetX: 0,
+    offsetY: 0,
+
+    rotation: 0,
+    tilt: 0,
+
+    velocity: 0,
+    memory: [],
+    personality: random(.2,.8),
+
+    active: false
+  };
+}
+
+/* =========================================================
+   POINTER ENGINE
+========================================================= */
+
+const pointer = {
+  x: W*.5,
+  y: H*.5,
+
+  previousX: W*.5,
+  previousY: H*.5,
+
+  initialized: false,
+  velocity: 0,
+  rotation: 0,
+  tilt: 0
+};
+
+function updatePointer(e) {
+
+  const x = e.clientX;
+  const y = e.clientY;
+
+  if (!pointer.initialized) {
+
+    pointer.x = x;
+    pointer.y = y;
+
+    pointer.previousX = x;
+    pointer.previousY = y;
+
+    pointer.initialized = true;
+    return;
+  }
+
+  const dx = x-pointer.previousX;
+  const dy = y-pointer.previousY;
+
+  pointer.x = x;
+  pointer.y = y;
+
+  pointer.previousX = x;
+  pointer.previousY = y;
+
+  const speed = Math.hypot(dx,dy);
+
+  pointer.velocity = clamp(speed/38);
+
+  // Horizontal movement creates accumulated rotation.
+  pointer.rotation += dx*.0032;
+
+  // Vertical movement changes the 3D inclination.
+  pointer.tilt += dy*.0022;
+
+  pointer.rotation = clamp(
+    pointer.rotation,
+    -9,
+    9
+  );
+
+  pointer.tilt = clamp(
+    pointer.tilt,
+    -.8,
+    .8
+  );
+
+  if (!session) return;
+
+  const ex = session.experience;
+
+  ex.targetX = (x/W-.5)*.85;
+  ex.targetY = (y/H-.5)*.85;
+
+  ex.rotation = pointer.rotation;
+  ex.tilt = pointer.tilt;
+
+  ex.velocity = pointer.velocity;
+
+  // Motion becomes organism energy.
+  ex.energy = clamp(
+    ex.energy + pointer.velocity*.018
+  );
+
+  ex.tension = clamp(
+    pointer.velocity*.8
+  );
+
+  ex.rhythm = clamp(
+    ex.rhythm + pointer.velocity*.014
+  );
+
+  // Keep a short-lived memory of movement.
+  ex.memory.push({
+    x: ex.targetX,
+    y: ex.targetY,
+    speed: pointer.velocity
+  });
+
+  if (ex.memory.length > 24) {
+    ex.memory.shift();
+  }
+}
+
+canvas.addEventListener("pointermove", updatePointer, {
+  passive: true
+});
+
+// The first click activates audio.
+// The artwork itself is already moving.
+canvas.addEventListener("pointerdown", async () => {
+
+  if (session) {
+    session.experience.energy = clamp(
+      session.experience.energy + .12
+    );
+  }
+
+  if (!audio) {
+    await activateAudio();
+  }
+
+}, { passive: true });
+
+/* =========================================================
+   NEURAL CORE
+========================================================= */
+
+class NeuralCore {
+
+  constructor() {
+
+    this.size = 18;
+
+    this.state = new Float32Array(this.size);
+    this.next = new Float32Array(this.size);
+
+    this.weights = new Float32Array(
+      this.size*this.size
+    );
+
+    for (let i=0; i<this.weights.length; i++) {
+      this.weights[i] = random(-.3,.3);
+    }
+
+    this.activity = .2;
+    this.history = [];
+  }
+
+  process(input) {
+
+    let total = 0;
+
+    for (let i=0; i<this.size; i++) {
+
+      let sum = input[i%input.length] || 0;
+
+      for (let j=0; j<this.size; j++) {
+        sum += this.state[j] *
+          this.weights[i*this.size+j];
+      }
+
+      this.next[i] = Math.tanh(sum*.85);
+      total += Math.abs(this.next[i]);
+    }
+
+    const old = this.state;
+
+    this.state = this.next;
+    this.next = old;
+
+    this.activity = total/this.size;
+
+    // Small recurrent adaptation.
+    for (let i=0; i<this.weights.length; i++) {
+
+      const a = Math.floor(i/this.size);
+      const b = i%this.size;
+
+      this.weights[i] = clamp(
+        this.weights[i] +
+        this.state[a]*this.state[b]*.00035,
+        -.8,
+        .8
+      );
+    }
+
+    return this.activity;
+  }
+
+  remember(value) {
+    this.history.push(value);
+
+    if (this.history.length > 24) {
+      this.history.shift();
+    }
+  }
+}
+
+/* =========================================================
+   ORGANISM GEOMETRY
+========================================================= */
+
+function createOrganism() {
+
+  const nodes = [];
+  const particles = [];
+
+  for (let i=0; i<100; i++) {
+
+    nodes.push({
+      angle: random(0,TAU),
+      radius: random(.28,1.2),
+      depth: random(-1,1),
+      phase: random(0,TAU),
+      size: random(1.1,3.4),
+      speed: random(-.35,.35),
+      color: Math.random()
+    });
+  }
+
+  for (let i=0; i<260; i++) {
+
+    particles.push({
+      angle: random(0,TAU),
+      radius: random(.35,1.9),
+      depth: random(-1.5,1.5),
+      phase: random(0,TAU),
+      speed: random(.03,.3),
+      size: random(.5,1.8)
+    });
+  }
+
+  return {
+    nodes,
+    particles,
+    pulse: 0,
+    deformation: 0
+  };
+}
+
+/* =========================================================
+   3D PROJECTION
+========================================================= */
+
+function rotate3D(p,rx,ry,rz) {
+
+  let {x,y,z} = p;
+
+  const cy = Math.cos(rx);
+  const sy = Math.sin(rx);
+
+  const y1 = y*cy-z*sy;
+  const z1 = y*sy+z*cy;
+
+  const cx = Math.cos(ry);
+  const sx = Math.sin(ry);
+
+  const x2 = x*cx+z1*sx;
+  const z2 = -x*sx+z1*cx;
+
+  const cz = Math.cos(rz);
+  const sz = Math.sin(rz);
+
+  return {
+    x: x2*cz-y1*sz,
+    y: x2*sz+y1*cz,
+    z: z2
+  };
+}
+
+function project(p,cx,cy,scale) {
+
+  const perspective = 4/(4+p.z);
+
+  return {
+    x: cx+p.x*scale*perspective,
+    y: cy+p.y*scale*perspective,
+    depth: perspective
+  };
+}
+
+/* =========================================================
+   BACKGROUND
+========================================================= */
+
+function drawBackground(time,energy) {
+
+  const bg = ctx.createRadialGradient(
+    W*.5,H*.47,0,
+    W*.5,H*.47,Math.max(W,H)*.78
+  );
+
+  bg.addColorStop(0,"#40294d");
+  bg.addColorStop(.34,"#2b1d39");
+  bg.addColorStop(.72,"#1d1529");
+  bg.addColorStop(1,"#110c18");
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,W,H);
+
+  const glow = ctx.createRadialGradient(
+    W*.5+Math.sin(time*.15)*W*.12,
+    H*.5+Math.cos(time*.12)*H*.1,
+    0,
+    W*.5,H*.5,Math.min(W,H)*.65
+  );
+
+  glow.addColorStop(
+    0,
+    `rgba(181,145,255,${.08+energy*.12})`
+  );
+
+  glow.addColorStop(
+    .42,
+    "rgba(239,169,143,.035)"
+  );
+
+  glow.addColorStop(
+    1,
+    "rgba(181,145,255,0)"
+  );
+
+  ctx.fillStyle = glow;
+  ctx.fillRect(0,0,W,H);
+}
+
+/* =========================================================
+   PARTICLE FIELD
+========================================================= */
+
+function drawParticles(org,ex,time) {
+
+  const cx = W*.5+ex.offsetX*W*.72;
+  const cy = H*.5+ex.offsetY*H*.72;
+
+  const scale = Math.min(W,H)*.27;
+
+  for (const p of org.particles) {
+
+    const a = p.angle+time*p.speed*.13;
+
+    const r = p.radius*scale;
+
+    const drift =
+      Math.sin(time*.7+p.phase)*scale*.025;
+
+    const x = cx+Math.cos(a)*r+drift;
+
+    const y =
+      cy+
+      Math.sin(a)*r*.75+
+      Math.cos(time*.5+p.phase)*scale*.02;
+
+    const alpha =
+      .12+
+      Math.sin(time*1.1+p.phase)*.08+
+      ex.energy*.15;
+
+    ctx.fillStyle = p.size>1.3
+      ? `rgba(242,228,201,${alpha})`
+      : `rgba(190,160,255,${alpha})`;
+
+    ctx.beginPath();
+    ctx.arc(x,y,p.size,0,TAU);
+    ctx.fill();
+  }
+}
+
+/* =========================================================
+   ARCHITECTURAL ORGANISM
+========================================================= */
+
+function drawArchitecture(org,ex,brain,time) {
+
+  const cx = W*.5+ex.offsetX*W;
+  const cy = H*.5+ex.offsetY*H;
+
+  const scale = Math.min(W,H)*.255;
+
+  const pulse =
+    1+
+    Math.sin(time*1.2)*.025+
+    brain.activity*.08+
+    ex.energy*.035;
+
+  const rx =
+    .2+
+    Math.sin(time*.13)*.16+
+    ex.tilt;
+
+  const ry = time*.12+ex.rotation;
+
+  const rz = Math.sin(time*.19)*.1;
+
+  const projected = [];
+
+  for (const n of org.nodes) {
+
+    const a = n.angle+time*n.speed*.25;
+
+    const deformation =
+      1+
+      Math.sin(time*.8+n.phase)*
+      (.055+ex.tension*.15);
+
+    const r = n.radius*deformation*pulse;
+
+    const p = {
+      x: Math.cos(a)*r,
+      y: Math.sin(a)*r*.76,
+      z: n.depth+Math.sin(time*.4+n.phase)*.2
+    };
+
+    const rotated = rotate3D(p,rx,ry,rz);
+
+    const point = project(
+      rotated,cx,cy,scale
+    );
+
+    projected.push({
+      ...point,
+      node:n,
+      world:rotated
+    });
+  }
+
+  // Neural connections.
+  for (let i=0; i<projected.length; i++) {
+
+    const a = projected[i];
+
+    for (let j=i+1; j<projected.length; j++) {
+
+      const b = projected[j];
+
+      const distance = Math.hypot(
+        a.x-b.x,
+        a.y-b.y
+      );
+
+      if (distance<scale*.43) {
+
+        const strength =
+          (1-distance/(scale*.43))*.19;
+
+        ctx.beginPath();
+        ctx.moveTo(a.x,a.y);
+        ctx.lineTo(b.x,b.y);
+
+        ctx.strokeStyle =
+          `rgba(201,174,255,${strength})`;
+
+        ctx.lineWidth=.65;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Architectural membranes.
+  for (let ring=0; ring<7; ring++) {
+
+    const radius = scale*(.32+ring*.12);
+    const segments = 190;
+
+    ctx.beginPath();
+
+    for (let i=0; i<=segments; i++) {
+
+      const a = i/segments*TAU;
+
+      const wave =
+        Math.sin(a*5+time*.7+ring)*(.018+ex.tension*.045)+
+        Math.sin(a*9-time*.45)*.009;
+
+      const r = radius*(1+wave);
+
+      const p = rotate3D({
+        x:Math.cos(a)*r/scale,
+        y:Math.sin(a)*r/scale*.65,
+        z:Math.sin(a*3+time*.2)*.13
+      },rx,ry,rz);
+
+      const q = project(p,cx,cy,scale);
+
+      if (i===0) ctx.moveTo(q.x,q.y);
+      else ctx.lineTo(q.x,q.y);
+    }
+
+    const colors = [
+      "rgba(241,211,174,.3)",
+      "rgba(177,145,255,.3)",
+      "rgba(242,228,201,.2)",
+      "rgba(239,169,143,.27)",
+      "rgba(177,145,255,.19)",
+      "rgba(232,197,140,.2)",
+      "rgba(242,228,201,.13)"
+    ];
+
+    ctx.strokeStyle=colors[ring];
+    ctx.lineWidth=ring===3?1.5:.8;
+    ctx.stroke();
+  }
+
+  // Nodes.
+  projected.sort(
+    (a,b)=>a.world.z-b.world.z
+  );
+
+  for (const p of projected) {
+
+    const depth = clamp(
+      (p.world.z+2)/4,
+      .15,
+      1
+    );
+
+    const radius =
+      p.node.size*depth*(1+ex.energy*.5);
+
+    const color =
+      p.node.color<.34 ? "#f2e4c9" :
+      p.node.color<.68 ? "#c5a8ff" :
+      "#efa98f";
+
+    const halo = ctx.createRadialGradient(
+      p.x,p.y,0,
+      p.x,p.y,radius*6
+    );
+
+    halo.addColorStop(0,color+"bb");
+    halo.addColorStop(1,color+"00");
+
+    ctx.fillStyle=halo;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,radius*6,0,TAU);
+    ctx.fill();
+
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,radius,0,TAU);
+    ctx.fill();
+  }
+
+  // Warm central nucleus.
+  const nucleus = ctx.createRadialGradient(
+    cx-scale*.025,
+    cy-scale*.04,
+    1,
+    cx,cy,scale*.31
+  );
+
+  nucleus.addColorStop(0,"rgba(255,231,202,.82)");
+  nucleus.addColorStop(.2,"rgba(239,169,143,.44)");
+  nucleus.addColorStop(.52,"rgba(169,130,235,.22)");
+  nucleus.addColorStop(1,"rgba(169,130,235,0)");
+
+  ctx.fillStyle=nucleus;
+  ctx.beginPath();
+  ctx.arc(cx,cy,scale*.31,0,TAU);
+  ctx.fill();
+
+  // Organic nucleus membrane.
+  ctx.beginPath();
+
+  for (let i=0; i<=260; i++) {
+
+    const a = i/260*TAU;
+
+    const wobble =
+      1+
+      Math.sin(a*7+time*1.3)*.035+
+      Math.sin(a*13-time*.7)*.014+
+      Math.sin(a*3+time*.4)*.025*ex.tension;
+
+    const r=scale*.23*wobble;
+
+    const x=cx+Math.cos(a+time*.1)*r;
+    const y=cy+Math.sin(a+time*.1)*r*.72;
+
+    if (i===0) ctx.moveTo(x,y);
+    else ctx.lineTo(x,y);
+  }
+
+  ctx.closePath();
+  ctx.strokeStyle="rgba(242,228,201,.43)";
+  ctx.lineWidth=1.1;
+  ctx.stroke();
+}
+
+/* =========================================================
+   AUDIO ENGINE
+========================================================= */
+
+class SoundEngine {
+
+  constructor(experience,brain) {
+
+    this.experience=experience;
+    this.brain=brain;
+
+    this.context=null;
+    this.master=null;
+    this.compressor=null;
+
+    this.delay=null;
+    this.feedback=null;
+
+    this.timer=null;
+    this.enabled=false;
+
+    this.step=0;
+    this.tempo=112;
+    this.nextTime=0;
+
+    this.root=48;
+    this.chordIndex=0;
+
+    this.chordHistory=[];
+  }
+
+  async init() {
+
+    const AudioContextClass =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+    if (!AudioContextClass) {
+      throw new Error("Web Audio unavailable");
+    }
+
+    this.context=new AudioContextClass({
+      sampleRate:44100,
+      latencyHint:"interactive"
+    });
+
+    await this.context.resume();
+
+    const c=this.context;
+
+    this.master=c.createGain();
+    this.master.gain.value=.0001;
+
+    this.compressor=c.createDynamicsCompressor();
+    this.compressor.threshold.value=-19;
+    this.compressor.knee.value=18;
+    this.compressor.ratio.value=3;
+    this.compressor.attack.value=.012;
+    this.compressor.release.value=.25;
+
+    this.delay=c.createDelay(1);
+    this.delay.delayTime.value=.34;
+
+    this.feedback=c.createGain();
+    this.feedback.gain.value=.2;
+
+    this.delay.connect(this.feedback);
+    this.feedback.connect(this.delay);
+
+    this.compressor.connect(this.master);
+    this.delay.connect(this.master);
+
+    this.master.connect(c.destination);
+
+    this.master.gain.setTargetAtTime(
+      .52,
+      c.currentTime,
+      .8
+    );
+
+    this.enabled=true;
+    this.nextTime=c.currentTime+.08;
+
+    this.timer=setInterval(
+      ()=>this.scheduler(),
+      25
+    );
+  }
+
+  voice(osc,gain,time,duration,send=.2) {
+
+    osc.connect(gain);
+    gain.connect(this.compressor);
+
+    if (send>0) {
+
+      const sendGain=this.context.createGain();
+
+      sendGain.gain.value=send;
+
+      gain.connect(sendGain);
+      sendGain.connect(this.delay);
+
+      osc.onended=()=>{
+        try {
+          osc.disconnect();
+          gain.disconnect();
+          sendGain.disconnect();
+        } catch(e) {}
+      };
+
+    } else {
+
+      osc.onended=()=>{
+        try {
+          osc.disconnect();
+          gain.disconnect();
+        } catch(e) {}
+      };
+    }
+
+    osc.start(time);
+    osc.stop(time+duration+.04);
+  }
+
+  tone(freq,time,duration,volume,wave="sine",send=.2) {
+
+    if (!this.enabled) return;
+
+    const c=this.context;
+
+    const osc=c.createOscillator();
+    const gain=c.createGain();
+
+    osc.type=wave;
+    osc.frequency.setValueAtTime(freq,time);
+
+    gain.gain.setValueAtTime(.0001,time);
+
+    gain.gain.exponentialRampToValueAtTime(
+      Math.max(.0002,volume),
+      time+.025
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      .0001,
+      time+duration
+    );
+
+    this.voice(osc,gain,time,duration,send);
+  }
+
+  noise(time,duration,volume,filterFreq) {
+
+    const c=this.context;
+
+    const buffer=c.createBuffer(
+      1,
+      Math.ceil(c.sampleRate*duration),
+      c.sampleRate
+    );
+
+    const data=buffer.getChannelData(0);
+
+    for(let i=0;i<data.length;i++) {
+      data[i]=Math.random()*2-1;
+    }
+
+    const source=c.createBufferSource();
+    const filter=c.createBiquadFilter();
+    const gain=c.createGain();
+
+    source.buffer=buffer;
+    filter.type="highpass";
+    filter.frequency.value=filterFreq;
+
+    gain.gain.setValueAtTime(volume,time);
+    gain.gain.exponentialRampToValueAtTime(
+      .0001,
+      time+duration
+    );
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.compressor);
+
+    source.onended=()=>{
+      try {
+        source.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+      } catch(e) {}
+    };
+
+    source.start(time);
+    source.stop(time+duration);
+  }
+
+  kick(time,level=1) {
+
+    const c=this.context;
+
+    const osc=c.createOscillator();
+    const gain=c.createGain();
+
+    osc.type="sine";
+
+    osc.frequency.setValueAtTime(115,time);
+    osc.frequency.exponentialRampToValueAtTime(
+      42,time+.14
+    );
+
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(
+      .62*level,time+.008
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      .0001,time+.27
+    );
+
+    osc.connect(gain);
+    gain.connect(this.compressor);
+
+    osc.onended=()=>{
+      try {
+        osc.disconnect();
+        gain.disconnect();
+      } catch(e) {}
+    };
+
+    osc.start(time);
+    osc.stop(time+.3);
+  }
+
+  snare(time,level=1) {
+
+    this.noise(time,.14,.16*level,1500);
+
+    this.tone(
+      175,time,.12,.055*level,
+      "triangle",.05
+    );
+  }
+
+  hat(time,level=.5) {
+    this.noise(time,.045,.035*level,6500);
+  }
+
+  selectChord() {
+
+    const chords=[
+      [0,3,7,10],
+      [0,5,7,12],
+      [0,3,7,14],
+      [0,4,7,11],
+      [0,2,7,9],
+      [0,5,9,12]
+    ];
+
+    let index=Math.floor(Math.random()*chords.length);
+
+    const last=this.chordHistory[
+      this.chordHistory.length-1
+    ];
+
+    if(last!==undefined && Math.random()<.42) {
+      index=(last+1+Math.floor(Math.random()*3))%chords.length;
+    }
+
+    this.chordIndex=index;
+    this.chordHistory.push(index);
+
+    if(this.chordHistory.length>12) {
+      this.chordHistory.shift();
+    }
+
+    this.brain.remember(index);
+
+    return chords[index];
+  }
+
+  compose(time) {
+
+    const ex=this.experience;
+
+    const energy=clamp(ex.energy);
+    const tension=clamp(ex.tension);
+
+    const density=clamp(
+      this.brain.activity*.6+
+      ex.rhythm*.4
+    );
+
+    this.tempo=clamp(
+      96+energy*34+tension*28,
+      72,
+      164
+    );
+
+    const s=this.step%16;
+
+    const atmosphere=clamp(
+      energy*.6+tension*.8
+    );
+
+    if(s===0) {
+
+      const chord=this.selectChord();
+      const root=this.root+this.chordIndex*2;
+
+      chord.forEach((note,i)=>{
+
+        if(i===3 && Math.random()>.65) return;
+
+        this.tone(
+          root+note,
+          time,
+          .8,
+          .022-i*.003,
+          "sine",
+          .45
+        );
+      });
+    }
+
+    // Intelligent D&B rhythmic language.
+    const kicks=[0,5,10,14];
+    const snares=[4,12];
+    const hats=[2,6,9,14];
+
+    if(
+      kicks.includes(s) &&
+      Math.random()<.25+atmosphere*.65
+    ) {
+      this.kick(time,.55+energy*.5);
+    }
+
+    if(
+      snares.includes(s) &&
+      Math.random()<.45+atmosphere*.48
+    ) {
+      this.snare(time,.6+energy*.35);
+    }
+
+    if(
+      hats.includes(s) &&
+      Math.random()<.25+density*.58
+    ) {
+      this.hat(time,.4+energy*.4);
+    }
+
+    // Sparse ghost notes emerge from fast pointer motion.
+    if(
+      tension>.3 &&
+      Math.random()<tension*.3
+    ) {
+      this.snare(time,.2);
+    }
+
+    // Evolving melodic fragments.
+    if(s%2===0 && Math.random()<.65) {
+
+      const notes=[0,3,7,10,12,15,17,19];
+
+      const note=notes[
+        Math.floor(Math.random()*notes.length)
+      ];
+
+      this.tone(
+        this.root+note+this.chordIndex*2,
+        time,
+        random(.14,.48),
+        .024+energy*.028,
+        Math.random()<.5?"triangle":"sine",
+        .38
+      );
+    }
+
+    // Deep bass accents.
+    if(s===8 && atmosphere>.2) {
+
+      this.tone(
+        this.root-12,
+        time,
+        .3,
+        .05,
+        "sawtooth",
+        .2
+      );
+    }
+
+    this.step++;
+  }
+
+  scheduler() {
+
+    if(
+      !this.enabled ||
+      !this.context ||
+      this.context.state!=="running"
+    ) return;
+
+    const c=this.context;
+
+    while(this.nextTime<c.currentTime+.12) {
+
+      this.compose(this.nextTime);
+
+      this.nextTime+=60/this.tempo/4;
+    }
+  }
+
+  async destroy() {
+
+    this.enabled=false;
+    clearInterval(this.timer);
+
+    if(!this.context) return;
+
+    const c=this.context;
+
+    try {
+      this.master.gain.setTargetAtTime(
+        .0001,c.currentTime,.04
+      );
+    } catch(e) {}
+
+    try {
+      await c.close();
+    } catch(e) {}
+
+    this.context=null;
+  }
+}
+
+/* =========================================================
+   AUDIO ACTIVATION
+========================================================= */
+
+async function activateAudio() {
+
+  if (audio || !session) return;
+
+  const engine=new SoundEngine(
+    session.experience,
+    session.brain
+  );
+
+  audio=engine;
+
+  try {
+
+    await engine.init();
+
+  } catch(error) {
+
+    console.warn(
+      "Audio could not start:",
+      error
+    );
+
+    if(audio===engine) {
+      audio=null;
+    }
+
+    await engine.destroy();
+  }
+}
+
+/* =========================================================
+   MAIN ANIMATION
+========================================================= */
+
+function render(timestamp) {
+
+  if (!running || !session) return;
+
+  const dt=Math.min(
+    .05,
+    (timestamp-lastFrame)/1000 || .016
+  );
+
+  lastFrame=timestamp;
+
+  const time=timestamp*.001;
+
+  const ex=session.experience;
+  const brain=session.brain;
+  const org=session.organism;
+
+  // Smooth spatial following.
+  ex.offsetX=lerp(
+    ex.offsetX,
+    ex.targetX,
+    .055
+  );
+
+  ex.offsetY=lerp(
+    ex.offsetY,
+    ex.targetY,
+    .055
+  );
+
+  // Neural perception of the organism's experience.
+  const input=[
+    ex.energy,
+    ex.tension,
+    ex.offsetX+.5,
+    ex.offsetY+.5,
+    ex.velocity,
+    Math.sin(time),
+    Math.cos(time),
+    ex.rhythm
+  ];
+
+  const activity=brain.process(input);
+
+  // Energy slowly returns to a resting state.
+  ex.energy=lerp(
+    ex.energy,
+    .13+activity*.24,
+    dt*.11
+  );
+
+  ex.tension=lerp(
+    ex.tension,
+    0,
+    dt*.8
+  );
+
+  ex.rhythm=lerp(
+    ex.rhythm,
+    .25+activity*.35,
+    dt*.12
+  );
+
+  ex.velocity=lerp(
+    ex.velocity,
+    0,
+    dt*2.5
+  );
+
+  org.pulse=lerp(
+    org.pulse,
+    ex.energy,
+    .045
+  );
+
+  org.deformation=lerp(
+    org.deformation,
+    ex.tension,
+    .05
+  );
+
+  drawBackground(time,ex.energy);
+
+  drawParticles(org,ex,time);
+
+  drawArchitecture(
+    org,
+    ex,
+    brain,
+    time
+  );
+
+  raf=requestAnimationFrame(render);
+}
+
+/* =========================================================
+   SESSION
+========================================================= */
+
+function init() {
+
+  session={
+    experience:createExperience(),
+    brain:new NeuralCore(),
+    organism:createOrganism()
+  };
+
+  lastFrame=performance.now();
+
+  raf=requestAnimationFrame(render);
+}
+
+function stop() {
+
+  running=false;
+
+  cancelAnimationFrame(raf);
+
+  if(audio) {
+    const oldAudio=audio;
+    audio=null;
+    oldAudio.destroy();
+  }
+
+  session=null;
+}
+
+addEventListener("pagehide",stop);
+
+/* =========================================================
+   START
+========================================================= */
+
+init();
+
+})();
+</script>
+</body>
+</html>

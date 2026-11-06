@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #080611;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: crosshair;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+(() => {
+  const canvas = document.querySelector("#c");
+  const gl = canvas.getContext("webgl", {
+    antialias: false,
+    powerPreference: "high-performance"
+  });
+  if (!gl) return;
+
+  const vertexSource = `
+    attribute vec2 p;
+    void main() {
+      gl_Position = vec4(p, 0.0, 1.0);
+    }
+  `;
+
+  const fragmentSource = `
+    precision mediump float;
+    uniform vec2 u_resolution;
+    uniform vec2 u_pointer;
+    uniform float u_time;
+    uniform float u_energy;
+    uniform float u_bass;
+    uniform float u_mid;
+    uniform float u_high;
+    uniform float u_style;
+
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+        f.y
+      );
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float a = 0.5;
+      mat2 r = mat2(0.8, -0.6, 0.6, 0.8);
+      for (int i = 0; i < 5; i++) {
+        v += a * noise(p);
+        p = r * p * 2.02;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    void main() {
+      float aspect = u_resolution.x / u_resolution.y;
+      vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution) / u_resolution.y;
+      vec2 pointer = vec2(u_pointer.x * aspect * 0.5, u_pointer.y * 0.5);
+      vec2 delta = uv - pointer;
+      float dist = length(delta);
+      float nearPointer = exp(-dist * 4.3);
+      float t = u_time;
+
+      vec2 q = uv;
+      float warp = fbm(uv * 2.4 + vec2(t * 0.045, -t * 0.03));
+      q += 0.10 * vec2(
+        sin(t * 0.17 + uv.y * 2.5),
+        cos(t * 0.13 + uv.x * 2.0)
+      );
+      q += normalize(delta + vec2(0.0001)) * nearPointer * (0.03 + u_energy * 0.075);
+
+      float n1 = fbm(q * 3.0 + vec2(t * 0.035, -t * 0.025));
+      float n2 = fbm(q * 6.0 - vec2(t * 0.05, t * 0.025));
+      float angle = atan(q.y, q.x);
+
+      float pulse = 0.5 + 0.5 * sin(angle * 7.0 + t * 0.45 + u_bass * 2.0);
+      float ring = exp(-abs(dist - (0.13 + 0.11 * pulse)) * 23.0);
+      float field = n1 * 0.63 + n2 * 0.37;
+
+      vec3 deep = vec3(0.012, 0.008, 0.028);
+      vec3 purple = vec3(0.27, 0.08, 0.49);
+      vec3 blue = vec3(0.08, 0.29, 0.52);
+      vec3 pink = vec3(0.88, 0.22, 0.48);
+      vec3 amber = vec3(0.9, 0.51, 0.2);
+      vec3 ice = vec3(0.38, 0.78, 0.83);
+
+      vec3 color = mix(deep, purple, smoothstep(0.27, 0.78, field));
+      color = mix(color, blue, smoothstep(0.43, 0.84, n2) * 0.55);
+      color += pink * ring * (0.08 + u_bass * 0.24);
+      color += ice * nearPointer * (0.035 + u_energy * 0.16);
+      color += amber * u_high * nearPointer * 0.08;
+
+      // Cadascun dels cinc estils canvia subtilment el color del camp.
+      float styleMix = clamp(u_style / 4.0, 0.0, 1.0);
+      color = mix(color, mix(ice, amber, styleMix), field * 0.12);
+
+      float fog = exp(-dist * 1.8) * (0.05 + n1 * 0.12);
+      color += purple * fog;
+      color *= 0.58 + 0.42 * smoothstep(1.45, 0.15, length(uv));
+
+      float grain = (hash(gl_FragCoord.xy + t) - 0.5) * 0.016;
+      color += grain;
+
+      gl_FragColor = vec4(max(color, 0.0), 1.0);
+    }
+  `;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+
+  const vs = compile(gl.VERTEX_SHADER, vertexSource);
+  const fs = compile(gl.FRAGMENT_SHADER, fragmentSource);
+  if (!vs || !fs) return;
+
+  const program = gl.createProgram();
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(program));
+    return;
+  }
+
+  gl.useProgram(program);
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array([-1, -1, 3, -1, -1, 3]),
+    gl.STATIC_DRAW
+  );
+
+  const position = gl.getAttribLocation(program, "p");
+  gl.enableVertexAttribArray(position);
+  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+  const uniforms = {};
+  [
+    "u_resolution", "u_pointer", "u_time", "u_energy",
+    "u_bass", "u_mid", "u_high", "u_style"
+  ].forEach(name => {
+    uniforms[name] = gl.getUniformLocation(program, name);
+  });
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const width = Math.max(1, Math.floor(innerWidth * dpr));
+    const height = Math.max(1, Math.floor(innerHeight * dpr));
+    canvas.width = width;
+    canvas.height = height;
+    gl.viewport(0, 0, width, height);
+    gl.uniform2f(uniforms.u_resolution, width, height);
+  }
+
+  addEventListener("resize", resize);
+  resize();
+
+  const pointer = { x: 0, y: 0 };
+  const targetPointer = { x: 0, y: 0 };
+  let energy = 0;
+  let lastX = 0;
+  let lastY = 0;
+  let lastMoveTime = 0;
+  let lastPointerTime = performance.now();
+  let lastAngle = null;
+  let accumulatedTurn = 0;
+  let turning = 0;
+  let orbit = 0;
+
+  const styles = [
+    "classic", "jungle", "ambient", "intelligent", "neurofunk"
+  ];
+  let styleIndex = 0;
+  let styleGestureTimer = null;
+let styleGestureArmed = false;
+let styleGestureChanged = false;
+let styleGestureStartX = 0;
+let styleGestureStartY = 0;
+let stylePointerId = null;
+
+function startStyleGesture(e) {
+  stylePointerId = e.pointerId;
+  styleGestureStartX = e.clientX;
+  styleGestureStartY = e.clientY;
+  styleGestureArmed = false;
+  styleGestureChanged = false;
+
+  clearTimeout(styleGestureTimer);
+  styleGestureTimer = setTimeout(() => {
+    styleGestureArmed = true;
+  }, 600);
+}
+
+function moveStyleGesture(e) {
+  if (e.pointerId !== stylePointerId || styleGestureChanged) return;
+
+  const dx = e.clientX - styleGestureStartX;
+  const dy = e.clientY - styleGestureStartY;
+  const moved = Math.hypot(dx, dy);
+
+  // Si es mou abans d'efectuar el gest, compta com a moviment del pad.
+  if (!styleGestureArmed && moved > 18) {
+    clearTimeout(styleGestureTimer);
+    return;
+  }
+
+  // Un lliscament clarament horitzontal canvia l'estil.
+  if (
+    styleGestureArmed &&
+    Math.abs(dx) > innerWidth * 0.09 &&
+    Math.abs(dx) > Math.abs(dy) * 1.4
+  ) {
+    const direction = dx > 0 ? 1 : -1;
+    styleIndex = (styleIndex + direction + styles.length) % styles.length;
+    styleGestureChanged = true;
+  }
+}
+
+function endStyleGesture(e) {
+  if (e.pointerId !== stylePointerId) return;
+  clearTimeout(styleGestureTimer);
+  styleGestureArmed = false;
+  stylePointerId = null;
+}
+
+
+  function move(e) {
+    const rect = canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+
+    targetPointer.x = (px / rect.width) * 2 - 1;
+    targetPointer.y = 1 - (py / rect.height) * 2;
+
+    const now = performance.now();
+
+    if (lastMoveTime) {
+      const dt = Math.max(8, now - lastMoveTime);
+      const speed = Math.hypot(px - lastX, py - lastY) / dt;
+      energy = Math.min(1, energy + speed * 0.14);
+    }
+
+    const angle = Math.atan2(py - innerHeight * 0.5, px - innerWidth * 0.5);
+    if (lastAngle !== null) {
+      let delta = angle - lastAngle;
+      while (delta > Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
+      accumulatedTurn += delta;
+    }
+
+    lastAngle = angle;
+    lastX = px;
+    lastY = py;
+    lastMoveTime = now;
+    lastPointerTime = now;
+  }
+
+  canvas.addEventListener("pointermove", move);
+
+  window.addEventListener("keydown", e => {
+    if (e.key >= "1" && e.key <= "5") {
+      styleIndex = Number(e.key) - 1;
+    }
+  });
+
+  canvas.addEventListener("pointerdown", e => {
+    move(e);
+    startAudio();
+  });
+
+  const BPM = 174;
+  const beat = 60 / BPM;
+  const stepDuration = beat / 4; // 16ens
+
+  const scales = {
+    classic:     [0, 3, 5, 7, 10, 12, 15],
+    jungle:      [0, 3, 5, 7, 10, 12, 15],
+    ambient:     [0, 3, 5, 7, 10, 12, 14],
+    intelligent: [0, 2, 3, 7, 9, 10, 14],
+    neurofunk:   [0, 1, 3, 7, 8, 10, 12]
+  };
+
+  let audio = null;
+  let master = null;
+  let filter = null;
+  let analyser = null;
+  let started = false;
+  let nextStepTime = 0;
+  let step = 0;
+  let bar = 0;
+  let lastBassNote = -1;
+  let spectrum = null;
+
+  function midiToHz(note) {
+    return 440 * Math.pow(2, (note - 69) / 12);
+  }
+
+  function envelope(gain, time, peak, attack, decay) {
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.001, peak), time + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + decay);
+  }
+
+  function playKick(time, strength = 1) {
+    const osc = audio.createOscillator();
+    const amp = audio.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(135, time);
+    osc.frequency.exponentialRampToValueAtTime(42, time + 0.14);
+    envelope(amp, time, 0.32 * strength, 0.004, 0.22);
+    osc.connect(amp);
+    amp.connect(master);
+    osc.start(time);
+    osc.stop(time + 0.24);
+  }
+
+  function playNoise(time, duration, volume, filterType, cutoff, pan = 0) {
+    const length = Math.floor(audio.sampleRate * duration);
+    const buffer = audio.createBuffer(1, length, audio.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+    }
+
+    const source = audio.createBufferSource();
+    const tone = audio.createBiquadFilter();
+    const amp = audio.createGain();
+    const panner = audio.createStereoPanner();
+
+    source.buffer = buffer;
+    tone.type = filterType;
+    tone.frequency.value = cutoff;
+    panner.pan.value = pan;
+    envelope(amp, time, volume, 0.003, duration);
+
+    source.connect(tone);
+    tone.connect(amp);
+    amp.connect(panner);
+    panner.connect(master);
+    source.start(time);
+    source.stop(time + duration);
+  }
+
+  function playSnare(time, strength = 1) {
+    playNoise(time, 0.19, 0.12 * strength, "highpass", 1300, 0);
+    const osc = audio.createOscillator();
+    const amp = audio.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(185, time);
+    envelope(amp, time, 0.065 * strength, 0.004, 0.12);
+    osc.connect(amp);
+    amp.connect(master);
+    osc.start(time);
+    osc.stop(time + 0.14);
+  }
+
+  function playHat(time, strength = 1, pan = 0) {
+    playNoise(time, 0.045, 0.035 * strength, "highpass", 6500, pan);
+  }
+
+  function playBass(time, midi, duration, amount = 1) {
+    const osc = audio.createOscillator();
+    const sub = audio.createOscillator();
+    const amp = audio.createGain();
+    const bassFilter = audio.createBiquadFilter();
+
+    const hz = midiToHz(midi);
+    osc.type = styleIndex === 4 ? "sawtooth" : "triangle";
+    sub.type = "sine";
+    osc.frequency.setValueAtTime(hz, time);
+    sub.frequency.setValueAtTime(hz / 2, time);
+
+    bassFilter.type = "lowpass";
+    const xControl = (pointer.x + 1) * 0.5;
+    const yControl = (pointer.y + 1) * 0.5;
+    const cutoff = 90 + xControl * 1600 + energy * 900 + turning * 450;
+    bassFilter.frequency.setTargetAtTime(cutoff, time, 0.035);
+    bassFilter.Q.value = 1 + yControl * 8 + orbit * 2;
+
+    const peak = 0.13 * amount;
+    amp.gain.setValueAtTime(0.0001, time);
+    amp.gain.exponentialRampToValueAtTime(peak, time + 0.012);
+    amp.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+    osc.connect(bassFilter);
+    sub.connect(bassFilter);
+    bassFilter.connect(amp);
+    amp.connect(master);
+
+    osc.start(time);
+    sub.start(time);
+    osc.stop(time + duration + 0.03);
+    sub.stop(time + duration + 0.03);
+  }
+
+  function playPad(time, root, duration) {
+    const notes = [root, root + 3, root + 7, root + 10];
+    notes.forEach((note, i) => {
+      const osc = audio.createOscillator();
+      const amp = audio.createGain();
+      const panner = audio.createStereoPanner();
+
+      osc.type = "sine";
+      osc.frequency.value = midiToHz(note + 12);
+      panner.pan.value = (i - 1.5) * 0.35;
+
+      amp.gain.setValueAtTime(0.0001, time);
+      amp.gain.linearRampToValueAtTime(0.018, time + 0.35);
+      amp.gain.setValueAtTime(0.016, time + duration * 0.65);
+      amp.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+      osc.connect(amp);
+      amp.connect(panner);
+      panner.connect(master);
+      osc.start(time);
+      osc.stop(time + duration + 0.03);
+    });
+  }
+
+  function triggerDrums(time, s) {
+    const halfTime = styleIndex === 2;
+    const jungle = styleIndex === 1;
+    const neuro = styleIndex === 4;
+
+    // Breakbeat: varia en funció a l'estil i el moviment del punter.
+    let kick = s === 0 || s === 10;
+    let snare = s === 4 || s === 12;
+
+    if (styleIndex === 0) {
+      kick = s === 0 || s === 6 || (s === 10 && energy > 0.45);
+      snare = s === 4 || s === 12;
+    } else if (jungle) {
+      kick = s === 0 || s === 7 || s === 10 || (s === 15 && energy > 0.4);
+      snare = s === 4 || s === 12 || (s === 11 && orbit > 0.65);
+    } else if (halfTime) {
+      kick = s === 0 || (s === 10 && energy > 0.55);
+      snare = s === 8;
+    } else if (styleIndex === 3) {
+      kick = s === 0 || s === 9;
+      snare = s === 4 || s === 12;
+    } else if (neuro) {
+      kick = s === 0 || s === 7 || (s === 10 && energy > 0.3);
+      snare = s === 4 || s === 12 || (s === 15 && orbit > 0.75);
+    }
+
+    const variation = 0.7 + energy * 0.45;
+    if (kick) playKick(time, variation);
+    if (snare) playSnare(time, variation);
+
+    const hatProbability =
+      styleIndex === 2 ? 0.18 :
+      styleIndex === 1 ? 0.72 :
+      styleIndex === 4 ? 0.62 :
+      styleIndex === 3 ? 0.42 : 0.52;
+
+    if (Math.random() < hatProbability + energy * 0.18) {
+      playHat(time, 0.45 + energy * 0.45, Math.sin(s * 0.7) * 0.65);
+    }
+
+    // Percussió ''ghost''' i variació.
+    if (styleIndex !== 2 && Math.random() < 0.07 + orbit * 0.12) {
+      playNoise(time, 0.07, 0.025, "bandpass", 2200 + energy * 2500, pointer.x * 0.6);
+    }
+  }
+
+  function scheduleStep(time) {
+    const s = step % 16;
+
+    if (s === 0) {
+      bar++;
+
+      const root = 36 + Math.floor(Math.random() * 3);
+      if (styleIndex === 2 || styleIndex === 3 || Math.random() < 0.45) {
+        playPad(time, root + 12, beat * (styleIndex === 2 ? 7.5 : 3.8));
+      }
+    }
+
+    triggerDrums(time, s);
+
+    const yControl = (pointer.y + 1) * 0.5;
+    const xControl = (pointer.x + 1) * 0.5;
+    const scale = scales[styles[styleIndex]];
+
+    // El punter mou el registre, l’obertura del filtre i la probabilitat.
+    const density =
+      styleIndex === 2 ? 0.08 + yControl * 0.18 :
+      0.18 + yControl * 0.46 + energy * 0.16;
+
+    const bassStep =
+      styleIndex === 2
+        ? (s === 0 || s === 8)
+        : (s % 4 === 0 || (energy > 0.55 && s % 4 === 2));
+
+    if (bassStep && Math.random() < density) {
+      const degree = scale[Math.floor(Math.random() * scale.length)];
+      const octave = xControl > 0.76 && styleIndex !== 2 ? 12 : 0;
+      let note = 36 + degree + octave;
+
+      if (styleIndex === 4) {
+        note = 34 + degree + octave;
+      }
+
+      // Evita repetir la mateixa nota.
+      if (note === lastBassNote && Math.random() < 0.65) {
+        note += Math.random() < 0.5 ? 3 : 5;
+      }
+      lastBassNote = note;
+
+      const duration = styleIndex === 2 ? beat * 1.8 : beat * (0.35 + yControl * 0.7);
+      playBass(time, note, duration, 0.55 + yControl * 0.7);
+    }
+
+    step++;
+  }
+
+  function scheduler() {
+    if (!started) return;
+
+    while (nextStepTime < audio.currentTime + 0.12) {
+      scheduleStep(nextStepTime);
+      nextStepTime += stepDuration;
+    }
+
+    setTimeout(scheduler, 20);
+  }
+
+  async function startAudio() {
+    if (started) {
+      if (audio.state === "suspended") await audio.resume();
+      return;
+    }
+
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audio = new AudioContext();
+      await audio.resume();
+
+      master = audio.createGain();
+      master.gain.value = 0.55;
+
+      const compressor = audio.createDynamicsCompressor();
+      compressor.threshold.value = -18;
+      compressor.knee.value = 16;
+      compressor.ratio.value = 3;
+      compressor.attack.value = 0.008;
+      compressor.release.value = 0.22;
+
+      const delay = audio.createDelay(1);
+      delay.delayTime.value = beat * 0.75;
+
+      const feedback = audio.createGain();
+      feedback.gain.value = 0.19;
+
+      const wet = audio.createGain();
+      wet.gain.value = 0.14;
+
+      filter = audio.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 1800;
+      filter.Q.value = 0.7;
+
+      analyser = audio.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.84;
+      spectrum = new Uint8Array(analyser.frequencyBinCount);
+
+      master.connect(filter);
+      filter.connect(compressor);
+      filter.connect(delay);
+      delay.connect(feedback);
+      feedback.connect(delay);
+      delay.connect(wet);
+      wet.connect(compressor);
+      compressor.connect(analyser);
+      analyser.connect(audio.destination);
+
+      started = true;
+      nextStepTime = audio.currentTime + 0.08;
+      scheduler();
+    } catch (error) {
+      console.error(error);
+      started = false;
+    }
+  }
+
+  const clockStart = performance.now();
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+
+    pointer.x += (targetPointer.x - pointer.x) * 0.2;
+    pointer.y += (targetPointer.y - pointer.y) * 0.2;
+    energy *= 0.976;
+
+    const idle = now - lastPointerTime;
+    const stillness = Math.max(0, Math.min(1, (idle - 500) / 2500));
+    const turnNow = Math.min(1, Math.abs(accumulatedTurn) / (Math.PI * 2));
+    turning += (turnNow - turning) * 0.06;
+    orbit += (turnNow - orbit) * 0.025;
+    accumulatedTurn *= 0.985;
+
+    let bass = 0;
+    let mid = 0;
+    let high = 0;
+
+    if (analyser && spectrum) {
+      analyser.getByteFrequencyData(spectrum);
+      const n = spectrum.length;
+      const bassEnd = Math.max(1, Math.floor(n * 0.12));
+      const midEnd = Math.max(bassEnd + 1, Math.floor(n * 0.5));
+
+      for (let i = 0; i < n; i++) {
+        const value = spectrum[i] / 255;
+        if (i < bassEnd) bass += value;
+        else if (i < midEnd) mid += value;
+        else high += value;
+      }
+
+      bass /= bassEnd;
+      mid /= Math.max(1, midEnd - bassEnd);
+      high /= Math.max(1, n - midEnd);
+
+      if (filter) {
+        const cutoff =
+          450 + ((pointer.x + 1) * 0.5) * 3600 +
+          energy * 700 + orbit * 400 - stillness * 250;
+        filter.frequency.setTargetAtTime(
+          Math.max(350, Math.min(6000, cutoff)),
+          audio.currentTime,
+          0.08
+        );
+      }
+    }
+
+    gl.uniform2f(uniforms.u_pointer, pointer.x, pointer.y);
+    gl.uniform1f(uniforms.u_time, (now - clockStart) / 1000);
+    gl.uniform1f(uniforms.u_energy, energy);
+    gl.uniform1f(uniforms.u_bass, bass);
+    gl.uniform1f(uniforms.u_mid, mid);
+    gl.uniform1f(uniforms.u_high, high);
+    gl.uniform1f(uniforms.u_style, styleIndex);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

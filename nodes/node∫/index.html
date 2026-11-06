@@ -1,0 +1,2504 @@
+
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#203a35">
+<meta name="description" content="node∫ onatge — una experiència immersiva entre gest, matèria, harmonia i so.">
+<title>node∫ onatge</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --deep: #203a35;
+  --air: #b4e5d0;
+  --light: #f1e8c8;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--deep);
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#surface {
+  z-index: 0;
+}
+
+#audio-visual {
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.23;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #audio-visual { opacity: 0.12; }
+}
+</style>
+</head>
+
+<body>
+<canvas id="surface" aria-hidden="true"></canvas>
+<canvas id="audio-visual" aria-hidden="true"></canvas>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------------------------------------------------------
+   CONFIGURACIÓ
+--------------------------------------------------------- */
+
+const CONFIG = {
+  volume: 0.72,
+  pixelRatio: 1.8,
+
+  synth: {
+    baseFreq: 221.303,
+    scale: [0, 2, 5, 7, 9, 12],
+    waveform: "triangle",
+    detune: 5.5,
+    filterCutoff: 2102,
+    lfoRate: 0.09,
+    lfoDepth: 180,
+    reverb: 0.48,
+    attack: 0.8,
+    release: 4.8,
+    layers: 3,
+    noise: 0.025,
+    fmAmount: 0.055
+  },
+
+  visual: {
+    speed: 0.33145,
+    complexity: 1.68,
+    warp: 0.795,
+    motion: 0.68
+  }
+};
+
+const $ = id => document.getElementById(id);
+const surface = $("surface");
+const visualCanvas = $("audio-visual");
+const vctx = visualCanvas.getContext("2d", { alpha: true });
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a = 0, b = 1) => a + Math.random() * (b - a);
+const choose = arr => arr[Math.floor(Math.random() * arr.length)];
+
+function smoothstep(a, b, x) {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-clamp(x, -12, 12)));
+}
+
+/* ---------------------------------------------------------
+CICLE DE VIDA
+--------------------------------------------------------- */
+
+let running = false;
+let destroyed = false;
+let started = false;
+let audioStarting = false;
+let paused = false;
+let raf = 0;
+let lastFrame = 0;
+let elapsed = 0;
+let resizeObserver = null;
+
+const listeners = [];
+
+function listen(target, type, callback, options) {
+  target.addEventListener(type, callback, options);
+  listeners.push(() => target.removeEventListener(type, callback, options));
+}
+
+/* ---------------------------------------------------------
+   MEMÒRIA DEL GEST
+--------------------------------------------------------- */
+
+const gesture = {
+  x: 0.5,
+  y: 0.5,
+  px: 0.5,
+  py: 0.5,
+
+  vx: 0,
+  vy: 0,
+  measuredVx: 0,
+  measuredVy: 0,
+  speed: 0,
+  acceleration: 0,
+  directionChange: 0,
+  curvature: 0,
+
+  energy: 0,
+  movement: 0,
+  stillness: 1,
+
+  path: 0,
+  pathMemory: 0,
+  gestureMemory: 0,
+  recentActivity: 0,
+  contour: 0,
+
+  lastAngle: 0,
+  lastSpeed: 0,
+  lastMove: 0,
+  lastGesture: 0,
+  lastPointerTime: 0,
+
+  centroidX: 0.5,
+  centroidY: 0.5,
+
+  pointerDown: false,
+  pointerType: "none",
+
+  trail: [],
+  trailLimit: 24
+};
+
+function addGestureTrace(x, y, time) {
+  const last = gesture.trail[gesture.trail.length - 1];
+
+  if (last && time - last.time < 0.025) return;
+
+  gesture.trail.push({ x, y, time });
+
+  if (gesture.trail.length > gesture.trailLimit) {
+    gesture.trail.shift();
+  }
+}
+
+function getTrailInfluence(x, y, now) {
+  let influence = 0;
+
+  for (const point of gesture.trail) {
+    const age = now - point.time;
+    if (age > 5) continue;
+
+    const distance = Math.hypot(
+      (x - point.x) * 1.4,
+      y - point.y
+    );
+
+    influence += Math.exp(-distance * 18) * Math.exp(-age * 0.75);
+  }
+
+  return clamp(influence, 0, 1);
+}
+
+/* ---------------------------------------------------------
+   WEBGL
+--------------------------------------------------------- */
+
+const VERT = `
+attribute vec2 position;
+varying vec2 uv;
+
+void main() {
+  uv = position * 0.5 + 0.5;
+  gl_Position = vec4(position, 0.0, 1.0);
+}
+`;
+
+const FRAG = `
+precision highp float;
+
+varying vec2 uv;
+
+uniform vec2 resolution;
+uniform float time;
+uniform vec2 pointer;
+uniform vec2 moveVec;
+uniform float energy;
+uniform float centroid;
+uniform float spread;
+uniform float stillness;
+uniform float accel;
+uniform float action;
+uniform float direction;
+uniform float harmony;
+uniform float melody;
+uniform float warp;
+uniform float complexity;
+uniform float motion;
+uniform float trailMemory;
+uniform sampler2D historyTexture;
+uniform float historyPass;
+
+#define PI 3.141592653589793
+
+float hash(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float value = 0.0;
+  float amplitude = 0.5;
+  mat2 rotation = mat2(0.8, -0.6, 0.6, 0.8);
+
+  for (int i = 0; i < 5; i++) {
+    value += amplitude * noise(p);
+    p = rotation * p * 2.03 + vec2(3.2, 1.7);
+    amplitude *= 0.48;
+  }
+
+  return value;
+}
+
+float field(vec2 p, float t) {
+  float a = fbm(p * 1.7 + vec2(t * 0.035, -t * 0.022));
+  float b = fbm(p * 2.2 - vec2(t * 0.018, t * 0.027));
+  float c = fbm(p * 0.7 + vec2(-t * 0.012, t * 0.019));
+
+  return a * 0.52 + b * 0.3 + c * 0.18;
+}
+
+// Alçada i pendent del sumatori d'ones de gravetat.
+// Les freqüències angulars segueixen omega = sqrt(g * k),
+// aproximació d'aigua profunditat.
+float seaHeight(vec2 x, float t, out vec2 slope) {
+  const float g = 9.81;
+
+  // Direccions lleugerament diferents: les ones no avancen totes alineades.
+  vec2 d1 = normalize(vec2( 0.94,  0.34));
+  vec2 d2 = normalize(vec2( 0.48, -0.88));
+  vec2 d3 = normalize(vec2(-0.72,  0.69));
+
+  float k1 = 1.25;
+  float k2 = 2.35;
+  float k3 = 4.10;
+
+  float a1 = 0.075;
+  float a2 = 0.034;
+  float a3 = 0.012;
+
+  float p1 = k1 * dot(d1, x) - sqrt(g * k1) * t;
+  float p2 = k2 * dot(d2, x) - sqrt(g * k2) * t + 1.7;
+  float p3 = k3 * dot(d3, x) - sqrt(g * k3) * t + 3.1;
+
+  float s1 = sin(p1);
+  float s2 = sin(p2);
+  float s3 = sin(p3);
+
+  slope =
+      a1 * k1 * cos(p1) * d1
+    + a2 * k2 * cos(p2) * d2
+    + a3 * k3 * cos(p3) * d3;
+
+  return a1 * s1 + a2 * s2 + a3 * s3;
+}
+
+void main() {
+  vec2 p = uv;
+  vec2 aspect = vec2(resolution.x / resolution.y, 1.0);
+  vec2 q = (p - 0.5) * aspect;
+
+  // Coordenades del mar: una escala pròpia perquè l'onatge no depengui
+// només de la mida de la pantalla.
+vec2 seaPoint = q * 2.2;
+
+// L'energia del gest només altera una subtilment l'amplitud.
+// El moviment lent continua existint encara que la persona estigui quieta.
+float seaTime = time * 0.42;
+float seaEnergy = 1.0 + energy * 0.22;
+
+vec2 seaSlope;
+float sea = seaHeight(seaPoint, seaTime, seaSlope) * seaEnergy;
+seaSlope *= seaEnergy;
+
+// La pendent refracta subtilment el camp; l'alçada aporta una ondulació
+// espacial sense convertir la imatge en una animació literal d'aigua.
+q += seaSlope * 0.055;
+q.y += sea * 0.12;
+
+  float t = time * 0.15;
+  float gesturalTime = time * (0.05 + energy * 0.12);
+
+  vec2 pointerPoint = (pointer - 0.5) * aspect;
+  vec2 toPointer = q - pointerPoint;
+  float pointerDistance = length(toPointer);
+
+  float influence = exp(-pointerDistance * (2.0 + spread * 2.0));
+
+  float ripple = sin(pointerDistance * 25.0 - time * 1.4);
+  ripple *= influence * action * 0.035;
+
+  vec2 flow = vec2(
+    fbm(q * 1.7 + t),
+    fbm(q * 1.7 - t + 8.3)
+  ) - 0.5;
+
+  q += flow * (0.1 + warp * 0.17);
+  q += moveVec * influence * 0.07;
+  q += normalize(toPointer + vec2(0.0001)) * ripple;
+
+  float slowField = field(
+    q * (1.2 + complexity * 0.12),
+    gesturalTime
+  );
+
+  float detail = fbm(q * 5.0 + flow * 2.0 - t * 0.6);
+  float fine = noise(q * 28.0 + flow * 4.0 + t);
+
+  float waveA = sin(q.x * 3.2 + slowField * 5.0 + time * 0.11);
+  float waveB = cos(q.y * 4.0 - detail * 4.0 - time * 0.08);
+  float waveC = sin((q.x + q.y) * 5.5 + slowField * 3.0);
+
+  float structure = waveA * 0.35 + waveB * 0.32 + waveC * 0.15;
+  structure += (slowField - 0.5) * 1.2;
+  structure += (detail - 0.5) * 0.45;
+  structure += (fine - 0.5) * 0.09;
+
+  float crest = smoothstep(0.18, 0.72, length(seaSlope));
+structure += sea * 0.22 + crest * 0.10;
+
+
+  float luminous = smoothstep(0.25, 0.82, structure + 0.45);
+
+  float veins = pow(
+    1.0 - abs(sin(structure * 8.0 + detail * 4.0)),
+    9.0
+  );
+
+  float radial = length(q);
+  float depth = smoothstep(1.1, 0.0, radial);
+  float centerGlow = exp(-radial * radial * 2.4);
+  float edgeFade = 1.0 - smoothstep(0.7, 1.55, radial);
+
+  /*
+    Paleta oberta: el blau deixa de sostenir la imatge.
+    Turquesa, rosa i groc pàl·lid ocupen dominis cromàtics amplis.
+  */
+  vec3 deep = vec3(0.045, 0.075, 0.080);
+  vec3 blue = vec3(0.055, 0.145, 0.175);
+  vec3 cyan = vec3(0.25, 0.72, 0.68);
+  vec3 turquoise = vec3(0.29, 0.79, 0.65);
+  vec3 rose = vec3(0.89, 0.57, 0.69);
+  vec3 pale = vec3(0.98, 0.96, 0.82);
+  vec3 pearl = vec3(0.78, 0.93, 0.86);
+  vec3 softGold = vec3(0.98, 0.82, 0.53);
+
+  float colorField = slowField * 0.66 + detail * 0.25 + fine * 0.09;
+  float colorPhase = colorField * 5.2 + sea * 2.2 + waveC * 0.7;
+
+  // Mases amples, no simples reflexos puntuals.
+  float turquoiseMass = smoothstep(
+    0.16, 0.82,
+    0.5 + 0.5 * sin(colorPhase * 1.05 + waveA * 0.78)
+  );
+
+  float roseMass = smoothstep(
+    0.18, 0.77,
+    0.5 + 0.5 * sin(colorPhase * 0.82 - waveB * 0.72 + 2.15)
+  );
+
+  float goldField = 0.5 + 0.5 * sin(
+    colorPhase * 1.38 + waveC * 1.1 + detail * 2.4 + 1.6
+  );
+  float goldMass = max(
+    smoothstep(0.52, 0.91, goldField) * 0.72,
+    crest * 0.24 + veins * 0.12
+  );
+
+  float shadowMass = smoothstep(
+    0.06, 0.78,
+    0.5 + 0.5 * sin(colorPhase * 0.72 + structure * 0.8)
+  );
+
+  // El rosa es una massa pròpia; el turquesa continua sent el contrapunt.
+  vec3 col = mix(turquoise, rose, roseMass * 0.78);
+  col = mix(col, cyan, (1.0 - roseMass) * turquoiseMass * 0.22);
+  col = mix(col, softGold, goldMass * 0.48);
+  col = mix(col, deep, (1.0 - luminous) * shadowMass * 0.24);
+  col = mix(col, blue, (1.0 - turquoiseMass) * (1.0 - roseMass) * 0.055);
+
+  /* Caústiques d'interferència: llum que es concentra a les crestes. */
+  float causticPhase = sin(
+      (q.x * 8.0 + q.y * 5.0) + slowField * 13.0 - time * 0.19
+    ) * sin(
+      (q.y * 10.0 - q.x * 3.0) + detail * 11.0 + time * 0.13
+    );
+  float caustic = pow(
+    smoothstep(0.66, 0.96, causticPhase * 0.5 + 0.5),
+    2.2
+  );
+  caustic *= 0.35 + crest * 0.9;
+
+  /*
+    Memòria de corrent: una màscara de llum persisteix i és arrossegada
+    lleument pel flux. El primer pas només actualitza aquesta memòria.
+  */
+  vec2 memoryDrift = flow * 0.0035 + seaSlope * 0.012;
+  vec2 memoryUV = clamp(uv - memoryDrift, vec2(0.002), vec2(0.998));
+  float previousCaustic = texture2D(historyTexture, memoryUV).r;
+  float persistentCaustic = max(caustic, previousCaustic * 0.987);
+
+  if (historyPass > 0.5) {
+    gl_FragColor = vec4(persistentCaustic, 0.0, 0.0, 1.0);
+    return;
+  }
+
+  float rememberedCaustic = texture2D(historyTexture, uv).r;
+
+  col += pale * veins * (0.055 + melody * 0.075);
+  col += pearl * luminous * 0.085;
+  col += pale * caustic * (0.15 + energy * 0.085);
+  col += softGold * caustic * goldMass * 0.19;
+
+  // La llum recordada no deixa una còpia borrosa de tota la imatge:
+  // conserva només la petjada de les caústiques.
+  vec3 memoryTint = mix(pearl, rose, roseMass * 0.42);
+  col += memoryTint * rememberedCaustic * (0.13 + energy * 0.045);
+  col += softGold * rememberedCaustic * goldMass * 0.055;
+
+  float glimmer = pow(
+    max(0.0, sin(structure * 11.0 + time * 0.2)),
+    12.0
+  );
+
+  col += pale * glimmer * (0.05 + energy * 0.075);
+  col += turquoise * glimmer * 0.06;
+  col += rose * pow(
+    max(0.0, sin(detail * 7.0 - time * 0.09)),
+    8.0
+  ) * 0.052;
+
+  float breath = sin(time * 0.12 + slowField * 3.0) * 0.5 + 0.5;
+  col += turquoise * centerGlow * (0.035 + breath * 0.045);
+
+  float movementLight = length(moveVec);
+  col += cyan * influence * movementLight * 0.16;
+  col += pale * influence * action * 0.045;
+
+  /* La petjada del gest queda incorporada al camp. */
+  col += pearl * trailMemory * (0.035 + detail * 0.05);
+
+  float atmosphere = fbm(q * 0.45 + time * 0.018);
+  col += vec3(0.075, 0.105, 0.075) * atmosphere * depth;
+
+  col *= 0.98 + edgeFade * 0.02;
+  col *= 0.99 + centerGlow * 0.055;
+  col *= 0.97 + stillness * 0.03;
+
+  col = (col - 0.40) * 1.20 + 0.40;
+  col = pow(max(col, 0.0), vec3(0.88));
+  col = col / (1.0 + col * 0.075);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+const gl = surface.getContext("webgl", {
+  alpha: false,
+  antialias: false,
+  depth: false,
+  stencil: false,
+  powerPreference: "low-power"
+});
+
+let program = null;
+let uniforms = {};
+let positionBuffer = null;
+let glReady = false;
+
+const causticHistory = {
+  textures: [],
+  framebuffers: [],
+  width: 0,
+  height: 0,
+  readIndex: 0,
+  ready: false
+};
+
+function releaseCausticHistory() {
+  if (!gl) return;
+
+  causticHistory.framebuffers.forEach(framebuffer => {
+    try { gl.deleteFramebuffer(framebuffer); } catch (_) {}
+  });
+
+  causticHistory.textures.forEach(texture => {
+    try { gl.deleteTexture(texture); } catch (_) {}
+  });
+
+  causticHistory.textures = [];
+  causticHistory.framebuffers = [];
+  causticHistory.width = 0;
+  causticHistory.height = 0;
+  causticHistory.readIndex = 0;
+  causticHistory.ready = false;
+}
+
+function ensureCausticHistory() {
+  if (!gl || !glReady) return false;
+
+  const width = Math.max(1, Math.floor(surface.width * 0.5));
+  const height = Math.max(1, Math.floor(surface.height * 0.5));
+
+  if (
+    causticHistory.ready &&
+    causticHistory.width === width &&
+    causticHistory.height === height
+  ) {
+    return true;
+  }
+
+  releaseCausticHistory();
+
+  const textures = [];
+  const framebuffers = [];
+
+  try {
+    for (let i = 0; i < 2; i++) {
+      const texture = gl.createTexture();
+      const framebuffer = gl.createFramebuffer();
+
+      if (!texture || !framebuffer) throw new Error("No s'ha pogut crear la memòria de caústiques.");
+
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        width,
+        height,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        null
+      );
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.framebufferTexture2D(
+        gl.FRAMEBUFFER,
+        gl.COLOR_ATTACHMENT0,
+        gl.TEXTURE_2D,
+        texture,
+        0
+      );
+
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+        gl.deleteFramebuffer(framebuffer);
+        gl.deleteTexture(texture);
+        throw new Error("El framebuffer de memòria no és complet.");
+      }
+
+      textures.push(texture);
+      framebuffers.push(framebuffer);
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    causticHistory.textures = textures;
+    causticHistory.framebuffers = framebuffers;
+    causticHistory.width = width;
+    causticHistory.height = height;
+    causticHistory.readIndex = 0;
+    causticHistory.ready = true;
+
+    // Comença sense cap rastre heretat d'una mida anterior.
+    for (const framebuffer of framebuffers) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.viewport(0, 0, width, height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, surface.width, surface.height);
+    return true;
+  } catch (error) {
+    console.warn("Memòria de caústiques desactivada:", error);
+    framebuffers.forEach(framebuffer => {
+      try { gl.deleteFramebuffer(framebuffer); } catch (_) {}
+    });
+    textures.forEach(texture => {
+      try { gl.deleteTexture(texture); } catch (_) {}
+    });
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    causticHistory.ready = false;
+    causticHistory.textures = [];
+    causticHistory.framebuffers = [];
+    return false;
+  }
+}
+
+function compileShader(type, source) {
+  const shader = gl.createShader(type);
+
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    console.error("natural shader:", gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+    return null;
+  }
+
+  return shader;
+}
+
+function initGL() {
+  if (!gl) return false;
+
+  const vertex = compileShader(gl.VERTEX_SHADER, VERT);
+  const fragment = compileShader(gl.FRAGMENT_SHADER, FRAG);
+
+  if (!vertex || !fragment) return false;
+
+  program = gl.createProgram();
+  gl.attachShader(program, vertex);
+  gl.attachShader(program, fragment);
+  gl.linkProgram(program);
+
+  gl.deleteShader(vertex);
+  gl.deleteShader(fragment);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error("natural program:", gl.getProgramInfoLog(program));
+    return false;
+  }
+
+  gl.useProgram(program);
+
+  positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array([
+      -1, -1, 1, -1, -1, 1,
+      -1, 1, 1, -1, 1, 1
+    ]),
+    gl.STATIC_DRAW
+  );
+
+  const position = gl.getAttribLocation(program, "position");
+
+  gl.enableVertexAttribArray(position);
+  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+  const names = [
+    "resolution", "time", "pointer", "moveVec",
+    "energy", "centroid", "spread", "stillness",
+    "accel", "action", "direction", "harmony",
+    "melody", "warp", "complexity", "motion",
+    "trailMemory", "historyTexture", "historyPass"
+  ];
+
+  names.forEach(name => {
+    uniforms[name] = gl.getUniformLocation(program, name);
+  });
+
+  glReady = true;
+  return true;
+}
+
+/* ---------------------------------------------------------
+   MIDA
+--------------------------------------------------------- */
+
+function resize() {
+  if (destroyed) return;
+
+  const ratio = Math.min(
+    window.devicePixelRatio || 1,
+    CONFIG.pixelRatio
+  );
+
+  const w = Math.max(1, Math.floor(innerWidth * ratio));
+  const h = Math.max(1, Math.floor(innerHeight * ratio));
+
+  if (surface.width !== w || surface.height !== h) {
+    surface.width = w;
+    surface.height = h;
+  }
+
+  if (visualCanvas.width !== w || visualCanvas.height !== h) {
+    visualCanvas.width = w;
+    visualCanvas.height = h;
+  }
+
+  if (glReady) {
+    gl.viewport(0, 0, w, h);
+    ensureCausticHistory();
+  }
+}
+
+/* ---------------------------------------------------------
+   ENTRADA I VELOCITAT REAL
+--------------------------------------------------------- */
+
+function pointerFeed(event) {
+  const rect = surface.getBoundingClientRect();
+  const now = performance.now() * 0.001;
+
+  const nx = clamp(
+    (event.clientX - rect.left) / rect.width,
+    0,
+    1
+  );
+
+  const ny = 1 - clamp(
+    (event.clientY - rect.top) / rect.height,
+    0,
+    1
+  );
+
+  const previousX = gesture.x;
+  const previousY = gesture.y;
+
+  gesture.px = previousX;
+  gesture.py = previousY;
+  gesture.x = nx;
+  gesture.y = ny;
+
+  gesture.pointerType = event.pointerType || "mouse";
+  gesture.lastMove = now;
+  gesture.lastGesture = now;
+
+  if (gesture.pointerDown) {
+    gesture.path += Math.hypot(nx - previousX, ny - previousY);
+  }
+
+  addGestureTrace(nx, ny, now);
+
+  /* El moviment només informa el sistema gestual.
+     El desbloqueig d'àudio es reserva al pointerdown explícit. */
+
+  const previousTime = gesture.lastPointerTime;
+
+  if (previousTime > 0) {
+    const dt = Math.max(0.001, now - previousTime);
+
+    gesture.measuredVx = clamp((nx - previousX) / dt, -4, 4);
+    gesture.measuredVy = clamp((ny - previousY) / dt, -4, 4);
+  }
+
+  gesture.lastPointerTime = now;
+}
+
+function pointerDown(event) {
+  gesture.pointerDown = true;
+  gesture.pointerType = event.pointerType || "mouse";
+  gesture.lastGesture = performance.now() * 0.001;
+
+  /*
+    L'àudio només s'inicialitza dins d'un gest explícit.
+    La creació del context i resume() s'executen directament
+    des del pointerdown, abans de qualsevol espera asíncrona.
+  */
+  if (!started && !destroyed) {
+    activateAudio();
+  } else if (audio.context?.state === "suspended") {
+    audio.context.resume().catch(() => {});
+  }
+
+  pointerFeed(event);
+
+  if (surface.setPointerCapture) {
+    try {
+      surface.setPointerCapture(event.pointerId);
+    } catch (_) {}
+  }
+}
+
+function pointerUp() {
+  gesture.pointerDown = false;
+}
+
+/* ---------------------------------------------------------
+   FÍSICA DEL GEST
+--------------------------------------------------------- */
+
+function updateGesturePhysics(dt, now) {
+  const safeDt = Math.max(0.001, Math.min(dt, 0.06));
+
+  const rawVx = gesture.measuredVx;
+  const rawVy = gesture.measuredVy;
+
+  gesture.vx = lerp(gesture.vx, rawVx, 0.18);
+  gesture.vy = lerp(gesture.vy, rawVy, 0.18);
+  gesture.measuredVx = lerp(gesture.measuredVx, 0, 0.045);
+  gesture.measuredVy = lerp(gesture.measuredVy, 0, 0.045);
+
+  const speed = Math.hypot(gesture.vx, gesture.vy);
+
+  const acceleration = Math.abs(
+    speed - gesture.lastSpeed
+  ) / safeDt;
+
+  const angle = Math.atan2(gesture.vy, gesture.vx);
+  let angleDelta = angle - gesture.lastAngle;
+
+  while (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
+  while (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
+
+  gesture.directionChange = lerp(
+    gesture.directionChange,
+    clamp(Math.abs(angleDelta) / Math.PI, 0, 1),
+    0.18
+  );
+
+  gesture.curvature = lerp(
+    gesture.curvature,
+    clamp(angleDelta / safeDt, -8, 8),
+    0.14
+  );
+
+  gesture.speed = lerp(
+    gesture.speed,
+    clamp(speed / 2.4, 0, 1),
+    0.16
+  );
+
+  gesture.acceleration = lerp(
+    gesture.acceleration,
+    clamp(acceleration / 10, 0, 1),
+    0.12
+  );
+
+  const age = now - gesture.lastGesture;
+  gesture.recentActivity = Math.exp(-age / 2.8);
+
+  const targetMovement = clamp(
+    gesture.speed * 0.68 +
+    gesture.acceleration * 0.18 +
+    gesture.directionChange * 0.14,
+    0,
+    1
+  );
+
+  gesture.movement = lerp(
+    gesture.movement,
+    targetMovement * gesture.recentActivity,
+    0.07
+  );
+
+  gesture.energy = lerp(
+    gesture.energy,
+    clamp(
+      gesture.speed * 0.48 +
+      gesture.acceleration * 0.28 +
+      gesture.directionChange * 0.24,
+      0,
+      1
+    ) * gesture.recentActivity,
+    0.12
+  );
+
+  gesture.stillness = lerp(
+    gesture.stillness,
+    1 - gesture.movement,
+    0.035
+  );
+
+  gesture.pathMemory = lerp(
+    gesture.pathMemory,
+    clamp(gesture.path * 0.3, 0, 1),
+    0.008
+  );
+
+  gesture.gestureMemory = lerp(
+    gesture.gestureMemory,
+    clamp(
+      gesture.movement * 0.55 +
+      gesture.directionChange * 0.25 +
+      gesture.pathMemory * 0.2,
+      0,
+      1
+    ),
+    0.035
+  );
+
+  gesture.centroidX = lerp(gesture.centroidX, gesture.x, 0.025);
+  gesture.centroidY = lerp(gesture.centroidY, gesture.y, 0.025);
+
+  gesture.contour = lerp(
+    gesture.contour,
+    clamp(
+      Math.abs(gesture.x - gesture.centroidX) * 1.7 +
+      Math.abs(gesture.y - gesture.centroidY) * 1.7,
+      0,
+      1
+    ),
+    0.08
+  );
+
+  gesture.lastSpeed = speed;
+  gesture.lastAngle = angle;
+
+  gesture.trail = gesture.trail.filter(
+    point => now - point.time < 5
+  );
+}
+
+/* ---------------------------------------------------------
+   MEMÒRIA MUSICAL
+--------------------------------------------------------- */
+
+const SCALE = [0, 2, 5, 7, 9, 12];
+
+const CHORDS = [
+  [0, 4, 7],
+  [0, 3, 7],
+  [0, 5, 7],
+  [0, 2, 7],
+  [0, 4, 9],
+  [0, 3, 9]
+];
+
+const memory = {
+  tension: 0.28,
+  resolution: 0.5,
+  chordIndex: 0,
+  lastDegree: 2,
+
+  motif: [0, 2, 1, 3],
+  previousMotif: null,
+  motifIndex: 0,
+
+  phrasePosition: 0,
+  phraseLength: 8,
+  phraseCount: 0,
+
+  lastNotes: [],
+  lastIntervals: [],
+  motifHistory: [],
+
+  harmonicPhase: 0,
+  harmonicColor: 0.4,
+  memoryAffinity: 0.5,
+
+  lastResponse: 0,
+  lastPhrase: 0
+};
+
+const composition = {
+  keyOffset: 0,
+  octave: 0,
+  chord: [0, 4, 7],
+  chordRoot: 0,
+  chordNumber: 0,
+
+  nextChordAt: 0,
+  tonalGravity: 0.72,
+  ambiguity: 0.34,
+
+  tempo: 0.42,
+  tempoTarget: 0.42,
+
+  eventCount: 0,
+  lastGesture: 0,
+  phraseSeed: Math.random() * 1000,
+
+  phraseLength: 8,
+  density: 0.31,
+  register: 0
+};
+
+function rememberMotif() {
+  const motif = memory.motif.slice();
+
+  memory.previousMotif = motif;
+  memory.motifHistory.push(motif);
+
+  if (memory.motifHistory.length > 8) {
+    memory.motifHistory.shift();
+  }
+
+  memory.memoryAffinity = lerp(
+    memory.memoryAffinity,
+    0.62,
+    0.18
+  );
+}
+
+function makeMotif() {
+  const motif = [];
+  let previous = choose([0, 1, 2, 3]);
+
+  for (let i = 0; i < 4; i++) {
+    let next;
+
+    if (i === 0) {
+      next = choose([0, 1, 2, 3]);
+    } else {
+      const candidates = [
+        previous - 1,
+        previous,
+        previous + 1,
+        previous + 2,
+        choose([0, 2, 4])
+      ];
+
+      next = clamp(choose(candidates), 0, 5);
+    }
+
+    motif.push(next);
+    previous = next;
+  }
+
+  return motif;
+}
+
+function transformMotif(source) {
+  if (!source || !source.length) return makeMotif();
+
+  const direction = choose([-1, 1]);
+  const shift = choose([-1, 0, 0, 1]);
+
+  return source.map((degree, i) => {
+    const variation = i === 0 ? 0 : choose([-1, 0, 0, 1]);
+
+    return clamp(
+      degree + shift + variation * direction,
+      0,
+      5
+    );
+  });
+}
+
+function beginPhrase() {
+  const previous = memory.previousMotif;
+  const canRemember = previous && previous.length === 4;
+
+  const variation = clamp(
+    0.25 + gesture.movement * 0.45,
+    0,
+    1
+  );
+
+  const memoryProbability = clamp(
+    0.36 +
+    memory.memoryAffinity * 0.22 -
+    variation * 0.16,
+    0.08,
+    0.78
+  );
+
+  if (canRemember && Math.random() < memoryProbability) {
+    memory.motif = transformMotif(previous);
+    memory.memoryAffinity = lerp(memory.memoryAffinity, 0.72, 0.12);
+  } else {
+    memory.motif = makeMotif();
+    memory.memoryAffinity = lerp(memory.memoryAffinity, 0.44, 0.08);
+  }
+
+  rememberMotif();
+
+  memory.motifIndex = 0;
+  memory.phrasePosition = 0;
+  memory.phraseCount++;
+  memory.lastPhrase = audio.context?.currentTime || 0;
+
+  composition.phraseSeed = Math.random() * 1000;
+}
+
+/* ---------------------------------------------------------
+   HARMONIA
+--------------------------------------------------------- */
+
+function initializeComposition() {
+  composition.keyOffset = choose([0, 2, 5, 7, -2, -5]);
+  composition.octave = choose([-12, 0, 0, 12]);
+
+  composition.chordNumber = 0;
+  composition.chordRoot = 0;
+  composition.chord = CHORDS[0].slice();
+
+  composition.tempo = rand(0.32, 0.49);
+  composition.tempoTarget = composition.tempo;
+
+  composition.density = rand(0.22, 0.38);
+  composition.phraseLength = choose([6, 8, 8, 12]);
+  composition.nextChordAt = 0;
+  composition.eventCount = 0;
+
+  memory.tension = rand(0.18, 0.38);
+  memory.resolution = rand(0.38, 0.62);
+  memory.motifHistory = [];
+  memory.previousMotif = null;
+  memory.motif = makeMotif();
+  memory.motifIndex = 0;
+  memory.lastNotes = [];
+  memory.lastIntervals = [];
+  memory.memoryAffinity = 0.5;
+
+  rememberMotif();
+}
+
+function getScaleDegree(degree, octave = 0) {
+  const length = SCALE.length;
+  const normalized = ((degree % length) + length) % length;
+  const extraOctaves = Math.floor(degree / length);
+
+  return SCALE[normalized] +
+    12 * extraOctaves +
+    12 * octave +
+    composition.keyOffset;
+}
+
+function getFrequency(degree, octave = 0) {
+  return CONFIG.synth.baseFreq *
+    Math.pow(2, getScaleDegree(degree, octave) / 12);
+}
+
+function currentHarmony() {
+  const phraseProgress =
+    (composition.eventCount % composition.phraseLength) /
+    composition.phraseLength;
+
+  const activity = sigmoid(
+    -1.1 +
+    gesture.energy * 1.5 +
+    gesture.directionChange * 0.8 +
+    memory.tension * 0.8
+  );
+
+  /* Lectura pura: el render visual no modifica l'estat musical. */
+  return {
+    tension: memory.tension,
+    resolution: memory.resolution,
+    activity,
+    phraseProgress
+  };
+}
+
+function updateHarmony(now) {
+  const phraseProgress =
+    (composition.eventCount % composition.phraseLength) /
+    composition.phraseLength;
+
+  const targetTension = clamp(
+    0.16 +
+    gesture.movement * 0.24 +
+    gesture.directionChange * 0.15 +
+    gesture.gestureMemory * 0.12 +
+    Math.sin(phraseProgress * Math.PI * 2) * 0.1,
+    0.08,
+    0.82
+  );
+
+  memory.tension = lerp(memory.tension, targetTension, 0.018);
+
+  const cadenceApproach = phraseProgress > 0.72
+    ? smoothstep(0.72, 1, phraseProgress)
+    : 0;
+
+  memory.resolution = lerp(
+    memory.resolution,
+    clamp(
+      0.35 + cadenceApproach * 0.44 - memory.tension * 0.16,
+      0.1,
+      0.92
+    ),
+    0.025
+  );
+
+  const harmony = currentHarmony();
+
+  if (now >= composition.nextChordAt) {
+    const progress = harmony.phraseProgress;
+    const cadence = progress > 0.76;
+
+    const probability = sigmoid(
+      -1.25 +
+      gesture.gestureMemory * 1.15 +
+      gesture.directionChange * 0.9 +
+      harmony.tension * 0.55
+    );
+
+    if (Math.random() < 0.08 + probability * 0.3 || cadence) {
+      let next;
+
+      if (cadence && Math.random() < 0.75) {
+        next = 0;
+      } else {
+        const transitions = {
+          0: [1, 2, 3, 4],
+          1: [0, 2, 4],
+          2: [0, 3, 4, 5],
+          3: [0, 2, 4],
+          4: [0, 1, 2, 5],
+          5: [0, 2, 4]
+        };
+
+        next = choose(transitions[composition.chordNumber] || [0, 2, 4]);
+      }
+
+      composition.chordNumber = next;
+      composition.chord = CHORDS[next].slice();
+      composition.chordRoot = choose([0, 0, 2, 3, 4]);
+
+      memory.chordIndex = next;
+      memory.harmonicPhase = next / CHORDS.length;
+
+      composition.nextChordAt = now + rand(11, 20);
+    } else {
+      composition.nextChordAt = now + rand(4, 8);
+    }
+  }
+
+  return harmony;
+}
+
+function chooseDegree(role = "melody", harmony) {
+  const h = harmony || currentHarmony();
+  const last = memory.lastDegree;
+  const motifDegree = memory.motif[
+    memory.motifIndex % memory.motif.length
+  ];
+
+  const choices = [];
+
+  for (let degree = 0; degree < SCALE.length; degree++) {
+    let weight = 1;
+
+    const chordDistance = Math.min(
+      ...composition.chord.map(tone =>
+        Math.abs(tone - SCALE[degree])
+      )
+    );
+
+    const chordAffinity = Math.exp(-chordDistance * 0.32);
+    const stepDistance = Math.abs(degree - last);
+    const stepAffinity = Math.exp(-stepDistance * 0.5);
+
+    weight *= 0.4 + chordAffinity * (
+      role === "bass" ? 1.4 : 0.85
+    );
+
+    weight *= 0.45 + stepAffinity * 0.7;
+
+    if (degree === 0) {
+      weight *= 0.85 + h.resolution * 1.5;
+    }
+
+    if (degree === 4) {
+      weight *= 1 + h.tension * 0.4;
+    }
+
+    if (degree === 5) {
+      weight *= 0.55 + h.tension * 0.8;
+    }
+
+    if (role === "response") {
+      const distance = Math.abs(degree - motifDegree);
+      weight *= 0.65 + Math.exp(-distance * 0.7) * 1.1;
+    }
+
+    if (role === "bass") {
+      weight *= [1.5, 0.35, 0.75, 0.45, 1.0, 0.3][degree];
+    }
+
+    choices.push({ degree, weight });
+  }
+
+  let total = choices.reduce((sum, item) => sum + item.weight, 0);
+  let pick = Math.random() * total;
+
+  for (const item of choices) {
+    pick -= item.weight;
+
+    if (pick <= 0) {
+      memory.lastDegree = item.degree;
+      return item.degree;
+    }
+  }
+
+  return choices[choices.length - 1].degree;
+}
+
+/* ---------------------------------------------------------
+   PROBABILITAT DE RESPOSTA
+--------------------------------------------------------- */
+
+function responseProbability(now, harmony) {
+  const elapsedGesture = now - composition.lastGesture;
+  const recent = Math.exp(-Math.max(0, elapsedGesture) / 3.2);
+
+  const gestureVector =
+    gesture.speed * 0.22 +
+    gesture.acceleration * 0.19 +
+    gesture.directionChange * 0.2 +
+    gesture.contour * 0.12 +
+    gesture.gestureMemory * 0.15 +
+    gesture.pathMemory * 0.12;
+
+  const harmonicVector =
+    harmony.tension * 0.18 +
+    harmony.resolution * 0.12 +
+    harmony.activity * 0.12;
+
+  const phraseVector =
+    harmony.phraseProgress > 0.72 ? 0.13 : 0;
+
+  return clamp(
+    sigmoid(
+      -2.25 +
+      gestureVector * 3.8 +
+      harmonicVector * 1.35 +
+      recent * 0.55 +
+      phraseVector
+    ),
+    0.015,
+    0.72
+  );
+}
+
+/* ---------------------------------------------------------
+   MOTOR D'ÀUDIO
+--------------------------------------------------------- */
+
+const audio = {
+  context: null,
+  master: null,
+  analyser: null,
+  filter: null,
+  saturation: null,
+  convolver: null,
+  wet: null,
+  delay: null,
+  delayFeedback: null,
+  delayWet: null,
+  lfo: null,
+  lfoGain: null,
+  compressor: null,
+
+  spectrum: null,
+  noiseBuffer: null,
+
+  activeTimers: new Set(),
+  voices: new Set(),
+
+  clockTimer: null,
+  nextEvent: 0,
+  lastNoteAt: 0,
+  lastGestureEvent: 0,
+  lastBackgroundEvent: 0,
+  lastChordAt: 0,
+
+  audioEnergy: 0,
+  audioCentroid: 0,
+  audioSpread: 0
+};
+
+function makeNoiseBuffer(ctx, seconds = 2.5) {
+  const length = Math.floor(ctx.sampleRate * seconds);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  let last = 0;
+
+  for (let i = 0; i < length; i++) {
+    const white = Math.random() * 2 - 1;
+    last = last * 0.985 + white * 0.15;
+    data[i] = last * 0.8;
+  }
+
+  return buffer;
+}
+
+function makeImpulse(ctx, seconds = 3.8, decay = 2.8) {
+  const length = Math.floor(ctx.sampleRate * seconds);
+  const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
+
+  for (let channel = 0; channel < 2; channel++) {
+    const data = buffer.getChannelData(channel);
+
+    for (let i = 0; i < length; i++) {
+      const progress = i / length;
+
+      data[i] = (
+        Math.random() * 2 - 1
+      ) * Math.pow(1 - progress, decay);
+    }
+  }
+
+  return buffer;
+}
+
+function makeSaturationCurve(amount = 1.6) {
+  const samples = 2048;
+  const curve = new Float32Array(samples);
+
+  for (let i = 0; i < samples; i++) {
+    const x = i * 2 / (samples - 1) - 1;
+    curve[i] = Math.tanh(x * amount) / Math.tanh(amount);
+  }
+
+  return curve;
+}
+
+function buildGraph() {
+  const ctx = audio.context;
+
+  audio.master = ctx.createGain();
+  audio.master.gain.value = 0;
+
+  audio.filter = ctx.createBiquadFilter();
+  audio.filter.type = "lowpass";
+  audio.filter.frequency.value = CONFIG.synth.filterCutoff;
+  audio.filter.Q.value = 0.58;
+
+  audio.saturation = ctx.createWaveShaper();
+  audio.saturation.curve = makeSaturationCurve(1.6);
+  audio.saturation.oversample = "2x";
+
+  audio.compressor = ctx.createDynamicsCompressor();
+  audio.compressor.threshold.value = -20;
+  audio.compressor.knee.value = 20;
+  audio.compressor.ratio.value = 2;
+  audio.compressor.attack.value = 0.035;
+  audio.compressor.release.value = 0.28;
+
+  audio.convolver = ctx.createConvolver();
+  audio.convolver.buffer = makeImpulse(ctx);
+
+  audio.wet = ctx.createGain();
+  audio.wet.gain.value = CONFIG.synth.reverb * 0.28;
+
+  audio.delay = ctx.createDelay(2);
+  audio.delay.delayTime.value = 0.34;
+
+  audio.delayFeedback = ctx.createGain();
+  audio.delayFeedback.gain.value = 0.13;
+
+  audio.delayWet = ctx.createGain();
+  audio.delayWet.gain.value = 0.09;
+
+  audio.analyser = ctx.createAnalyser();
+  audio.analyser.fftSize = 1024;
+  audio.analyser.smoothingTimeConstant = 0.88;
+
+  audio.spectrum = new Uint8Array(audio.analyser.frequencyBinCount);
+
+  audio.lfo = ctx.createOscillator();
+  audio.lfo.type = "sine";
+  audio.lfo.frequency.value = CONFIG.synth.lfoRate;
+
+  audio.lfoGain = ctx.createGain();
+  audio.lfoGain.gain.value = CONFIG.synth.lfoDepth;
+
+  audio.lfo.connect(audio.lfoGain);
+  audio.lfoGain.connect(audio.filter.frequency);
+  audio.lfo.start();
+
+  audio.noiseBuffer = makeNoiseBuffer(ctx);
+
+  audio.filter.connect(audio.saturation);
+  audio.saturation.connect(audio.compressor);
+
+  audio.compressor.connect(audio.master);
+
+  audio.compressor.connect(audio.convolver);
+  audio.convolver.connect(audio.wet);
+  audio.wet.connect(audio.master);
+
+  audio.compressor.connect(audio.delay);
+  audio.delay.connect(audio.delayWet);
+  audio.delayWet.connect(audio.master);
+
+  audio.delay.connect(audio.delayFeedback);
+  audio.delayFeedback.connect(audio.delay);
+
+  audio.master.connect(audio.analyser);
+  audio.analyser.connect(ctx.destination);
+}
+
+/* ---------------------------------------------------------
+   GESTIÓ DE VEUS
+--------------------------------------------------------- */
+
+const MAX_VOICES = 28;
+
+function registerVoice(nodes, endTime) {
+  const voice = {
+    nodes,
+    endTime
+  };
+
+  audio.voices.add(voice);
+
+  const delay = Math.max(
+    100,
+    (endTime - audio.context.currentTime + 0.4) * 1000
+  );
+
+  const timer = setTimeout(() => {
+    audio.activeTimers.delete(timer);
+    audio.voices.delete(voice);
+
+    nodes.forEach(node => {
+      try { node.disconnect(); } catch (_) {}
+    });
+  }, delay);
+
+  audio.activeTimers.add(timer);
+}
+
+function playNote(time, frequency, duration, options = {}) {
+  if (!audio.context || !running || destroyed) return;
+
+  const ctx = audio.context;
+  const p = CONFIG.synth;
+
+  if (audio.voices.size >= MAX_VOICES) return;
+
+  const velocity = clamp(options.velocity ?? 0.3, 0.02, 0.7);
+  const attack = options.attack ?? p.attack;
+  const release = options.release ?? p.release;
+  const type = options.type || p.waveform;
+  const panValue = clamp(options.pan ?? rand(-0.55, 0.55), -1, 1);
+  const detune = options.detune ?? p.detune;
+  const fmAmount = options.fm ?? p.fmAmount;
+
+  const voiceGain = ctx.createGain();
+  const pan = ctx.createStereoPanner();
+  const voiceFilter = ctx.createBiquadFilter();
+
+  voiceFilter.type = "lowpass";
+  voiceFilter.frequency.value = options.cutoff || rand(900, 2200);
+  voiceFilter.Q.value = rand(0.35, 0.9);
+
+  pan.pan.value = panValue;
+  voiceGain.gain.value = 0;
+
+  voiceGain.connect(voiceFilter);
+  voiceFilter.connect(pan);
+  pan.connect(audio.filter);
+
+  const amp = velocity * 0.21;
+
+  voiceGain.gain.setValueAtTime(0.0001, time);
+
+  voiceGain.gain.exponentialRampToValueAtTime(
+    Math.max(0.001, amp),
+    time + Math.max(0.025, attack)
+  );
+
+  voiceGain.gain.setTargetAtTime(
+    Math.max(0.0001, amp * 0.72),
+    time + attack,
+    0.28
+  );
+
+  const noteOff = time + Math.max(0.18, duration);
+
+  voiceGain.gain.setValueAtTime(
+    Math.max(0.0001, amp * 0.62),
+    noteOff
+  );
+
+  voiceGain.gain.setTargetAtTime(
+    0.0001,
+    noteOff,
+    Math.max(0.08, release * 0.3)
+  );
+
+  const oscillators = [];
+
+  function addOscillator(freq, oscType, detuneValue, level) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = oscType;
+    osc.frequency.setValueAtTime(freq, time);
+    osc.detune.setValueAtTime(detuneValue, time);
+    gain.gain.value = level;
+
+    osc.connect(gain);
+    gain.connect(voiceGain);
+
+    osc.start(time);
+    osc.stop(noteOff + release * 2.4 + 0.1);
+
+    oscillators.push(osc);
+  }
+
+  addOscillator(frequency, type, -detune * 0.5, 0.72);
+  addOscillator(frequency * 1.002, type, detune * 0.5, 0.28);
+
+  if (p.layers > 2) {
+    addOscillator(
+      frequency * 2,
+      "sine",
+      rand(-2, 2),
+      0.07 + fmAmount * 0.1
+    );
+  }
+
+  if (fmAmount > 0.01) {
+    const mod = ctx.createOscillator();
+    const modGain = ctx.createGain();
+
+    mod.type = "sine";
+    mod.frequency.value = frequency * rand(0.5, 1.2);
+    modGain.gain.value = frequency * fmAmount * 0.35;
+
+    mod.connect(modGain);
+    modGain.connect(oscillators[0].frequency);
+
+    mod.start(time);
+    mod.stop(noteOff + release + 0.2);
+
+    oscillators.push(mod);
+    oscillators.push(modGain);
+  }
+
+  registerVoice(
+    [voiceGain, voiceFilter, pan, ...oscillators],
+    noteOff + release * 2.4
+  );
+
+  audio.lastNoteAt = time;
+}
+
+function playAir(time, duration, intensity = 0.12) {
+  if (!audio.context || !running || destroyed) return;
+
+  const ctx = audio.context;
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  const pan = ctx.createStereoPanner();
+
+  source.buffer = audio.noiseBuffer;
+  // Manté el soroll actiu durant tota la caiguda, que pot superar 2,5 s.
+  source.loop = true;
+
+  filter.type = "bandpass";
+  const opening = rand(1050, 2050);
+  const shoulder = rand(520, 780);
+  const falling = rand(115, 225);
+  const attack = rand(0.38, 0.68);
+  const releaseTail = rand(2.8, 4.4);
+  const fallEnd = time + duration + releaseTail;
+
+  filter.frequency.setValueAtTime(opening, time);
+  filter.frequency.exponentialRampToValueAtTime(
+    shoulder,
+    time + duration * 0.58
+  );
+  filter.frequency.exponentialRampToValueAtTime(
+    falling,
+    fallEnd
+  );
+  filter.Q.setValueAtTime(rand(0.42, 0.82), time);
+  filter.Q.linearRampToValueAtTime(0.28, fallEnd);
+
+  pan.pan.value = rand(-0.6, 0.6);
+
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.linearRampToValueAtTime(
+    intensity * 0.068,
+    time + attack
+  );
+  gain.gain.linearRampToValueAtTime(
+    intensity * 0.030,
+    time + duration
+  );
+  gain.gain.setTargetAtTime(
+    0.0001,
+    time + duration,
+    rand(1.45, 2.05)
+  );
+
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(pan);
+  pan.connect(audio.filter);
+
+  source.start(time);
+  source.stop(fallEnd + 1.2);
+
+  registerVoice(
+    [source, filter, gain, pan],
+    fallEnd + 1.2
+  );
+}
+
+function playBass(time, harmony, strength = 0.3) {
+  const degree = chooseDegree("bass", harmony);
+  const frequency = getFrequency(degree, -2);
+
+  playNote(time, frequency, rand(1.2, 2.5), {
+    velocity: 0.18 + strength * 0.2,
+    attack: rand(0.3, 0.65),
+    release: rand(1.8, 3.1),
+    cutoff: rand(250, 430),
+    pan: rand(-0.12, 0.12),
+    fm: 0.012,
+    type: "sine"
+  });
+
+  memory.lastNotes.push(degree);
+
+  if (memory.lastNotes.length > 12) {
+    memory.lastNotes.shift();
+  }
+}
+
+function playChord(time, harmony, strength = 0.3) {
+  const tones = composition.chord;
+  const root = composition.chordRoot;
+  const inversion = choose([0, 0, 1, 2]);
+
+  const chordTones = tones.map((tone, i) => {
+    let degree = tone + root;
+
+    if (i < inversion) degree += SCALE.length;
+
+    return degree;
+  });
+
+  chordTones.forEach((degree, i) => {
+    const frequency = getFrequency(degree, -1);
+
+    playNote(time + i * 0.04, frequency, rand(2.1, 4.2), {
+      velocity: 0.12 + strength * 0.13,
+      attack: rand(0.75, 1.35),
+      release: rand(3, 5.2),
+      cutoff: rand(800, 1550),
+      pan: (i - 1) * 0.3,
+      fm: 0.025,
+      type: i === 1 ? "triangle" : "sine"
+    });
+  });
+
+  audio.lastChordAt = time;
+}
+
+function playMelody(time, harmony, strength = 0.3, role = "melody") {
+  const degree = chooseDegree(role, harmony);
+
+  let octave = 0;
+
+  if (gesture.y < 0.33) octave = 1;
+  if (gesture.y > 0.76) octave = -1;
+
+  const motifPosition = memory.motifIndex % memory.motif.length;
+  const motifDegree = memory.motif[motifPosition];
+
+  /* El motiu té prioritat, però no és una seqüència rígida. */
+  const selectedDegree = Math.random() < 0.58
+    ? motifDegree
+    : degree;
+
+  const frequency = getFrequency(
+    selectedDegree,
+    octave + choose([0, 0, 0, 1, -1])
+  );
+
+  playNote(time, frequency, rand(0.6, 1.7), {
+    velocity: 0.2 + strength * 0.25,
+    attack: rand(0.25, 0.75),
+    release: rand(2, 4),
+    cutoff: rand(1100, 2400),
+    pan: clamp(
+      (gesture.x - 0.5) * 1.4 + rand(-0.18, 0.18),
+      -0.8,
+      0.8
+    ),
+    fm: rand(0.015, 0.06),
+    type: Math.random() < 0.72 ? "triangle" : "sine"
+  });
+
+  memory.lastDegree = selectedDegree;
+
+  const previous = memory.lastNotes[memory.lastNotes.length - 1];
+
+  if (previous !== undefined) {
+    memory.lastIntervals.push(selectedDegree - previous);
+
+    if (memory.lastIntervals.length > 12) {
+      memory.lastIntervals.shift();
+    }
+  }
+
+  memory.lastNotes.push(selectedDegree);
+
+  if (memory.lastNotes.length > 12) {
+    memory.lastNotes.shift();
+  }
+
+  memory.motifIndex = (memory.motifIndex + 1) % memory.motif.length;
+  memory.lastResponse = time;
+}
+
+/* ---------------------------------------------------------
+   RESPOSTA AL GEST
+--------------------------------------------------------- */
+
+function playGestureResponse(time, harmony, probability) {
+  const intensity = clamp(
+    gesture.energy * 0.58 +
+    gesture.acceleration * 0.22 +
+    gesture.directionChange * 0.2,
+    0,
+    1
+  );
+
+  const roll = Math.random();
+  const tension = harmony.tension;
+  const resolution = harmony.resolution;
+
+  if (roll < 0.15 + resolution * 0.15) {
+    playMelody(time, harmony, intensity, "response");
+  } else if (roll < 0.42 + tension * 0.1) {
+    playMelody(time, harmony, intensity, "melody");
+  } else if (roll < 0.64) {
+    playAir(time, rand(1.2, 2.6), 0.08 + intensity * 0.13);
+  } else if (roll < 0.78) {
+    playChord(time, harmony, intensity);
+  } else if (roll < 0.91) {
+    playBass(time, harmony, intensity);
+  } else {
+    playMelody(time, harmony, intensity * 0.7, "response");
+  }
+
+  composition.lastGesture = time;
+  audio.lastGestureEvent = time;
+}
+
+/* ---------------------------------------------------------
+   TEMPO I COMPOSICIÓ AUTÒNOMA
+--------------------------------------------------------- */
+
+function updateTempo(harmony) {
+  const phraseBreath = Math.sin(
+    harmony.phraseProgress * Math.PI * 2 +
+    composition.phraseSeed
+  );
+
+ const target = clamp(
+  0.35 +
+  gesture.movement * 0.055 +
+  gesture.gestureMemory * 0.035 +
+  phraseBreath * 0.014 +
+  harmony.tension * 0.018,
+  0.27,
+  0.47
+);
+
+
+  composition.tempoTarget = target;
+  composition.tempo = lerp(
+    composition.tempo,
+    target,
+    0.003
+  );
+
+  return composition.tempo;
+}
+
+function scheduleComposition() {
+  if (!audio.context || !running || destroyed) return;
+
+  const ctx = audio.context;
+  const currentTime = ctx.currentTime;
+
+  const harmony = updateHarmony(currentTime);
+  const tempo = updateTempo(harmony);
+  const responseChance = responseProbability(currentTime, harmony);
+
+  if (audio.nextEvent < currentTime + 0.15) {
+    audio.nextEvent = currentTime + 0.04;
+  }
+
+  while (audio.nextEvent < currentTime + 0.3) {
+    const time = audio.nextEvent;
+    const phraseProgress = harmony.phraseProgress;
+
+    const backgroundDensity = clamp(
+      composition.density +
+      harmony.activity * 0.1 +
+      gesture.gestureMemory * 0.06,
+      0.1,
+      0.48
+    );
+
+    const gestureIsRecent =
+      currentTime - composition.lastGesture < 4;
+
+    const backgroundChance = clamp(
+      backgroundDensity *
+      (gestureIsRecent ? 0.48 : 0.28) *
+      (0.65 + harmony.resolution * 0.4),
+      0.02,
+      0.27
+    );
+
+    const isResponse = Math.random() < responseChance;
+
+    if (isResponse) {
+      playGestureResponse(time, harmony, responseChance);
+    } else if (Math.random() < backgroundChance) {
+      const roll = Math.random();
+
+      if (roll < 0.12) {
+        playChord(time, harmony, 0.3);
+      } else if (roll < 0.25) {
+        playBass(time, harmony, 0.26);
+      } else if (roll < 0.76) {
+        playMelody(time, harmony, 0.22, "melody");
+      } else {
+        playAir(time, rand(1.5, 3.2), rand(0.06, 0.15));
+      }
+
+      audio.lastBackgroundEvent = time;
+    }
+
+    /* La frase respira abans de resoldre. */
+    if (
+      phraseProgress > 0.82 &&
+      currentTime - audio.lastChordAt > 6 &&
+      Math.random() < 0.045
+    ) {
+      playChord(time, harmony, 0.24);
+    }
+
+    composition.eventCount++;
+
+    memory.phrasePosition++;
+
+    if (memory.phrasePosition >= composition.phraseLength) {
+      memory.phraseLength = composition.phraseLength;
+      beginPhrase();
+    }
+
+    const jitter = rand(0.72, 1.35);
+    const gestureInfluence = 1 - gesture.movement * 0.1;
+
+    audio.nextEvent += tempo * jitter * gestureInfluence;
+  }
+
+  audio.clockTimer = setTimeout(scheduleComposition, 35);
+}
+
+/* ---------------------------------------------------------
+   ACTIVACIÓ D'ÀUDIO
+--------------------------------------------------------- */
+
+async function activateAudio() {
+  if (started || audioStarting || destroyed || !running) return;
+
+  const AudioContextClass =
+    window.AudioContext || window.webkitAudioContext;
+
+  if (!AudioContextClass) return;
+
+  audioStarting = true;
+
+  try {
+    audio.context = new AudioContextClass();
+
+    buildGraph();
+    initializeComposition();
+
+    await audio.context.resume();
+
+    if (destroyed || !running) {
+      await audio.context.close();
+      audio.context = null;
+      return;
+    }
+
+    started = true;
+    audioStarting = false;
+
+    const now = audio.context.currentTime;
+
+    audio.nextEvent = now + 0.6;
+    audio.lastNoteAt = now;
+    audio.lastGestureEvent = now;
+    audio.lastBackgroundEvent = now;
+
+    audio.master.gain.cancelScheduledValues(now);
+    audio.master.gain.setValueAtTime(0.0001, now);
+
+    audio.master.gain.exponentialRampToValueAtTime(
+      Math.max(0.001, CONFIG.volume * 0.84),
+      now + 2.8
+    );
+
+    scheduleComposition();
+  } catch (error) {
+    audioStarting = false;
+    started = false;
+    if (audio.context) {
+      try { audio.context.close(); } catch (_) {}
+      audio.context = null;
+    }
+    console.warn("natural: no s'ha pogut activar l'àudio.", error);
+  }
+}
+
+/* ---------------------------------------------------------
+   ANÀLISI D'ÀUDIO
+--------------------------------------------------------- */
+
+function updateAudioAnalysis() {
+  if (!audio.analyser || !audio.spectrum) return;
+
+  audio.analyser.getByteFrequencyData(audio.spectrum);
+
+  let sum = 0;
+  let weighted = 0;
+  let high = 0;
+
+  const length = audio.spectrum.length;
+
+  for (let i = 0; i < length; i++) {
+    const value = audio.spectrum[i] / 255;
+
+    sum += value;
+    weighted += value * i;
+
+    if (i > length * 0.55) high += value;
+  }
+
+  const average = sum / length;
+  const centroid = sum > 0 ? weighted / sum / length : 0;
+  const spread = high / Math.max(1, length * 0.45);
+
+  audio.audioEnergy = lerp(audio.audioEnergy, average, 0.1);
+  audio.audioCentroid = lerp(audio.audioCentroid, centroid, 0.1);
+  audio.audioSpread = lerp(audio.audioSpread, spread, 0.1);
+}
+
+/* ---------------------------------------------------------
+   DIBUIX DE LA SUPERFÍCIE
+--------------------------------------------------------- */
+
+function drawSurface() {
+  if (!glReady || destroyed) return;
+
+  const p = CONFIG.visual;
+  const harmony = currentHarmony();
+
+  gl.useProgram(program);
+  gl.viewport(0, 0, surface.width, surface.height);
+
+  const set1f = (name, value) => {
+    const location = uniforms[name];
+
+    if (location !== null) {
+      gl.uniform1f(location, value);
+    }
+  };
+
+  const set2f = (name, a, b) => {
+    const location = uniforms[name];
+
+    if (location !== null) {
+      gl.uniform2f(location, a, b);
+    }
+  };
+
+  set2f("resolution", surface.width, surface.height);
+  set1f("time", elapsed * p.speed);
+
+  set2f("pointer", gesture.x, gesture.y);
+  set2f("moveVec", gesture.vx * 0.12, gesture.vy * 0.12);
+
+  set1f(
+    "energy",
+    clamp(gesture.energy + audio.audioEnergy * 0.6, 0, 1)
+  );
+
+  set1f("centroid", gesture.centroidX);
+  set1f("spread", gesture.contour);
+  set1f("stillness", gesture.stillness);
+  set1f("accel", gesture.acceleration);
+  set1f("action", gesture.recentActivity);
+  set1f("direction", gesture.directionChange);
+  set1f("harmony", harmony.tension);
+  set1f("melody", audio.audioCentroid);
+  set1f("warp", p.warp);
+  set1f("complexity", p.complexity);
+  set1f("motion", p.motion);
+
+  set1f(
+    "trailMemory",
+    getTrailInfluence(gesture.x, gesture.y, performance.now() * 0.001)
+  );
+
+  if (causticHistory.ready) {
+    const writeIndex = 1 - causticHistory.readIndex;
+    const historyTexture = uniforms.historyTexture;
+    const historyPass = uniforms.historyPass;
+
+    // Pas 1: actualitza només la màscara de llum persistent.
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(
+      gl.TEXTURE_2D,
+      causticHistory.textures[causticHistory.readIndex]
+    );
+    if (historyTexture !== null) gl.uniform1i(historyTexture, 0);
+    if (historyPass !== null) gl.uniform1f(historyPass, 1);
+
+    gl.bindFramebuffer(
+      gl.FRAMEBUFFER,
+      causticHistory.framebuffers[writeIndex]
+    );
+    gl.viewport(0, 0, causticHistory.width, causticHistory.height);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // Pas 2: dibuixa l'escena amb la memòria acabada d'actualitzar.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, surface.width, surface.height);
+    gl.bindTexture(
+      gl.TEXTURE_2D,
+      causticHistory.textures[writeIndex]
+    );
+    if (historyPass !== null) gl.uniform1f(historyPass, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    causticHistory.readIndex = writeIndex;
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  } else {
+    if (uniforms.historyPass !== null) gl.uniform1f(uniforms.historyPass, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, surface.width, surface.height);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+}
+
+/* ---------------------------------------------------------
+   CAPA D'ATMOSFERA SONORA
+--------------------------------------------------------- */
+
+function drawAudioAtmosphere() {
+  const ctx = vctx;
+  const w = visualCanvas.width;
+  const h = visualCanvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  if (!audio.spectrum) return;
+
+  const glow = 0.025 +
+    audio.audioEnergy * 0.14 +
+    gesture.energy * 0.04;
+
+  const x = gesture.x * w;
+  const y = (1 - gesture.y) * h;
+
+  const radius = Math.max(w, h) * (
+    0.19 + audio.audioCentroid * 0.22
+  );
+
+  const gradient = ctx.createRadialGradient(
+    x, y, 0,
+    x, y, radius
+  );
+
+  gradient.addColorStop(
+    0,
+    `rgba(206, 245, 222, ${glow})`
+  );
+
+  gradient.addColorStop(
+    0.48,
+    `rgba(207, 151, 183, ${glow * 0.34})`
+  );
+
+  gradient.addColorStop(
+    1,
+    "rgba(83, 112, 89, 0)"
+  );
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/* ---------------------------------------------------------
+   ALTERNATIVA VISUAL SI WEBGL NO ESTÀ DISPONIBLE
+--------------------------------------------------------- */
+
+function drawFallback() {
+  const ctx = vctx;
+  const w = visualCanvas.width;
+  const h = visualCanvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const t = elapsed;
+  const base = ctx.createLinearGradient(0, 0, w, h);
+
+  base.addColorStop(0, "#31564a");
+  base.addColorStop(0.32, "#58a58f");
+  base.addColorStop(0.62, "#d08ea8");
+  base.addColorStop(0.84, "#e6d59c");
+  base.addColorStop(1, "#355b4d");
+
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, w, h);
+
+  const x = gesture.x * w;
+  const y = (1 - gesture.y) * h;
+
+  const radius = Math.min(w, h) * (
+    0.38 + Math.sin(t * 0.2) * 0.025
+  );
+
+  const glow = ctx.createRadialGradient(
+    x, y, 0,
+    x, y, radius
+  );
+
+  glow.addColorStop(0, "rgba(245,248,220,0.27)");
+  glow.addColorStop(0.36, "rgba(112,213,177,0.17)");
+  glow.addColorStop(0.68, "rgba(230,170,190,0.12)");
+  glow.addColorStop(1, "rgba(100,150,113,0)");
+
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/* ---------------------------------------------------------
+   CICLE PRINCIPAL
+--------------------------------------------------------- */
+
+function frame(timestamp) {
+  if (!running || destroyed || paused) return;
+
+  const dt = lastFrame
+    ? clamp((timestamp - lastFrame) / 1000, 0.001, 0.06)
+    : 0.016;
+
+  lastFrame = timestamp;
+  elapsed += dt;
+
+  updateGesturePhysics(dt, timestamp * 0.001);
+  updateAudioAnalysis();
+
+  if (glReady) {
+    drawSurface();
+    drawAudioAtmosphere();
+  } else {
+    drawFallback();
+  }
+
+  raf = requestAnimationFrame(frame);
+}
+
+/* ---------------------------------------------------------
+   START
+--------------------------------------------------------- */
+
+function start() {
+  if (running || destroyed) return;
+
+  running = true;
+  paused = false;
+  lastFrame = 0;
+
+  resize();
+
+  raf = requestAnimationFrame(frame);
+
+  /*
+    L'àudio no comença automàticament.
+    El primer gest explícit de l'usuari l'activa.
+  */
+}
+
+/* ---------------------------------------------------------
+   STOP TERMINAL I ALLIBERAMENT
+--------------------------------------------------------- */
+
+function stop() {
+  if (destroyed) return;
+
+  destroyed = true;
+  running = false;
+  paused = false;
+  audioStarting = false;
+
+  if (raf) {
+    cancelAnimationFrame(raf);
+    raf = 0;
+  }
+
+  if (audio.clockTimer) {
+    clearTimeout(audio.clockTimer);
+    audio.clockTimer = null;
+  }
+
+  audio.activeTimers.forEach(timer => clearTimeout(timer));
+  audio.activeTimers.clear();
+
+  listeners.splice(0).forEach(remove => {
+    try { remove(); } catch (_) {}
+  });
+
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+
+  if (audio.context) {
+    const ctx = audio.context;
+
+    try {
+      audio.master?.gain.cancelScheduledValues(ctx.currentTime);
+      audio.master?.gain.setTargetAtTime(
+        0.0001,
+        ctx.currentTime,
+        0.08
+      );
+    } catch (_) {}
+
+    audio.context = null;
+
+    try {
+      ctx.close();
+    } catch (_) {}
+  }
+
+  audio.voices.clear();
+  audio.spectrum = null;
+  audio.noiseBuffer = null;
+
+  if (gl) {
+    try {
+      releaseCausticHistory();
+      if (positionBuffer) gl.deleteBuffer(positionBuffer);
+      if (program) gl.deleteProgram(program);
+      const extension = gl.getExtension("WEBGL_lose_context");
+      extension?.loseContext();
+    } catch (_) {}
+  }
+
+  positionBuffer = null;
+  program = null;
+  glReady = false;
+
+  gesture.trail.length = 0;
+
+  try {
+    vctx.clearRect(
+      0,
+      0,
+      visualCanvas.width,
+      visualCanvas.height
+    );
+  } catch (_) {}
+}
+
+/* ---------------------------------------------------------
+   PROTOCOL ZERO INFINIT
+--------------------------------------------------------- */
+
+listen(surface, "pointerdown", pointerDown, { passive: true });
+listen(surface, "pointermove", pointerFeed, { passive: true });
+listen(surface, "pointerup", pointerUp, { passive: true });
+listen(surface, "pointercancel", pointerUp, { passive: true });
+listen(surface, "lostpointercapture", pointerUp, { passive: true });
+
+listen(window, "resize", resize, { passive: true });
+listen(window, "pagehide", stop, { once: true });
+
+listen(document, "visibilitychange", () => {
+  if (destroyed || !running) return;
+
+  if (document.hidden) {
+    paused = true;
+
+    if (raf) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+
+    if (audio.clockTimer) {
+      clearTimeout(audio.clockTimer);
+      audio.clockTimer = null;
+    }
+
+    if (audio.context && audio.context.state === "running") {
+      audio.context.suspend().catch(() => {});
+    }
+  } else {
+    paused = false;
+    lastFrame = 0;
+    raf = requestAnimationFrame(frame);
+
+    if (audio.context && audio.context.state === "suspended") {
+      audio.context.resume().then(() => {
+        if (running && !paused && !destroyed) scheduleComposition();
+      }).catch(() => {});
+    }
+  }
+});
+
+/* ---------------------------------------------------------
+   PREPARACIÓ I ARRANCADA
+--------------------------------------------------------- */
+
+initGL();
+resize();
+
+window.start = start;
+window.stop = stop;
+
+start();
+
+})();
+</script>
+</body>
+</html>

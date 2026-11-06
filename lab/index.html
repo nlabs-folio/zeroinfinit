@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080611}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const gl = canvas.getContext("webgl", {antialias:false, powerPreference:"high-performance"});
+  if (!gl) return;
+
+  const vertexSource = `
+    attribute vec2 p;
+    void main(){gl_Position=vec4(p,0.0,1.0);}
+  `;
+
+  const fragmentSource = `
+    precision mediump float;
+    uniform vec2 u_resolution;
+    uniform vec2 u_pointer;
+    uniform float u_time;
+    uniform float u_energy;
+    uniform float u_bass;
+    uniform float u_mid;
+    uniform float u_high;
+
+    float hash(vec2 p){
+      return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);
+    }
+    float noise(vec2 p){
+      vec2 i=floor(p), f=fract(p);
+      f=f*f*(3.0-2.0*f);
+      return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),f.x),
+                 mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),f.x),f.y);
+    }
+    float fbm(vec2 p){
+      float v=0.0,a=0.5;
+      mat2 r=mat2(0.8,-0.6,0.6,0.8);
+      for(int i=0;i<4;i++){
+        v+=a*noise(p);
+        p=r*p*2.0;
+        a*=0.5;
+      }
+      return v;
+    }
+    void main(){
+      vec2 aspect=vec2(u_resolution.x/u_resolution.y,1.0);
+      vec2 uv=(gl_FragCoord.xy-0.5*u_resolution)/u_resolution.y;
+      vec2 pointer=u_pointer*aspect;
+      vec2 delta=uv-pointer;
+      float d=length(delta);
+      float influence=exp(-d*5.5);
+
+      float t=u_time*0.12;
+      vec2 q=uv;
+      q+=0.11*vec2(sin(t+uv.y*2.0),cos(t*0.8+uv.x*2.0));
+      q+=normalize(delta+vec2(0.0001))*influence*(0.12+u_energy*0.15);
+      q+=vec2(u_pointer.x,u_pointer.y)*0.12;
+
+      float n=fbm(q*2.2+vec2(t,-t*0.7));
+      float cloud=fbm(q*4.0-vec2(t*0.5,t*0.3));
+      float glow=exp(-d*2.4)*0.35;
+      float bands=0.5+0.5*sin(n*9.0-t*1.5+u_bass*2.0);
+
+      vec3 deep=vec3(0.025,0.018,0.065);
+      vec3 violet=vec3(0.34,0.12,0.58);
+      vec3 rose=vec3(0.95,0.38,0.53);
+      vec3 blue=vec3(0.16,0.32,0.62);
+      vec3 col=mix(deep,violet,smoothstep(0.25,0.75,n));
+      col=mix(col,blue,smoothstep(0.35,0.8,cloud)*0.55);
+      col+=rose*(glow+bands*influence*(0.08+u_mid*0.12));
+      col+=vec3(0.5,0.38,0.75)*u_high*0.08;
+      col*=0.72+0.28*smoothstep(1.5,0.15,length(uv));
+      col+=(hash(gl_FragCoord.xy+u_time)-0.5)*0.018;
+      gl_FragColor=vec4(max(col,0.0),1.0);
+    }
+  `;
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(shader));
+      return null;
+    }
+    return shader;
+  }
+
+  const vs = compile(gl.VERTEX_SHADER, vertexSource);
+  const fs = compile(gl.FRAGMENT_SHADER, fragmentSource);
+  if (!vs || !fs) return;
+
+  const program = gl.createProgram();
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(program));
+    return;
+  }
+  gl.useProgram(program);
+
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,3,-1,-1,3]), gl.STATIC_DRAW);
+  const position = gl.getAttribLocation(program, "p");
+  gl.enableVertexAttribArray(position);
+  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+  const uniforms = {};
+  ["u_resolution","u_pointer","u_time","u_energy","u_bass","u_mid","u_high"]
+    .forEach(name => uniforms[name] = gl.getUniformLocation(program, name));
+
+  let width = 0, height = 0;
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    width = Math.max(1, Math.floor(innerWidth*dpr));
+    height = Math.max(1, Math.floor(innerHeight*dpr));
+    canvas.width = width;
+    canvas.height = height;
+    gl.viewport(0,0,width,height);
+    gl.uniform2f(uniforms.u_resolution,width,height);
+  }
+  addEventListener("resize",resize);
+  resize();
+
+  let pointer = {x:0,y:0}, targetPointer = {x:0,y:0};
+  let energy = 0, lastX = 0, lastY = 0, lastMove = 0;
+  function move(e) {
+    const x = (e.clientX/innerWidth)*2-1;
+    const y = 1-(e.clientY/innerHeight)*2;
+    targetPointer.x = x;
+    targetPointer.y = y;
+    const now = performance.now();
+    if (lastMove) {
+      const dt = Math.max(8,now-lastMove);
+      const speed = Math.hypot(e.clientX-lastX,e.clientY-lastY)/dt;
+      energy = Math.min(1,energy+speed*0.12);
+    }
+    lastX=e.clientX; lastY=e.clientY; lastMove=now;
+  }
+  canvas.addEventListener("pointermove",move);
+  canvas.addEventListener("pointerdown",e => {
+    move(e);
+    startAudio();
+  });
+
+  const BPM = 146;
+  const beat = 60/BPM;
+  const barDuration = beat*6;
+  const chords = [
+    {notes:[57,61,64],bass:45},
+    {notes:[57,60,63,66],bass:45},
+    {notes:[57,61,64,68],bass:45},
+    {notes:[49,52,56],bass:37},
+    {notes:[49,57,61,64],bass:37},
+    {notes:[50,54,57],bass:38},
+    {notes:[49,52,56],bass:37}
+  ];
+
+  let audio = null, master = null, filter = null, analyser = null;
+  let started = false, nextStepTime = 0, arpStep = 0, barIndex = 0;
+  let spectrum = null;
+  const clockStart = performance.now();
+
+  function midiToHz(note) {
+    return 440*Math.pow(2,(note-69)/12);
+  }
+
+  function playTone(time, frequency, duration, volume, pan=0, type="triangle") {
+    const osc = audio.createOscillator();
+    const amp = audio.createGain();
+    const panner = audio.createStereoPanner();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency,time);
+    panner.pan.setValueAtTime(Math.max(-1,Math.min(1,pan)),time);
+    amp.gain.setValueAtTime(0.0001,time);
+    amp.gain.exponentialRampToValueAtTime(volume,time+0.025);
+    amp.gain.exponentialRampToValueAtTime(0.0001,time+duration);
+
+    osc.connect(amp);
+    amp.connect(panner);
+    panner.connect(filter);
+    osc.start(time);
+    osc.stop(time+duration+0.03);
+  }
+
+  function scheduleStep(time) {
+    const chord = chords[barIndex % chords.length];
+    const index = arpStep % chord.notes.length;
+    const pointerX = pointer.x;
+
+    if (arpStep === 0) {
+      playTone(time,midiToHz(chord.bass),beat*2.4,0.075,pointerX*0.35,"sine");
+      chord.notes.forEach((note,i) => {
+        playTone(time,midiToHz(note+12),beat*1.35,0.018,
+          (i-(chord.notes.length-1)/2)*0.18+pointerX*0.35,"sine");
+      });
+    }
+
+    const octave = arpStep % 6 === 3 ? 12 : 0;
+    const pan = Math.sin(arpStep*0.72)*0.48 + pointerX*0.38;
+    playTone(time,midiToHz(chord.notes[index]+octave),beat*0.72,0.045,pan);
+
+    arpStep++;
+    if (arpStep >= 12) {
+      arpStep = 0;
+      barIndex++;
+    }
+  }
+
+  function scheduler() {
+    if (!started) return;
+    while (nextStepTime < audio.currentTime+0.12) {
+      scheduleStep(nextStepTime);
+      nextStepTime += beat/2;
+    }
+    setTimeout(scheduler,20);
+  }
+
+  async function startAudio() {
+    if (started) {
+      if (audio.state === "suspended") await audio.resume();
+      return;
+    }
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audio = new AudioContext();
+      await audio.resume();
+
+      analyser = audio.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.86;
+      spectrum = new Uint8Array(analyser.frequencyBinCount);
+
+      master = audio.createGain();
+      master.gain.value = 0.42;
+
+      const delay = audio.createDelay(1.0);
+      delay.delayTime.value = beat*0.75;
+      const feedback = audio.createGain();
+      feedback.gain.value = 0.19;
+      const wet = audio.createGain();
+      wet.gain.value = 0.16;
+
+      filter = audio.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 2400;
+      filter.Q.value = 0.7;
+
+      filter.connect(master);
+      filter.connect(delay);
+      delay.connect(feedback);
+      feedback.connect(delay);
+      delay.connect(wet);
+      wet.connect(master);
+
+      const compressor = audio.createDynamicsCompressor();
+      compressor.threshold.value = -20;
+      compressor.knee.value = 16;
+      compressor.ratio.value = 3;
+      compressor.attack.value = 0.01;
+      compressor.release.value = 0.25;
+
+      master.connect(compressor);
+      compressor.connect(analyser);
+      analyser.connect(audio.destination);
+
+      started = true;
+      nextStepTime = audio.currentTime+0.06;
+      scheduler();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+
+    pointer.x += (targetPointer.x-pointer.x)*0.22;
+    pointer.y += (targetPointer.y-pointer.y)*0.22;
+    energy *= 0.975;
+
+    let bass=0, mid=0, high=0;
+    if (analyser) {
+      analyser.getByteFrequencyData(spectrum);
+      const n=spectrum.length;
+      for(let i=0;i<n;i++){
+        const value=spectrum[i]/255;
+        if(i<n*0.12) bass+=value;
+        else if(i<n*0.5) mid+=value;
+        else high+=value;
+      }
+      bass/=Math.max(1,Math.floor(n*0.12));
+      mid/=Math.max(1,Math.floor(n*0.38));
+      high/=Math.max(1,Math.floor(n*0.5));
+
+      const targetCutoff=1000+Math.abs(pointer.x)*1500+energy*900;
+      filter.frequency.setTargetAtTime(targetCutoff,audio.currentTime,0.12);
+    }
+
+    gl.uniform2f(uniforms.u_pointer,pointer.x,pointer.y);
+    gl.uniform1f(uniforms.u_time,(now-clockStart)/1000);
+    gl.uniform1f(uniforms.u_energy,energy);
+    gl.uniform1f(uniforms.u_bass,bass);
+    gl.uniform1f(uniforms.u_mid,mid);
+    gl.uniform1f(uniforms.u_high,high);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
