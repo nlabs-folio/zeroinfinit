@@ -1,24 +1,8 @@
 // ============================================================
-// ZERO INFINIT — HARMONIC FIELD
-//
-// EXPERIÈNCIA AUDIOVISUAL INTERACTIVA
-//
-// GEST
-//   ↓
-// FIELD
-//   ↓
-// MATÈRIA
-//   ↓
-// HARMONIA
-//   ↓
-// BASS / DRONE / VOICE FIELD
-//   ↓
-// ESPAI
-//
+// ZERO INFINIT 
 // ------------------------------------------------------------
 //
 // CENTRE TONAL
-//
 // F# menor
 //
 // F#  = tònica
@@ -32,7 +16,7 @@
 //
 // PRINCIPI:
 //
-// El ratolí pot modificar l'expressió,
+// El punter pot modificar l'expressió,
 // però NO pot desafinar l'organisme.
 //
 // El moviment controla:
@@ -45,7 +29,7 @@
 //   espai
 //   articulació
 //
-// Però totes les freqüències musicals
+// Ttotes les freqüències musicals
 // provenen de la gramàtica harmònica.
 //
 // ------------------------------------------------------------
@@ -147,8 +131,6 @@ const field = {
 
 // ============================================================
 // HARMONIC SYSTEM
-//
-// Tot està expressat respecte de F# menor.
 //
 // El ratolí NO determina directament cap pitch.
 // ============================================================
@@ -1460,14 +1442,14 @@ function createAudio() {
         audioContext.createGain();
 
     master.gain.value =
-        0.65;
+        1.30;
 
     limiter =
         audioContext
             .createDynamicsCompressor();
 
     limiter.threshold.value =
-        -3;
+        -2;
 
     limiter.knee.value =
         2;

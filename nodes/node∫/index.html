@@ -2071,7 +2071,7 @@ async function activateAudio() {
     audio.master.gain.setValueAtTime(0.0001, now);
 
     audio.master.gain.exponentialRampToValueAtTime(
-      Math.max(0.001, CONFIG.volume * 0.84),
+      Math.max(0.001, CONFIG.volume * 1.30),
       now + 2.8
     );
 

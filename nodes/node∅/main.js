@@ -983,7 +983,7 @@ try {
     harmonicOsc.start(now);
 
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.90, now + 1.2);
+    master.gain.exponentialRampToValueAtTime(1.30, now + 1.2);
 
     // A very short, quiet unlock pulse. It is inside the pointer gesture,
     // so Safari/iOS has an actual audible source to authorize.
