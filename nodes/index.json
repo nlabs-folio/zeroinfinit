@@ -1,6 +1,10 @@
 {
     "nodes": [
         {
+            "id": "nodeG",
+            "entry": "nodes/nodeG/main.js"
+        },
+        {
             "id": "nodeN",
             "entry": "nodes/nodeN/main.js"
         },
