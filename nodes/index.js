@@ -1442,7 +1442,7 @@ function createAudio() {
         audioContext.createGain();
 
     master.gain.value =
-        1.30;
+        0.90;
 
     limiter =
         audioContext
@@ -3362,8 +3362,8 @@ bassFilter.frequency
 
     master.gain
         .setTargetAtTime(
-            0.54 +
-            audioEnergy * 0.07,
+            0.90 +
+            audioEnergy * 0.09,
             now,
             0.30
         );

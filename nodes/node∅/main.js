@@ -982,7 +982,7 @@ try {
     ambienceOsc.start(now);
     harmonicOsc.start(now);
 
-    master.gain.setValueAtTime(0.0001, now);
+    master.gain.setValueAtTime(0.0009, now);
     master.gain.exponentialRampToValueAtTime(1.30, now + 1.2);
 
     // A very short, quiet unlock pulse. It is inside the pointer gesture,

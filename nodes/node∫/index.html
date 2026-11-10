@@ -3,7 +3,7 @@
 <html lang="ca">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#203a35">
 <meta name="description" content="node∫ onatge — una experiència immersiva entre gest, matèria, harmonia i so.">
 <title>node∫ onatge</title>
@@ -27,6 +27,10 @@ html, body {
   margin: 0;
   overflow: hidden;
   background: var(--deep);
+}
+
+@supports (height: 100dvh) {
+  html, body { height: 100dvh; }
 }
 
 body {
@@ -76,7 +80,20 @@ canvas {
 
 const CONFIG = {
   volume: 0.72,
-  pixelRatio: 1.8,
+
+  // Resolució màxima de renderitzat. El valor efectiu també es limita
+  // segons la mida de pantalla, la GPU i la memòria disponible.
+  pixelRatio: 3.0,
+
+  render: {
+    maxPixels: 7500000,
+    lowMemoryPixels: 3800000,
+    mediumMemoryPixels: 5800000,
+    highMemoryPixels: 10000000,
+    minAdaptiveScale: 0.72,
+    maxFPS: 60,
+    adaptationInterval: 3000
+  },
 
   synth: {
     baseFreq: 221.303,
@@ -135,6 +152,16 @@ let lastFrame = 0;
 let elapsed = 0;
 let resizeObserver = null;
 
+// Estat exclusiu del renderitzat: no intervé en el rellotge ni en la síntesi musical.
+const renderPerformance = {
+  adaptiveScale: 1,
+  frameCount: 0,
+  slowFrames: 0,
+  sampleStartedAt: 0,
+  lastScaleChange: 0,
+  lastRenderAt: 0
+};
+
 const listeners = [];
 
 function listen(target, type, callback, options) {
@@ -182,6 +209,10 @@ const gesture = {
 
   pointerDown: false,
   pointerType: "none",
+
+  // Temps de moviment continu i nivell de la textura sonora no tonal.
+  sustainedMovement: 0,
+  motionTexture: 0,
 
   trail: [],
   trailLimit: 24
@@ -750,30 +781,96 @@ function initGL() {
    MIDA
 --------------------------------------------------------- */
 
+function getRenderPixelBudget() {
+  const memory = Number(navigator.deviceMemory) || 0;
+
+  if (memory > 0 && memory <= 2) return CONFIG.render.lowMemoryPixels;
+  if (memory > 0 && memory <= 4) return CONFIG.render.mediumMemoryPixels;
+  if (memory >= 8) return CONFIG.render.highMemoryPixels;
+
+  // deviceMemory no està disponible a tots els navegadors mòbils.
+  return CONFIG.render.maxPixels;
+}
+
+function getRenderScale(viewWidth, viewHeight) {
+  const deviceRatio = Math.max(0.75, Number(window.devicePixelRatio) || 1);
+  let ratio = Math.min(deviceRatio, CONFIG.pixelRatio);
+
+  // Respecta els límits reals de viewport i de les textures de la GPU.
+  if (gl) {
+    try {
+      const viewportLimits = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+      const renderbufferLimit = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE);
+      const textureLimit = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+      const longestSide = Math.max(viewWidth, viewHeight);
+
+      if (viewportLimits && viewportLimits.length >= 2) {
+        ratio = Math.min(
+          ratio,
+          viewportLimits[0] / viewWidth,
+          viewportLimits[1] / viewHeight
+        );
+      }
+
+      if (renderbufferLimit) {
+        ratio = Math.min(ratio, renderbufferLimit / longestSide);
+      }
+
+      // La memòria persistent de caústiques ocupa la meitat de cada dimensió.
+      if (textureLimit) {
+        ratio = Math.min(ratio, (textureLimit * 2) / longestSide);
+      }
+    } catch (_) {
+      // Si el controlador no exposa algun límit, es conserva la resta de càlculs.
+    }
+  }
+
+  const pixelBudget = getRenderPixelBudget();
+  const requestedPixels = viewWidth * viewHeight * ratio * ratio;
+
+  if (requestedPixels > pixelBudget) {
+    ratio *= Math.sqrt(pixelBudget / requestedPixels);
+  }
+
+  ratio *= renderPerformance.adaptiveScale;
+  return ratio;
+}
+
 function resize() {
   if (destroyed) return;
 
-  const ratio = Math.min(
-    window.devicePixelRatio || 1,
-    CONFIG.pixelRatio
+  // clientWidth/clientHeight reflecteixen el viewport útil també després
+  // de canvis d'orientació o de les barres del navegador mòbil.
+  const viewWidth = Math.max(
+    1,
+    document.documentElement.clientWidth || window.innerWidth || 1
+  );
+  const viewHeight = Math.max(
+    1,
+    document.documentElement.clientHeight || window.innerHeight || 1
   );
 
-  const w = Math.max(1, Math.floor(innerWidth * ratio));
-  const h = Math.max(1, Math.floor(innerHeight * ratio));
+  const ratio = getRenderScale(viewWidth, viewHeight);
+  const w = Math.max(1, Math.floor(viewWidth * ratio));
+  const h = Math.max(1, Math.floor(viewHeight * ratio));
+  const surfaceChanged = surface.width !== w || surface.height !== h;
+  const overlayChanged = visualCanvas.width !== w || visualCanvas.height !== h;
 
-  if (surface.width !== w || surface.height !== h) {
+  if (surfaceChanged) {
     surface.width = w;
     surface.height = h;
   }
 
-  if (visualCanvas.width !== w || visualCanvas.height !== h) {
+  if (overlayChanged) {
     visualCanvas.width = w;
     visualCanvas.height = h;
   }
 
   if (glReady) {
     gl.viewport(0, 0, w, h);
-    ensureCausticHistory();
+    if (surfaceChanged || !causticHistory.ready) {
+      ensureCausticHistory();
+    }
   }
 }
 
@@ -857,6 +954,8 @@ function pointerDown(event) {
 
 function pointerUp() {
   gesture.pointerDown = false;
+  // Cada nova interacció ha de construir de nou els quatre segons de moviment.
+  gesture.sustainedMovement = 0;
 }
 
 /* ---------------------------------------------------------
@@ -937,6 +1036,37 @@ function updateGesturePhysics(dt, now) {
       1
     ) * gesture.recentActivity,
     0.12
+  );
+
+  // La textura només pot néixer d'un moviment real i sostingut amb el punter premut.
+  const activelyMoving =
+    gesture.pointerDown &&
+    gesture.speed > 0.025 &&
+    gesture.movement > 0.045;
+
+  if (activelyMoving) {
+    gesture.sustainedMovement = Math.min(
+      20,
+      gesture.sustainedMovement + safeDt
+    );
+  } else if (!gesture.pointerDown) {
+    gesture.sustainedMovement = 0;
+  } else {
+    // Tolera micro-pauses sense convertir un gest interromput en moviment continu.
+    gesture.sustainedMovement = Math.max(
+      0,
+      gesture.sustainedMovement - safeDt * 2.4
+    );
+  }
+
+  const textureTarget =
+    activelyMoving && gesture.sustainedMovement >= 4 ? 1 : 0;
+  const textureTime = textureTarget > gesture.motionTexture ? 0.82 : 0.30;
+  const textureBlend = 1 - Math.exp(-safeDt / textureTime);
+  gesture.motionTexture = lerp(
+    gesture.motionTexture,
+    textureTarget,
+    textureBlend
   );
 
   gesture.stillness = lerp(
@@ -1420,6 +1550,13 @@ const audio = {
 
   spectrum: null,
   noiseBuffer: null,
+  motionNoiseBuffer: null,
+  motionTextureSource: null,
+  motionTextureHighpass: null,
+  motionTextureLowpass: null,
+  motionTexturePan: null,
+  motionTextureGain: null,
+  motionTextureLastUpdate: 0,
 
   activeTimers: new Set(),
   voices: new Set(),
@@ -1447,6 +1584,22 @@ function makeNoiseBuffer(ctx, seconds = 2.5) {
     const white = Math.random() * 2 - 1;
     last = last * 0.985 + white * 0.15;
     data[i] = last * 0.8;
+  }
+
+  return buffer;
+}
+
+// Soroll suau de banda ampla per a una textura contínua, sense altura musical definida.
+function makeMotionNoiseBuffer(ctx, seconds = 3.2) {
+  const length = Math.floor(ctx.sampleRate * seconds);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let smoothed = 0;
+
+  for (let i = 0; i < length; i++) {
+    const white = Math.random() * 2 - 1;
+    smoothed = smoothed * 0.74 + white * 0.26;
+    data[i] = smoothed * 0.9;
   }
 
   return buffer;
@@ -1538,6 +1691,36 @@ function buildGraph() {
   audio.lfo.start();
 
   audio.noiseBuffer = makeNoiseBuffer(ctx);
+  audio.motionNoiseBuffer = makeMotionNoiseBuffer(ctx);
+
+  // Capa tímbrica independent: soroll filtrat, sense oscil·ladors ni notes.
+  // Entra al compressor i comparteix l'espai/reverberació de la composició.
+  audio.motionTextureSource = ctx.createBufferSource();
+  audio.motionTextureSource.buffer = audio.motionNoiseBuffer;
+  audio.motionTextureSource.loop = true;
+
+  audio.motionTextureHighpass = ctx.createBiquadFilter();
+  audio.motionTextureHighpass.type = "highpass";
+  audio.motionTextureHighpass.frequency.value = 300;
+  audio.motionTextureHighpass.Q.value = 0.45;
+
+  audio.motionTextureLowpass = ctx.createBiquadFilter();
+  audio.motionTextureLowpass.type = "lowpass";
+  audio.motionTextureLowpass.frequency.value = 2100;
+  audio.motionTextureLowpass.Q.value = 0.35;
+
+  audio.motionTexturePan = ctx.createStereoPanner();
+  audio.motionTexturePan.pan.value = 0;
+
+  audio.motionTextureGain = ctx.createGain();
+  audio.motionTextureGain.gain.value = 0;
+
+  audio.motionTextureSource.connect(audio.motionTextureHighpass);
+  audio.motionTextureHighpass.connect(audio.motionTextureLowpass);
+  audio.motionTextureLowpass.connect(audio.motionTexturePan);
+  audio.motionTexturePan.connect(audio.motionTextureGain);
+  audio.motionTextureGain.connect(audio.compressor);
+  audio.motionTextureSource.start();
 
   audio.filter.connect(audio.saturation);
   audio.saturation.connect(audio.compressor);
@@ -2091,6 +2274,73 @@ async function activateAudio() {
    ANÀLISI D'ÀUDIO
 --------------------------------------------------------- */
 
+function updateMotionTexture() {
+  const ctx = audio.context;
+  if (
+    !ctx ||
+    ctx.state !== "running" ||
+    !audio.motionTextureGain ||
+    !audio.motionTextureHighpass ||
+    !audio.motionTextureLowpass ||
+    !audio.motionTexturePan
+  ) return;
+
+  const now = ctx.currentTime;
+  // Una actualització de controls a ~20 Hz és suficient i evita cues d'automatització excessives.
+  if (now - audio.motionTextureLastUpdate < 0.05) return;
+  audio.motionTextureLastUpdate = now;
+
+  const presence = gesture.motionTexture;
+  const active = gesture.pointerDown && presence > 0.001;
+  const bend = clamp(Math.abs(gesture.curvature) / 8, 0, 1);
+
+  // L'energia i la complexitat del gest obren la textura, no n'escullen notes.
+  const textureDrive = clamp(
+    0.34 +
+    gesture.energy * 0.28 +
+    gesture.directionChange * 0.18 +
+    gesture.contour * 0.12 +
+    bend * 0.08,
+    0.2,
+    1
+  );
+
+  const gainTarget = active
+    ? 0.042 * presence * textureDrive
+    : 0.00001;
+
+  audio.motionTextureGain.gain.setTargetAtTime(
+    gainTarget,
+    now,
+    active ? 0.72 : 0.24
+  );
+
+  const highpass = clamp(
+    260 + gesture.speed * 260 + gesture.contour * 190,
+    240,
+    760
+  );
+  const lowpass = clamp(
+    1250 +
+    gesture.speed * 2150 +
+    gesture.directionChange * 900 +
+    bend * 500,
+    1300,
+    4600
+  );
+
+  audio.motionTextureHighpass.frequency.setTargetAtTime(highpass, now, 0.38);
+  audio.motionTextureLowpass.frequency.setTargetAtTime(lowpass, now, 0.42);
+
+  // La posició s'estén només lleument: acompanya el gest sense perseguir-lo literalment.
+  const pan = clamp(
+    (gesture.x - 0.5) * 0.48 + gesture.vx * 0.035,
+    -0.34,
+    0.34
+  );
+  audio.motionTexturePan.pan.setTargetAtTime(pan, now, 0.55);
+}
+
 function updateAudioAnalysis() {
   if (!audio.analyser || !audio.spectrum) return;
 
@@ -2314,24 +2564,80 @@ function drawFallback() {
    CICLE PRINCIPAL
 --------------------------------------------------------- */
 
+function monitorRenderPerformance(timestamp, frameDelta) {
+  renderPerformance.frameCount++;
+  if (frameDelta > 0.024) renderPerformance.slowFrames++;
+
+  if (!renderPerformance.sampleStartedAt) {
+    renderPerformance.sampleStartedAt = timestamp;
+    return;
+  }
+
+  if (timestamp - renderPerformance.sampleStartedAt < CONFIG.render.adaptationInterval) {
+    return;
+  }
+
+  const slowRatio = renderPerformance.frameCount
+    ? renderPerformance.slowFrames / renderPerformance.frameCount
+    : 0;
+  const sinceScaleChange = timestamp - renderPerformance.lastScaleChange;
+  let nextScale = renderPerformance.adaptiveScale;
+
+  // Només es redueix la resolució quan hi ha alentiments sostinguts.
+  if (slowRatio > 0.22 && sinceScaleChange > 2500) {
+    nextScale = Math.max(
+      CONFIG.render.minAdaptiveScale,
+      renderPerformance.adaptiveScale * 0.90
+    );
+  // La qualitat es recupera lentament quan el dispositiu torna a tenir marge.
+  } else if (
+    slowRatio < 0.035 &&
+    renderPerformance.adaptiveScale < 1 &&
+    sinceScaleChange > 10000
+  ) {
+    nextScale = Math.min(1, renderPerformance.adaptiveScale + 0.05);
+  }
+
+  if (Math.abs(nextScale - renderPerformance.adaptiveScale) > 0.001) {
+    renderPerformance.adaptiveScale = nextScale;
+    renderPerformance.lastScaleChange = timestamp;
+    resize();
+  }
+
+  renderPerformance.frameCount = 0;
+  renderPerformance.slowFrames = 0;
+  renderPerformance.sampleStartedAt = timestamp;
+}
+
 function frame(timestamp) {
   if (!running || destroyed || paused) return;
 
-  const dt = lastFrame
+  const frameDelta = lastFrame
     ? clamp((timestamp - lastFrame) / 1000, 0.001, 0.06)
     : 0.016;
 
   lastFrame = timestamp;
-  elapsed += dt;
+  elapsed += frameDelta;
 
-  updateGesturePhysics(dt, timestamp * 0.001);
+  updateGesturePhysics(frameDelta, timestamp * 0.001);
+  updateMotionTexture();
   updateAudioAnalysis();
+  monitorRenderPerformance(timestamp, frameDelta);
 
-  if (glReady) {
-    drawSurface();
-    drawAudioAtmosphere();
-  } else {
-    drawFallback();
+  // En pantalles de 90/120/144 Hz evitem repetir el shader més de 60 vegades/s.
+  const renderInterval = 1000 / CONFIG.render.maxFPS;
+  if (
+    !renderPerformance.lastRenderAt ||
+    timestamp - renderPerformance.lastRenderAt >= renderInterval - 1
+  ) {
+    renderPerformance.lastRenderAt = timestamp;
+
+    if (glReady) {
+      drawSurface();
+      drawAudioAtmosphere();
+    } else {
+      drawFallback();
+    }
   }
 
   raf = requestAnimationFrame(frame);
@@ -2347,6 +2653,8 @@ function start() {
   running = true;
   paused = false;
   lastFrame = 0;
+  renderPerformance.lastRenderAt = 0;
+  renderPerformance.sampleStartedAt = 0;
 
   resize();
 
@@ -2414,6 +2722,12 @@ function stop() {
   audio.voices.clear();
   audio.spectrum = null;
   audio.noiseBuffer = null;
+  audio.motionNoiseBuffer = null;
+  audio.motionTextureSource = null;
+  audio.motionTextureHighpass = null;
+  audio.motionTextureLowpass = null;
+  audio.motionTexturePan = null;
+  audio.motionTextureGain = null;
 
   if (gl) {
     try {
@@ -2452,6 +2766,37 @@ listen(surface, "pointercancel", pointerUp, { passive: true });
 listen(surface, "lostpointercapture", pointerUp, { passive: true });
 
 listen(window, "resize", resize, { passive: true });
+listen(window, "orientationchange", resize, { passive: true });
+
+if (window.visualViewport) {
+  listen(window.visualViewport, "resize", resize, { passive: true });
+}
+
+if ("ResizeObserver" in window) {
+  resizeObserver = new ResizeObserver(() => resize());
+  resizeObserver.observe(document.documentElement);
+}
+
+listen(surface, "webglcontextlost", event => {
+  // Permet al navegador de recuperar el context després d'una pressió de GPU.
+  event.preventDefault();
+  glReady = false;
+  program = null;
+  positionBuffer = null;
+  uniforms = {};
+  causticHistory.textures = [];
+  causticHistory.framebuffers = [];
+  causticHistory.width = 0;
+  causticHistory.height = 0;
+  causticHistory.readIndex = 0;
+  causticHistory.ready = false;
+});
+
+listen(surface, "webglcontextrestored", () => {
+  if (destroyed) return;
+  if (initGL()) resize();
+});
+
 listen(window, "pagehide", stop, { once: true });
 
 listen(document, "visibilitychange", () => {
@@ -2476,6 +2821,9 @@ listen(document, "visibilitychange", () => {
   } else {
     paused = false;
     lastFrame = 0;
+    renderPerformance.lastRenderAt = 0;
+    renderPerformance.sampleStartedAt = 0;
+    resize();
     raf = requestAnimationFrame(frame);
 
     if (audio.context && audio.context.state === "suspended") {
