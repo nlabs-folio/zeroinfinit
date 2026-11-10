@@ -98,8 +98,9 @@ const CONFIG = {
   synth: {
     baseFreq: 221.303,
     scale: [0, 2, 5, 7, 9, 12],
-    waveform: "triangle",
-    detune: 5.5,
+    // Forma d'ona pròpia: fonamental càlida i harmònics superiors continguts.
+    waveform: "warm",
+    detune: 3,
     filterCutoff: 2102,
     lfoRate: 0.09,
     lfoDepth: 180,
@@ -108,7 +109,7 @@ const CONFIG = {
     release: 4.8,
     layers: 3,
     noise: 0.025,
-    fmAmount: 0.055
+    fmAmount: 0.03
   },
 
   visual: {
@@ -367,7 +368,14 @@ float seaHeight(vec2 x, float t, out vec2 slope) {
 
 void main() {
   vec2 p = uv;
-  vec2 aspect = vec2(resolution.x / resolution.y, 1.0);
+  float aspectRatio = resolution.x / resolution.y;
+
+  // En pantalles verticals, mantenim com a mínim l'amplada de camp
+  // d'una composició quadrada. Això evita que el telèfon mostri només
+  // una franja estreta del camp visual. L'escala és uniforme: no deforma
+  // les formes, sinó que amplia el camp visible també en l'eix vertical.
+  float compositionScale = max(1.0, 1.0 / max(aspectRatio, 0.001));
+  vec2 aspect = vec2(aspectRatio, 1.0) * compositionScale;
   vec2 q = (p - 0.5) * aspect;
 
   // Coordenades del mar: una escala pròpia perquè l'onatge no depengui
@@ -391,6 +399,7 @@ q.y += sea * 0.12;
   float t = time * 0.15;
   float gesturalTime = time * (0.05 + energy * 0.12);
 
+  // El punter utilitza exactament el mateix espai de coordenades que el camp.
   vec2 pointerPoint = (pointer - 0.5) * aspect;
   vec2 toPointer = q - pointerPoint;
   float pointerDistance = length(toPointer);
@@ -1547,6 +1556,8 @@ const audio = {
   lfo: null,
   lfoGain: null,
   compressor: null,
+  limiter: null,
+  warmWave: null,
 
   spectrum: null,
   noiseBuffer: null,
@@ -1648,7 +1659,7 @@ function buildGraph() {
   audio.filter.Q.value = 0.58;
 
   audio.saturation = ctx.createWaveShaper();
-  audio.saturation.curve = makeSaturationCurve(1.6);
+  audio.saturation.curve = makeSaturationCurve(1.2);
   audio.saturation.oversample = "2x";
 
   audio.compressor = ctx.createDynamicsCompressor();
@@ -1657,6 +1668,23 @@ function buildGraph() {
   audio.compressor.ratio.value = 2;
   audio.compressor.attack.value = 0.035;
   audio.compressor.release.value = 0.28;
+
+  // Captura pics després de sumar senyal sec, reverberació i delay.
+  // És una protecció suau de dinàmica, no un sostre brickwall absolut.
+  audio.limiter = ctx.createDynamicsCompressor();
+  audio.limiter.threshold.value = -8;
+  audio.limiter.knee.value = 4;
+  audio.limiter.ratio.value = 8;
+  audio.limiter.attack.value = 0.003;
+  audio.limiter.release.value = 0.15;
+
+  // Harmònics suaus: 1, 0.12, 0.045, 0.018 i 0.006.
+  // La normalització manté la forma equilibrada sense elevar els pics.
+  const warmReal = new Float32Array([0, 0, 0, 0, 0, 0]);
+  const warmImag = new Float32Array([0, 1, 0.12, 0.045, 0.018, 0.006]);
+  audio.warmWave = typeof ctx.createPeriodicWave === "function"
+    ? ctx.createPeriodicWave(warmReal, warmImag)
+    : null;
 
   audio.convolver = ctx.createConvolver();
   audio.convolver.buffer = makeImpulse(ctx);
@@ -1738,7 +1766,10 @@ function buildGraph() {
   audio.delay.connect(audio.delayFeedback);
   audio.delayFeedback.connect(audio.delay);
 
-  audio.master.connect(audio.analyser);
+  // El limitador queda després de totes les rutes perquè també controli
+  // les cues de reverberació i delay, no només el senyal sec.
+  audio.master.connect(audio.limiter);
+  audio.limiter.connect(audio.analyser);
   audio.analyser.connect(ctx.destination);
 }
 
@@ -1795,7 +1826,7 @@ function playNote(time, frequency, duration, options = {}) {
 
   voiceFilter.type = "lowpass";
   voiceFilter.frequency.value = options.cutoff || rand(900, 2200);
-  voiceFilter.Q.value = rand(0.35, 0.9);
+  voiceFilter.Q.value = rand(0.45, 0.65);
 
   pan.pan.value = panValue;
   voiceGain.gain.value = 0;
@@ -1838,7 +1869,11 @@ function playNote(time, frequency, duration, options = {}) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = oscType;
+    if (oscType === "warm" && audio.warmWave) {
+      osc.setPeriodicWave(audio.warmWave);
+    } else {
+      osc.type = oscType === "warm" ? "triangle" : oscType;
+    }
     osc.frequency.setValueAtTime(freq, time);
     osc.detune.setValueAtTime(detuneValue, time);
     gain.gain.value = level;
@@ -1852,15 +1887,16 @@ function playNote(time, frequency, duration, options = {}) {
     oscillators.push(osc);
   }
 
+  // Separació total de 3 cents: batement subtil sense desafinació evident.
   addOscillator(frequency, type, -detune * 0.5, 0.72);
-  addOscillator(frequency * 1.002, type, detune * 0.5, 0.28);
+  addOscillator(frequency, type, detune * 0.5, 0.28);
 
   if (p.layers > 2) {
     addOscillator(
       frequency * 2,
       "sine",
       rand(-2, 2),
-      0.07 + fmAmount * 0.1
+      0.035
     );
   }
 
@@ -2339,6 +2375,24 @@ function updateMotionTexture() {
     0.34
   );
   audio.motionTexturePan.pan.setTargetAtTime(pan, now, 0.55);
+
+  // El gest obre lleument l'espectre del conjunt: lent = càlid;
+  // moviment sostingut = una mica més de presència, sense pics brillants.
+  const spectralOpening = clamp(
+    gesture.speed * 520 + gesture.directionChange * 260 + bend * 180,
+    0,
+    760
+  );
+  const globalCutoff = clamp(
+    1480 + spectralOpening,
+    1400,
+    2350
+  );
+  audio.filter.frequency.setTargetAtTime(
+    globalCutoff,
+    now,
+    active ? 0.62 : 1.15
+  );
 }
 
 function updateAudioAnalysis() {
@@ -2728,6 +2782,8 @@ function stop() {
   audio.motionTextureLowpass = null;
   audio.motionTexturePan = null;
   audio.motionTextureGain = null;
+  audio.limiter = null;
+  audio.warmWave = null;
 
   if (gl) {
     try {
