@@ -1,0 +1,16 @@
+{
+    "nodes": [
+        {
+            "id": "nodeG",
+            "entry": "nodes/nodeG/main.js"
+        },
+        {
+            "id": "nodeN",
+            "entry": "nodes/nodeN/main.js"
+        },
+        {
+            "id": "Node∫",
+            "entry": "nodes/node∫/main.js"
+        }
+    ]
+}
